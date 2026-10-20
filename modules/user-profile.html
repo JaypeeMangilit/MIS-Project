@@ -1,0 +1,212 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>User Profile</title>
+    <link rel="stylesheet" href="modules/user-profile.css">
+    <link rel="stylesheet" href="sidebar.css">
+</head>
+<body>
+<div class="user-profile-wrapper">
+    <!-- Profile Card Section -->
+    <div class="profile-card-section">
+        <div class="profile-avatar-container">
+            <img id="profileAvatar" class="profile-avatar-image" src="https://placehold.co/120x120" alt="Profile Photo">
+        </div>
+        <div class="profile-info-container">
+            <h1 id="profileName" class="profile-name">Maria Santos</h1>
+            <p id="profileRole" class="profile-role">Barangay Secretary</p>
+            <div class="status-badge-container">
+                <span class="status-dot"></span>
+                <span id="profileStatus" class="status-text">Active Account</span>
+            </div>
+        </div>
+        <div class="profile-action-buttons">
+            <button class="btn-edit-profile" id="editProfileBtn">
+                <svg width="14" height="14" viewBox="0 0 14 14" fill="none">
+                    <circle cx="7" cy="7" r="5.25" stroke="white" stroke-width="1.17"/>
+                    <circle cx="7" cy="7" r="2.33" fill="white"/>
+                </svg>
+                Edit Profile
+            </button>
+            <button class="btn-update-photo" id="updatePhotoBtn">
+                <svg width="14" height="14" viewBox="0 0 14 14" fill="none">
+                    <path d="M2.33 9.33L11.67 9.33M7 2.33L7 11.67" stroke="#16324A" stroke-width="1.17" stroke-linecap="round"/>
+                    <circle cx="7" cy="7" r="5.25" stroke="#16324A" stroke-width="1.17"/>
+                </svg>
+                Update Photo
+            </button>
+            <input type="file" id="photoUploadInput" accept="image/jpeg,image/png" class="hidden-file-input" title="Upload profile photo" aria-label="Upload profile photo">
+        </div>
+    </div>
+
+    <!-- Account Details Section -->
+    <div class="info-section">
+        <div class="section-header">
+            <div>
+                <h3>Account Details</h3>
+                <p>Core information used across the BMIS modules.</p>
+            </div>
+        </div>
+        <div class="details-grid">
+            <div class="detail-field">
+                <label>First Name</label>
+                <div class="field-value" id="firstName">Maria</div>
+            </div>
+            <div class="detail-field">
+                <label>Middle Name</label>
+                <div class="field-value" id="middleName">Lopez</div>
+            </div>
+            <div class="detail-field">
+                <label>Last Name</label>
+                <div class="field-value" id="lastName">Santos</div>
+            </div>
+            <div class="detail-field full-width">
+                <label>Official Email Address</label>
+                <div class="field-value" id="email">m.santos@brgy49akasya.gov.ph</div>
+            </div>
+            <div class="detail-field">
+                <label>Contact Number</label>
+                <div class="field-value" id="phone">+63 917 123 4567</div>
+            </div>
+            <div class="detail-field full-width">
+                <label>Residential Address</label>
+                <div class="field-value" id="address">Block 4, Lot 12, M. Gregorio Street, Barangay 49 Akasya, Cavite City</div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Office Assignment Section -->
+    <div class="info-section">
+        <div class="section-header">
+            <div>
+                <h3>Office Assignment</h3>
+                <p>Current work designation and module access permissions.</p>
+            </div>
+        </div>
+        <div class="assignment-grid">
+            <div class="assignment-card">
+                <div class="assignment-label">Position</div>
+                <div class="assignment-value" id="position">Barangay Secretary</div>
+            </div>
+            <div class="assignment-card">
+                <div class="assignment-label">Office Status</div>
+                <div class="assignment-value" id="officeStatus">Assigned for daily front desk and records processing</div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Recent Activity Section -->
+    <div class="info-section">
+        <div class="section-header">
+            <div>
+                <h3>Recent Activity</h3>
+                <p>Latest account-related actions and BMIS usage summary.</p>
+            </div>
+        </div>
+        <div class="activity-list" id="activityList">
+            <div class="activity-item">
+                <div class="activity-icon">
+                    <svg width="14" height="14" viewBox="0 0 14 14" fill="none">
+                        <path d="M2.33 9.33L11.67 9.33M7 2.33L7 11.67" stroke="#16324A" stroke-width="1.17" stroke-linecap="round"/>
+                        <circle cx="7" cy="7" r="5.25" stroke="#16324A" stroke-width="1.17"/>
+                    </svg>
+                </div>
+                <div class="activity-content">
+                    <div class="activity-title">Issued a Barangay Clearance</div>
+                    <div class="activity-description">Processed certificate request for resident under the Certificates module.</div>
+                </div>
+                <div class="activity-time">10:25 AM</div>
+            </div>
+            <div class="activity-item">
+                <div class="activity-icon">
+                    <svg width="14" height="14" viewBox="0 0 14 14" fill="none">
+                        <path d="M9.33 1.75L12.25 4.67L4.67 12.25H1.75V9.33L9.33 1.75Z" stroke="#16324A" stroke-width="1.17" stroke-linecap="round"/>
+                        <path d="M7.58 3.5L10.5 6.42" stroke="#16324A" stroke-width="1.17"/>
+                    </svg>
+                </div>
+                <div class="activity-content">
+                    <div class="activity-title">Updated resident information</div>
+                    <div class="activity-description">Modified household and contact details for two resident records.</div>
+                </div>
+                <div class="activity-time">Yesterday</div>
+            </div>
+            <div class="activity-item">
+                <div class="activity-icon">
+                    <svg width="14" height="14" viewBox="0 0 14 14" fill="none">
+                        <path d="M2.33 2.33H11.67V11.67H2.33V2.33Z" stroke="#16324A" stroke-width="1.17"/>
+                        <path d="M4.67 5.83H9.33M4.67 8.17H7.58" stroke="#16324A" stroke-width="1.17" stroke-linecap="round"/>
+                    </svg>
+                </div>
+                <div class="activity-content">
+                    <div class="activity-title">Generated monthly report summary</div>
+                    <div class="activity-description">Exported statistics for certificates, residents, and blotter entries.</div>
+                </div>
+                <div class="activity-time">May 28</div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Edit Profile Modal -->
+<div id="editProfileModal" class="modal-overlay hidden">
+    <div class="modal-container">
+        <div class="modal-header">
+            <h3>Edit Profile</h3>
+            <button class="modal-close" id="closeModalBtn">&times;</button>
+        </div>
+        <div class="modal-body">
+            <div class="edit-form">
+                <div class="form-row">
+                    <div class="form-field">
+                        <label>First Name <span class="required">*</span></label>
+                        <input type="text" id="editFirstName" placeholder="First Name">
+                    </div>
+                    <div class="form-field">
+                        <label>Middle Name</label>
+                        <input type="text" id="editMiddleName" placeholder="Middle Name">
+                    </div>
+                </div>
+                <div class="form-row">
+                    <div class="form-field">
+                        <label>Last Name <span class="required">*</span></label>
+                        <input type="text" id="editLastName" placeholder="Last Name">
+                    </div>
+                    <div class="form-field">
+                        <label>Suffix</label>
+                        <input type="text" id="editSuffix" placeholder="e.g., Jr., Sr., III">
+                    </div>
+                </div>
+                <div class="form-field">
+                    <label>Email Address <span class="required">*</span></label>
+                    <input type="email" id="editEmail" placeholder="Email Address">
+                </div>
+                <div class="form-field">
+                    <label>Phone Number</label>
+                    <input type="tel" id="editPhone" placeholder="Phone Number">
+                </div>
+                <div class="form-field">
+                    <label>Residential Address</label>
+                    <textarea id="editAddress" rows="3" placeholder="Residential Address"></textarea>
+                </div>
+                <div class="form-field">
+                    <label>Position</label>
+                    <input type="text" id="editPosition" placeholder="Position">
+                </div>
+                <div class="form-field">
+                    <label>Office Status</label>
+                    <textarea id="editOfficeStatus" rows="2" placeholder="Office Status Description"></textarea>
+                </div>
+            </div>
+        </div>
+        <div class="modal-footer">
+            <button class="btn-cancel-modal" id="cancelModalBtn">Cancel</button>
+            <button class="btn-save-modal" id="saveProfileBtn">Save Changes</button>
+        </div>
+    </div>
+</div>
+
+<script src="modules/user-profile.js"></script>
+</body>
+</html>

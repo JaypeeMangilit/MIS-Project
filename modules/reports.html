@@ -1,0 +1,140 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Barangay 49 Akasya - Reports & Analytics</title>
+    <link rel="stylesheet" href="modules/reports.css">
+    <link rel="stylesheet" href="sidebar.css">
+</head>
+<body>
+    <div class="reports-container">
+            <!-- Content Area -->
+            <div class="content-area">
+                <!-- Export Button -->
+                <div class="export-section">
+                    <button class="btn-export" id="exportAllBtn">
+                        <svg width="18" height="18" viewBox="0 0 18 18" fill="none">
+                            <path d="M3 12H15M9 3V12M9 12L6 9M9 12L12 9" stroke="white" stroke-width="1.5" stroke-linecap="round"/>
+                        </svg>
+                        <span>Export All Data</span>
+                    </button>
+                </div>
+
+                <!-- Population Demographics Chart -->
+                <div class="report-card">
+                    <div class="card-header">
+                        <div>
+                            <h3>Population Demographics</h3>
+                            <p>Age distribution of registered residents</p>
+                        </div>
+                        <button class="menu-dots" type="button" title="More options for population demographics" aria-label="More options for population demographics">
+                            <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
+                                <circle cx="8" cy="8" r="1.33" fill="#16324A"/>
+                                <circle cx="13" cy="8" r="1.33" fill="#16324A"/>
+                                <circle cx="3" cy="8" r="1.33" fill="#16324A"/>
+                            </svg>
+                        </button>
+                    </div>
+                    <div class="chart-container">
+                        <div class="bar-chart" id="demographicsChart">
+                            <!-- Bars will be dynamically loaded -->
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Blotter Cases Overview -->
+                <div class="report-card">
+                    <div class="card-header">
+                        <div>
+                            <h3>Blotter Cases Overview</h3>
+                            <p>Status of reported incidents this year</p>
+                        </div>
+                        <button class="menu-dots" type="button" title="More options for blotter cases" aria-label="More options for blotter cases">
+                            <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
+                                <circle cx="8" cy="8" r="1.33" fill="#16324A"/>
+                                <circle cx="13" cy="8" r="1.33" fill="#16324A"/>
+                                <circle cx="3" cy="8" r="1.33" fill="#16324A"/>
+                            </svg>
+                        </button>
+                    </div>
+                    <div class="progress-list" id="blotterProgress">
+                        <!-- Progress bars will be dynamically loaded -->
+                    </div>
+                </div>
+
+                <!-- Certificate Issuance Chart -->
+                <div class="report-card">
+                    <div class="card-header">
+                        <div>
+                            <h3>Certificate Issuance</h3>
+                            <p>Monthly volume of requested documents</p>
+                        </div>
+                        <button class="menu-dots" type="button" title="More options for certificate issuance" aria-label="More options for certificate issuance">
+                            <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
+                                <circle cx="8" cy="8" r="1.33" fill="#16324A"/>
+                                <circle cx="13" cy="8" r="1.33" fill="#16324A"/>
+                                <circle cx="3" cy="8" r="1.33" fill="#16324A"/>
+                            </svg>
+                        </button>
+                    </div>
+                    <div class="chart-container">
+                        <div class="bar-chart" id="certificateChart">
+                            <!-- Bars will be dynamically loaded -->
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Equipment & Inventory Status -->
+                <div class="report-card">
+                    <div class="card-header">
+                        <div>
+                            <h3>Equipment & Inventory</h3>
+                            <p>Current status of barangay properties</p>
+                        </div>
+                        <button class="menu-dots" type="button" title="More options for equipment and inventory" aria-label="More options for equipment and inventory">
+                            <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
+                                <circle cx="8" cy="8" r="1.33" fill="#16324A"/>
+                                <circle cx="13" cy="8" r="1.33" fill="#16324A"/>
+                                <circle cx="3" cy="8" r="1.33" fill="#16324A"/>
+                            </svg>
+                        </button>
+                    </div>
+                    <div class="progress-list" id="inventoryProgress">
+                        <!-- Progress bars will be dynamically loaded -->
+                    </div>
+                </div>
+
+                <!-- Generated Reports History -->
+                <div class="reports-history">
+                    <div class="history-header">
+                        <h3>Generated Reports History</h3>
+                        <div class="search-box-small">
+                            <img src="Images/Search_Icon.svg" alt="Search Icon">
+                            <input type="text" placeholder="Search past reports" id="searchReports">
+                        </div>
+                    </div>
+                    <div class="history-table-container">
+                        <table class="history-table">
+                            <thead>
+                                <tr>
+                                    <th>Report Name</th>
+                                    <th>Date Generated</th>
+                                    <th>Format</th>
+                                    <th>Generated By</th>
+                                    <th>Actions</th>
+                                </tr>
+                            </thead>
+                            <tbody id="reportsTableBody">
+                                <!-- Report rows will be dynamically loaded -->
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </main>
+    </div>
+
+    <script src="modules/reports.js"></script>
+</body>
+</html>

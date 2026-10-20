@@ -1,0 +1,52 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
+    <meta http-equiv="Pragma" content="no-cache">
+    <meta http-equiv="Expires" content="0">
+    <title>Barangay 49 Akasya - Dynamic Module</title>
+    <link rel="stylesheet" href="sidebar.css">
+</head>
+<body>
+    <div class="app-container">
+        <!-- Sidebar will be loaded here -->
+        <div id="sidebar-container"></div>
+
+        <!-- Main Content -->
+        <main class="main-content">
+            <!-- Header -->
+            <header class="main-header">
+                <div class="header-info">
+                    <div class="breadcrumb" id="breadcrumb">Barangay Information System</div>
+                    <h1 class="page-title" id="pageTitle">Dashboard</h1>
+                </div>
+                <div class="user-info">
+                    <div class="user-details">
+                        <div class="user-name">Ricardo Dalisay</div>
+                        <div class="user-role">Barangay Captain</div>
+                    </div>
+                    <div class="user-avatar">
+                        <img src="Images/UserAvatar.jpg" alt="User Avatar">
+                    </div>
+                </div>
+            </header>
+
+            <!-- Dynamic Content Area -->
+            <div class="content-area" id="dynamic-content">
+                <!-- Module content will be loaded here -->
+                <div class="loading-container">
+                    <div class="loading-spinner"></div>
+                    <p>Loading content...</p>
+                </div>
+            </div>
+        </main>
+    </div>
+
+    <!-- Common Scripts -->
+    <script src="sidebar.js"></script>
+    <script src="router.js"></script>
+    <!-- Module-specific scripts will be loaded dynamically -->
+</body>
+</html>

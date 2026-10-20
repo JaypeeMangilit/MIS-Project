@@ -1,0 +1,69 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>System Archives</title>
+    <link rel="stylesheet" href="modules/archives.css">
+    <link rel="stylesheet" href="sidebar.css">
+</head>
+<body>
+<div class="archives-module">
+    <!-- Category Tabs -->
+    <div class="archives-tabs">
+        <div class="tab-item active" data-category="residents">Residents</div>
+        <div class="tab-item" data-category="blotter">Blotter Cases</div>
+        <div class="tab-item" data-category="certificates">Certificates</div>
+        <div class="tab-item" data-category="inventory">Inventory</div>
+        <div class="tab-item" data-category="officials">Barangay Officials</div>
+        
+        <div class="tab-item" data-category="users">User Management</div>
+    </div>
+
+    <!-- Search Bar -->
+    <div class="archives-search">
+        <div class="search-input-wrapper">
+            <svg class="search-icon" width="14" height="14" viewBox="0 0 14 14" fill="none">
+                <circle cx="6.5" cy="6.5" r="4.67" stroke="#5F7385" stroke-width="1.17"/>
+                <line x1="10" y1="10" x2="12.5" y2="12.5" stroke="#5F7385" stroke-width="1.17" stroke-linecap="round"/>
+            </svg>
+            <input type="text" id="archiveSearchInput" placeholder="Search archives..." class="search-input">
+        </div>
+    </div>
+
+    <!-- Archives Table Container -->
+    <div class="archives-table-container">
+        <div class="table-header">
+            <h3 id="tableTitle">Archived Residents</h3>
+        </div>
+
+        <div class="table-wrapper">
+            <table class="archives-table">
+                <thead>
+                    <tr id="tableHeaders">
+                        <th>Name</th>
+                        <th>Address / Purok</th>
+                        <th>Archived Date</th>
+                        <th>Archived By</th>
+                        <th>Actions</th>
+                    </tr>
+                </thead>
+                <tbody id="archivesTableBody">
+                    <!-- Dynamic content will be loaded here -->
+                </tbody>
+            </table>
+        </div>
+
+        <!-- Pagination -->
+        <div class="pagination-container">
+            <div class="pagination-info" id="paginationInfo">Showing 1 to 4 of 24 entries</div>
+            <div class="pagination-controls" id="paginationControls">
+                <!-- Pagination buttons will be generated here -->
+            </div>
+        </div>
+    </div>
+</div>
+
+<script src="modules/archives.js"></script>
+</body>
+</html>

@@ -1,0 +1,332 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Barangay 49 Akasya - Certificates Management</title>
+    <link rel="stylesheet" href="modules/certificates.css?v=3">
+    <link rel="stylesheet" href="sidebar.css">
+</head>
+<body>
+    <div class="certificates-container">
+        <div class="content-area" id="dynamicContent">
+            <!-- Certificates Module -->
+            <div id="certificatesModule" class="certificates-module">
+                <!-- Left Panel - Issue New Certificate -->
+                <div class="issue-panel">
+                    <div class="panel-card">
+                        <div class="panel-header">
+                            <h3>Issue New Certificate</h3>
+                        </div>
+                        <div class="panel-body">
+                            <div class="form-group">
+                                <label for="residentSearch">Resident Name</label>
+                                <div class="search-input-wrapper">
+                                    <svg class="search-icon" width="14" height="14" viewBox="0 0 14 14" fill="none">
+                                        <circle cx="6.5" cy="6.5" r="4.67" stroke="#5F7385" stroke-width="1.17"/>
+                                        <line x1="10" y1="10" x2="12.5" y2="12.5" stroke="#5F7385" stroke-width="1.17" stroke-linecap="round"/>
+                                    </svg>
+                                    <input type="text" id="residentSearch" placeholder="Search resident..." class="search-input" title="Search Resident" aria-label="Search Resident">
+                                    <div id="residentResults" class="search-results hidden"></div>
+                                </div>
+                                <input type="hidden" id="selectedResidentId">
+                                <input type="hidden" id="selectedResidentName">
+                            </div>
+
+                            <div class="form-group">
+                                <label for="certificateType">Certificate Type</label>
+                                <div class="select-wrapper">
+                                    <select id="certificateType" class="form-select" title="Certificate type" aria-label="Certificate type">
+                                        <option value="Barangay Clearance">Barangay Clearance</option>
+                                        <option value="Certificate of Indigency">Certificate of Indigency</option>
+                                        <option value="Certificate of Residency">Certificate of Residency</option>
+                                        <option value="Business Permit">Business Permit</option>
+                                        <option value="Cedula (Community Tax Certificate)">Cedula (Community Tax Certificate)</option>
+                                        <option value="Good Moral Character">Good Moral Character</option>
+                                    </select>
+                                    <span class="select-arrow">▼</span>
+                                </div>
+                            </div>
+
+                            <div class="form-group">
+                                <label for="purpose">Purpose</label>
+                                <textarea id="purpose" rows="3" placeholder="For Employment" class="form-textarea" title="Purpose" aria-label="Purpose"></textarea>
+                            </div>
+
+                            <div class="form-row">
+                                <div class="form-group">
+                                    <label for="orNumber">OR Number (Optional)</label>
+                                    <input type="text" id="orNumber" placeholder="OR-2023-0892" class="form-input" title="OR Number" aria-label="OR Number">
+                                </div>
+                                <div class="form-group">
+                                    <label for="amount">Amount Paid</label>
+                                    <input type="text" id="amount" placeholder="₱ 00.00" class="form-input" title="Amount Paid" aria-label="Amount Paid">
+                                </div>
+                            </div>
+
+                            <div class="form-group">
+                                <label for="dateIssued">Date Issued</label>
+                                <div class="date-input-wrapper">
+                                    <input type="date" id="dateIssued" class="form-input date-input" title="Date issued" aria-label="Date issued">
+                                    <svg class="calendar-icon" width="14" height="14" viewBox="0 0 14 14" fill="none">
+                                        <rect x="1.75" y="2.33" width="10.5" height="10.5" rx="1.17" stroke="#16324A" stroke-width="1.17"/>
+                                        <path d="M4.67 1.17V3.5M9.33 1.17V3.5" stroke="#16324A" stroke-width="1.17" stroke-linecap="round"/>
+                                        <path d="M1.75 5.83H12.25" stroke="#16324A" stroke-width="1.17"/>
+                                    </svg>
+                                </div>
+                            </div>
+
+                            <button class="btn-save-request" id="saveCertificateBtn">
+                                <svg width="14" height="14" viewBox="0 0 14 14" fill="none">
+                                    <path d="M1.17 5.83L5.25 9.92L12.83 2.33" stroke="white" stroke-width="1.33" stroke-linecap="round"/>
+                                </svg>
+                                Save Request
+                            </button>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Right Panel - Recent Issuances -->
+                <div class="issuances-panel">
+                    <div class="panel-card full-height">
+                        <div class="panel-header">
+                            <h3>Recent Issuances</h3>
+                            <div class="search-box-small">
+                                <svg width="14" height="14" viewBox="0 0 14 14" fill="none">
+                                    <circle cx="6.5" cy="6.5" r="4.67" stroke="#5F7385" stroke-width="1.17"/>
+                                    <line x1="10" y1="10" x2="12.5" y2="12.5" stroke="#5F7385" stroke-width="1.17" stroke-linecap="round"/>
+                                </svg>
+                                <input type="text" id="searchIssuances" placeholder="Search by name or type..." class="search-input-small" title="Search issuances" aria-label="Search issuances">
+                            </div>
+                        </div>
+                        <div class="table-wrapper">
+                            <table class="issuances-table">
+                                <thead>
+                                    <tr>
+                                        <th>Date</th>
+                                        <th>Resident Name</th>
+                                        <th>Certificate Type</th>
+                                        <th>Purpose</th>
+                                        <th>OR Number</th>
+                                        <th>Actions</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="issuancesTableBody"></tbody>
+                            </table>
+                        </div>
+                        <div class="pagination">
+                            <div class="pagination-info" id="paginationInfo">Showing 1 to 5 of 0 entries</div>
+                            <div class="pagination-controls" id="paginationControls"></div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Certificate Details View (Full Page) -->
+            <div id="certificateDetailsView" class="page-view hidden">
+                <div class="certificate-details-container">
+                    <div class="details-header">
+                        <div class="details-title-section">
+                            <div class="back-button-wrapper">
+                                <button class="back-btn" id="backToCertificatesBtn">
+                                    <svg width="20" height="20" viewBox="0 0 20 20" fill="none">
+                                        <path d="M12.5 15L7.5 10L12.5 5" stroke="#5F7385" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+                                    </svg>
+                                    <span>Back to Certificates</span>
+                                </button>
+                            </div>
+                            <h1 class="details-main-title">Certificate Details</h1>
+                        </div>
+                        <button class="btn-edit-certificate" id="editFromDetailsBtn">
+                            <img src="Images/Edits_Icon.svg" alt="Mapping Icon">
+                            <span>Edit</span>
+                        </button>
+                    </div>
+
+                    <div class="details-card-wrapper">
+                        <div class="details-card">
+                            <div class="card-header"><h3>Issuance Information</h3></div>
+                            <div class="card-body">
+                                <div class="detail-group"><div class="detail-label">RESIDENT NAME</div><div class="detail-value large" id="detailsResidentName">—</div></div>
+                                <div class="detail-group"><div class="detail-label">CERTIFICATE TYPE</div><div class="cert-type-badge" id="detailsCertificateType"><span class="badge clearance">—</span></div></div>
+                                <div class="detail-group"><div class="detail-label">PURPOSE</div><div class="detail-value" id="detailsPurpose">—</div></div>
+                                <div class="divider"></div>
+                                <div class="detail-row"><div class="detail-group half"><div class="detail-label">DATE ISSUED</div><div class="detail-value" id="detailsDateIssued">—</div></div><div class="detail-group half"><div class="detail-label">VALID UNTIL</div><div class="detail-value" id="detailsValidUntil">—</div></div></div>
+                                <div class="detail-row"><div class="detail-group half"><div class="detail-label">OR NUMBER</div><div class="detail-value" id="detailsOrNumber">—</div></div><div class="detail-group half"><div class="detail-label">AMOUNT PAID</div><div class="detail-value" id="detailsAmount">—</div></div></div>
+                                <div class="divider"></div>
+                                <div class="detail-group"><div class="detail-label">ISSUED BY</div><div class="detail-value" id="detailsIssuedBy">—</div></div>
+                                <div class="detail-group"><div class="detail-label">CONTROL NUMBER</div><div class="detail-value mono" id="detailsControlNumber">—</div></div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Edit Certificate View (Full Page) -->
+            <div id="editCertificateView" class="page-view hidden">
+                <div class="edit-certificate-container">
+                    <div class="edit-header">
+                        <div class="edit-title-section">
+                            <div class="back-button-wrapper">
+                                <button class="back-btn" id="backToDetailsFromEditBtn">
+                                    <svg width="20" height="20" viewBox="0 0 20 20" fill="none">
+                                        <path d="M12.5 15L7.5 10L12.5 5" stroke="#5F7385" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+                                    </svg>
+                                    <span>Back to Certificates</span>
+                                </button>
+                            </div>
+                            <h1 class="edit-main-title">Edit Certificate Record</h1>
+                        </div>
+                    </div>
+
+                    <div class="edit-form-wrapper">
+                        <div class="edit-form-card">
+                            <div class="form-header"><h3>Update Issuance Details</h3></div>
+                            <div class="form-body">
+                                <div class="edit-form-group">
+                                    <label>Resident Name</label>
+                                    <div class="readonly-field" id="editResidentNameDisplay">—</div>
+                                </div>
+                                <div class="edit-form-group">
+                                    <label>Certificate Type</label>
+                                    <div class="readonly-field" id="editCertificateTypeDisplay">—</div>
+                                </div>
+                                <div class="edit-form-group">
+                                    <label for="editPurposeField">Purpose <span class="required">*</span></label>
+                                    <textarea id="editPurposeField" class="edit-textarea" rows="3" placeholder="Enter purpose..." title="Purpose" aria-label="Purpose"></textarea>
+                                </div>
+                                <div class="edit-form-row">
+                                    <div class="edit-form-group half">
+                                        <label for="editDateIssuedField">Date Issued</label>
+                                        <input type="date" id="editDateIssuedField" class="edit-input" title="Date Issued" aria-label="Date Issued">
+                                    </div>
+                                    <div class="edit-form-group half">
+                                        <label for="editValidUntilField">Valid Until <span class="required">*</span></label>
+                                        <div class="date-picker-wrapper">
+                                            <input type="date" id="editValidUntilField" class="edit-input" title="Valid Until" aria-label="Valid Until">
+                                            <svg class="calendar-icon-small" width="14" height="14" viewBox="0 0 14 14" fill="none">
+                                                <rect x="1.75" y="2.33" width="10.5" height="10.5" rx="1.17" stroke="#5F7385" stroke-width="1.17"/>
+                                                <path d="M4.67 1.17V3.5M9.33 1.17V3.5" stroke="#5F7385" stroke-width="1.17" stroke-linecap="round"/>
+                                                <path d="M1.75 5.83H12.25" stroke="#5F7385" stroke-width="1.17"/>
+                                            </svg>
+                                        </div>
+                                    </div>
+                                </div>
+                                <div class="edit-form-row">
+                                    <div class="edit-form-group half">
+                                        <label for="editOrNumberField">OR Number <span class="required">*</span></label>
+                                        <input type="text" id="editOrNumberField" class="edit-input" placeholder="OR-2023-0891" title="OR Number" aria-label="OR Number">
+                                    </div>
+                                    <div class="edit-form-group half">
+                                        <label for="editAmountField">Amount Paid (₱) <span class="required">*</span></label>
+                                        <input type="number" id="editAmountField" class="edit-input" step="0.01" placeholder="0.00" title="Amount Paid" aria-label="Amount Paid">
+                                    </div>
+                                </div>
+                                <div class="edit-form-group">
+                                    <label for="editStatusField">Record Status <span class="required">*</span></label>
+                                    <div class="select-wrapper">
+                                        <select id="editStatusField" class="form-select" title="Record Status" aria-label="Record Status">
+                                            <option value="Valid">Valid</option>
+                                            <option value="Expired">Expired</option>
+                                            <option value="Archived">Archived</option>
+                                        </select>
+                                        <span class="select-arrow">▼</span>
+                                    </div>
+                                </div>
+                                <div class="edit-form-group">
+                                    <label>Control Number</label>
+                                    <div class="readonly-field mono" id="editControlNumberDisplay">—</div>
+                                </div>
+                            </div>
+                            <div class="form-footer">
+                                <button class="btn-cancel-edit" id="cancelEditViewBtn">Cancel</button>
+                                <button class="btn-save-edit" id="saveEditViewBtn">
+                                    <svg width="14" height="14" viewBox="0 0 14 14" fill="none">
+                                        <rect x="1.75" y="1.75" width="10.5" height="10.5" rx="1.5" stroke="white" stroke-width="1.17"/>
+                                        <path d="M4.67 7L6.42 8.75L9.33 5.25" stroke="white" stroke-width="1.17" stroke-linecap="round"/>
+                                    </svg>
+                                    Save Changes
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Edit Confirmation Modal -->
+    <div id="editConfirmModal" class="modal-overlay hidden">
+        <div class="modal-container confirm-modal">
+            <div class="confirm-modal-content">
+                <div class="confirm-icon-wrapper">
+                    <div class="confirm-icon-circle">
+                        <img src="Images/EditBig.svg" alt="Mapping Icon">
+                    </div>
+                </div>
+                <div class="confirm-title">Confirm Edit</div>
+                <div class="confirm-message">Are you sure you want to edit this request certificate issues information?</div>
+            </div>
+            <div class="confirm-modal-footer">
+                <button class="btn-confirm-cancel" id="cancelConfirmEditBtn">Cancel</button>
+                <button class="btn-confirm-edit" id="confirmEditBtn">Yes, Edit Information</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Archive Modal -->
+    <div id="archiveCertificateModal" class="modal-overlay hidden">
+        <div class="modal-container archive-modal">
+            <div class="archive-modal-content">
+                <div class="archive-icon-wrapper">
+                    <div class="archive-icon-circle">
+                        <img src="Images/ArchiveBig.svg" alt="Mapping Icon">
+                    </div>
+                </div>
+                <div class="archive-title">Confirm Archive</div>
+                <div class="archive-message">Are you sure you want to archive this certificate request<br/>issue information? This record will be moved to the System<br/>Archives module.</div>
+            </div>
+            <div class="archive-modal-footer">
+                <button class="btn-archive-cancel" id="cancelArchiveBtn">Cancel</button>
+                <button class="btn-archive-confirm" id="confirmArchiveBtn">Yes, Archive Record</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Delete Modal (Keep for permanent deletion if needed) -->
+    <div id="deleteCertificateModal" class="modal-overlay hidden">
+        <div class="modal-container delete-modal">
+            <div class="modal-header">
+                <h3>Delete Certificate</h3>
+                <button class="modal-close" id="closeDeleteModalBtn">&times;</button>
+            </div>
+            <div class="modal-body">
+                <p>Are you sure you want to delete this certificate record?</p>
+                <p class="warning-text">This action cannot be undone.</p>
+                <input type="hidden" id="deleteCertificateId">
+            </div>
+            <div class="modal-footer">
+                <button class="btn-cancel" id="cancelDeleteBtn">Cancel</button>
+                <button class="btn-delete" id="confirmDeleteBtn">Delete</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- View Certificate Modal -->
+    <div id="viewCertificateModal" class="modal-overlay hidden">
+        <div class="modal-container certificate-modal">
+            <div class="modal-header">
+                <h3>Certificate Details</h3>
+                <button class="modal-close" id="closeViewModalBtn">&times;</button>
+            </div>
+            <div class="modal-body" id="viewCertificateContent"></div>
+            <div class="modal-footer">
+                <button class="btn-print" id="printCertificateBtn">Print Certificate</button>
+                <button class="btn-close" id="closeViewFooterBtn">Close</button>
+            </div>
+        </div>
+    </div>
+
+    <script src="modules/certificates.js"></script>
+</body>
+</html>

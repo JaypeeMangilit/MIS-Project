@@ -1,0 +1,117 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Barangay 49 Akasya - Dashboard</title>
+    <link rel="stylesheet" href="modules/dashboard.css">
+    <link rel="stylesheet" href="sidebar.css">
+</head>
+<body>
+    <div class="dashboard-container">
+            <!-- Content Area -->
+            <div class="content-area">
+                <!-- Overview Section -->
+                <div class="overview-section">
+                    <h2 class="section-title">Overview</h2>
+                    <p class="section-subtitle">Here's a summary of the current status of BARANGGAY 49 AKASYA.</p>
+                </div>
+
+                <!-- Stats Cards -->
+                <div class="stats-grid">
+                    <div class="stat-card">
+                        <div class="stat-header">
+                            <span class="stat-label">Total Residents</span>
+                            <div class="stat-icon residents-icon">
+                               <image src="Images/TotalResidents_Icon.svg" alt="Total Residents Icon"></image>
+                            </div>
+                        </div>
+                        <div class="stat-value" id="totalResidents">14,205</div>
+                        <div class="stat-trend positive">
+                            <span>+124 from last month</span>
+                        </div>
+                    </div>
+
+                    <div class="stat-card">
+                        <div class="stat-header">
+                            <span class="stat-label">Households</span>
+                            <div class="stat-icon households-icon">
+                                <image src="Images/TotalHouseholds_Icon.svg" alt="Total Households Icon"></image>
+                            </div>
+                        </div>
+                        <div class="stat-value">3,150</div>
+                        <div class="stat-trend neutral">
+                            <span>No change</span>
+                        </div>
+                    </div>
+
+                    <div class="stat-card">
+                        <div class="stat-header">
+                            <span class="stat-label">Active Blotter Cases</span>
+                            <div class="stat-icon blotter-icon">
+                                <image src="Images/ActiveBlotterCases_Icon.svg" alt="Active Blotter Icon"></image>
+                            </div>
+                        </div>
+                        <div class="stat-value">12</div>
+                        <div class="stat-subtext">5 pending resolution</div>
+                    </div>
+
+                    <div class="stat-card">
+                        <div class="stat-header">
+                            <span class="stat-label">Certificates Issued</span>
+                            <div class="stat-icon certificates-icon">
+                                <image src="Images/CertificateIssues_Icon.svg" alt="Certificate Issues Icon"></image>
+                            </div>
+                        </div>
+                        <div class="stat-value">428</div>
+                        <div class="stat-trend positive">
+                            <span>+15% from last month</span>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Bottom Section -->
+                <div class="bottom-section">
+                    <!-- Recent Activity -->
+                    <div class="recent-activity">
+                        <div class="section-header">
+                            <h3 class="section-header-title">Recent Activity</h3>
+                            <a href="#" class="view-all">View all</a>
+                        </div>
+                        <div class="activity-list" id="activityList">
+                            <!-- Activity items will be dynamically loaded -->
+                        </div>
+                    </div>
+
+                    <!-- Quick Actions -->
+                    <div class="quick-actions">
+                        <div class="section-header">
+                            <h3 class="section-header-title">Quick Actions</h3>
+                        </div>
+                        <div class="actions-list">
+                            <button class="action-btn" data-action="certificate">
+                                <image src="Images/IssueCetificate_Icon.svg" alt="Issue Certificate Icon"></image>
+                                <span>Issue Certificate</span>
+                            </button>
+                            <button class="action-btn" data-action="resident">
+                                <image src="Images/RegisterResident_Icon.svg" alt="Register Resident Icon"></image>
+                                <span>Register Resident</span>
+                            </button>
+                            <button class="action-btn" data-action="blotter">
+                                <image src="Images/RecordBlotter_Icon.svg" alt="Record Blotter Icon"></image>
+                                <span>Record Blotter</span>
+                            </button>
+                            <button class="action-btn" data-action="inventory">
+                                <image src="Images/UpdateInventory_Icon.svg" alt="Update Inventory Icon"></image>
+                                <span>Borrow Log</span>
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </main>
+    </div>
+
+    <script src="dashboard.js"></script>
+</body>
+</html>

@@ -1,0 +1,246 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Barangay eServices - Duty Schedule Module</title>
+    <link rel="stylesheet" href="modules/duty-schedule.css">
+    <link rel="stylesheet" href="sidebar.css">
+</head>
+<body>
+<div class="duty-schedule-module" id="dutyScheduleApp">
+    <!-- header -->
+    <div class="schedule-header">
+        <div class="title-section">
+            <div class="main-title">Officials Duty Schedule</div>
+            <div class="sub-title">Manage shifting schedules for barangay officials, tanods, and desk officers.</div>
+        </div>
+        <div class="action-buttons">
+            <button class="btn-outline" id="printBtn">
+                <svg width="16" height="16" viewBox="0 0 16 16" fill="none" xmlns="http://www.w3.org/2000/svg">
+                    <path d="M2 5.33333H14V12H2V5.33333Z" stroke="#16324A" stroke-width="1.33"/>
+                    <path d="M4 2.66667H12V5.33333H4V2.66667Z" stroke="#16324A" stroke-width="1.33"/>
+                </svg>
+                Print Schedule
+            </button>
+            <button class="btn-primary" id="addScheduleBtn">
+                <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
+                    <rect x="3.33337" y="3.33333" width="9.33333" height="9.33333" stroke="white" stroke-width="1.33"/>
+                    <path d="M8 5.33333V10.6667M5.33337 8H10.6667" stroke="white" stroke-width="1.33"/>
+                </svg>
+                Add New Schedule
+            </button>
+        </div>
+    </div>
+
+    <!-- stats cards -->
+    <div class="stats-grid">
+        <div class="stat-card">
+            <div class="stat-icon stat-icon-success">
+                <svg width="24" height="24" viewBox="0 0 24 24" fill="none">
+                    <path d="M2 12H22M6 8H18M8 4H16" stroke="#166534" stroke-width="2"/>
+                    <circle cx="12" cy="12" r="8" stroke="#166534" stroke-width="2"/>
+                </svg>
+            </div>
+            <div>
+                <div class="stat-number" id="onDutyNowCount">0</div>
+                <div class="stat-label">On Duty Right Now</div>
+            </div>
+        </div>
+        <div class="stat-card">
+            <div class="stat-icon stat-icon-primary">
+                <svg width="24" height="24" viewBox="0 0 24 24" fill="none">
+                    <rect x="4" y="6" width="16" height="12" stroke="#0F6CBD" stroke-width="2"/>
+                    <path d="M8 4V8M16 4V8" stroke="#0F6CBD" stroke-width="2"/>
+                </svg>
+            </div>
+            <div>
+                <div class="stat-number" id="shiftsThisWeekCount">0</div>
+                <div class="stat-label">Shifts This Week</div>
+            </div>
+        </div>
+        <div class="stat-card">
+            <div class="stat-icon stat-icon-danger">
+                <svg width="24" height="24" viewBox="0 0 24 24" fill="none">
+                    <circle cx="12" cy="12" r="9" stroke="#C2410C" stroke-width="2"/>
+                    <line x1="12" y1="8" x2="12" y2="12" stroke="#C2410C" stroke-width="2"/>
+                </svg>
+            </div>
+            <div>
+                <div class="stat-number" id="unassignedShiftsCount">0</div>
+                <div class="stat-label">Unassigned Shifts</div>
+            </div>
+        </div>
+        <div class="stat-card">
+            <div class="stat-icon stat-icon-primary">
+                <svg width="24" height="24" viewBox="0 0 24 24" fill="none">
+                    <path d="M4 16L20 16M8 20H16" stroke="#0F6CBD" stroke-width="2"/>
+                    <circle cx="12" cy="8" r="4" stroke="#0F6CBD" stroke-width="2"/>
+                </svg>
+            </div>
+            <div>
+                <div class="stat-number" id="totalStaffScheduled">0</div>
+                <div class="stat-label">Total Staff Scheduled</div>
+            </div>
+        </div>
+    </div>
+
+    <!-- schedule table card -->
+    <div class="schedule-card">
+        <div class="card-toolbar">
+            <div class="tabs">
+                <div class="tab active" data-view="list">List View</div>
+                <div class="tab" data-view="calendar">Calendar View</div>
+            </div>
+            <div class="filters-group">
+                <div class="filter-btn" id="dateRangeBtn">📅 Oct 16 - Oct 22, 2023</div>
+                <div class="filter-btn" id="roleFilterBtn">All Roles ▼</div>
+                <div class="filter-btn" id="attendanceFilterBtn">Attendance Status ▼</div>
+                <div class="search-wrapper">
+                    <input type="text" id="searchInput" class="search-input" placeholder="Search official name..." title="Search official name" aria-label="Search official name">
+                    <span class="search-icon">🔍</span>
+                </div>
+            </div>
+        </div>
+        <div class="attendance-bar">
+            <div class="attendance-info">
+                <h4>Attendance marking</h4>
+                <p>Update each official's duty attendance directly from the schedule list.</p>
+            </div>
+            <div class="mark-buttons">
+                <div class="mark-preset" data-bulk="on-duty">
+                    <span class="dot-green"></span> Mark On Duty
+                </div>
+                <div class="mark-preset" data-bulk="absent">
+                    <span class="dot-yellow"></span> Mark Absent
+                </div>
+            </div>
+        </div>
+
+        <div class="schedule-table-wrapper">
+            <table class="schedule-table" id="scheduleTable">
+                <thead>
+                    <tr>
+                        <th>Date & Day</th>
+                        <th>Shift Time</th>
+                        <th>Official Information</th>
+                        <th>Location / Assignment</th>
+                        <th>Status</th>
+                        <th>Mark Attendance</th>
+                        <th>Actions</th>
+                    </tr>
+                </thead>
+                <tbody id="tableBody"></tbody>
+            </table>
+        </div>
+        <div class="pagination">
+            <div id="paginationInfo" class="stat-label">Showing 1 to 6 of 0 schedules</div>
+            <div class="pages" id="paginationControls"></div>
+        </div>
+    </div>
+</div>
+
+<!-- Add Schedule Modal -->
+<div id="addScheduleModal" class="modal-overlay hidden">
+    <div class="modal-container">
+        <div class="modal-header">
+            <div class="modal-title">Add New Schedule</div>
+            <div class="modal-close" id="closeModalBtn">
+                <svg width="14" height="14" viewBox="0 0 14 14" fill="none">
+                    <path d="M1 1L13 13M13 1L1 13" stroke="#5F7385" stroke-width="1.5" stroke-linecap="round"/>
+                </svg>
+            </div>
+        </div>
+        <div class="modal-body">
+            <!-- Assign To -->
+            <div class="form-group">
+                <label for="assignToSelect" class="form-label">
+                    <span>Assign To</span>
+                    <span class="required">*</span>
+                </label>
+                <div class="select-wrapper">
+                    <select id="assignToSelect" class="form-select" title="Assign To Official or Staff" aria-label="Assign To Official or Staff">
+                        <option value="">Select Official or Staff</option>
+                    </select>
+                    <div class="select-arrow">▼</div>
+                </div>
+            </div>
+
+            <!-- Date -->
+            <div class="form-group">
+                <label for="scheduleDate" class="form-label">
+                    <span>Date</span>
+                    <span class="required">*</span>
+                </label>
+                <div class="date-input-wrapper">
+                    <input type="date" id="scheduleDate" class="form-date-input" title="Schedule Date" aria-label="Schedule Date">
+                    <span class="calendar-icon">📅</span>
+                </div>
+            </div>
+
+            <!-- Shift Type -->
+            <div class="form-group">
+                <label for="shiftTypeSelect" class="form-label">
+                    <span>Shift Type</span>
+                    <span class="required">*</span>
+                </label>
+                <div class="select-wrapper">
+                    <select id="shiftTypeSelect" class="form-select" title="Shift Type" aria-label="Shift Type">
+                        <option value="morning">Morning Shift (08:00 AM - 04:00 PM)</option>
+                        <option value="afternoon">Afternoon Shift (04:00 PM - 12:00 MN)</option>
+                        <option value="graveyard">Graveyard Shift (12:00 MN - 08:00 AM)</option>
+                    </select>
+                    <div class="select-arrow">▼</div>
+                </div>
+            </div>
+
+            <!-- Custom Time Range (Start & End) -->
+            <div class="time-range-group">
+                <div class="time-field">
+                    <label for="startTime" class="form-label">Start Time</label>
+                    <div class="time-input-wrapper">
+                        <input type="time" id="startTime" class="form-time-input" value="08:00" title="Start Time" aria-label="Start Time">
+                        <span class="clock-icon">🕒</span>
+                    </div>
+                </div>
+                <div class="time-field">
+                    <label for="endTime" class="form-label">End Time</label>
+                    <div class="time-input-wrapper">
+                        <input type="time" id="endTime" class="form-time-input" value="16:00" title="End Time" aria-label="End Time">
+                        <span class="clock-icon">🕒</span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Assigned Area -->
+            <div class="form-group">
+                <label for="assignedAreaSelect" class="form-label">Assigned Area</label>
+                <div class="select-wrapper">
+                    <select id="assignedAreaSelect" class="form-select" title="Assigned Area" aria-label="Assigned Area">
+                        <option value="Barangay Hall Desk">Barangay Hall Desk</option>
+                        <option value="Patrol Unit (Zone 1-3)">Patrol Unit (Zone 1-3)</option>
+                        <option value="Patrol Unit (Zone 4-6)">Patrol Unit (Zone 4-6)</option>
+                        <option value="Checkpoint A (M. Gregorio St.)">Checkpoint A (M. Gregorio St.)</option>
+                        <option value="Checkpoint B">Checkpoint B</option>
+                        <option value="Health Center Clinic">Health Center Clinic</option>
+                    </select>
+                    <div class="select-arrow">▼</div>
+                </div>
+            </div>
+
+            <!-- Notes -->
+            <div class="form-group">
+                <label for="scheduleNotes" class="form-label">Notes (Optional)</label>
+                <textarea id="scheduleNotes" class="form-textarea" placeholder="Add any special instructions or notes..." rows="3" title="Notes" aria-label="Notes"></textarea>
+            </div>
+        </div>
+        <div class="modal-footer">
+            <button class="btn-cancel" id="cancelModalBtn">Cancel</button>
+            <button class="btn-save" id="saveScheduleBtn">Save Schedule</button>
+        </div>
+    </div>
+</div>
+
+<script src="modules/duty-schedule.js"></script>
+</body>
+</html>

@@ -1,0 +1,483 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Barangay 49 Akasya - Blotter Management</title>
+    <link rel="stylesheet" href="modules/blotter.css?v=3">
+    <link rel="stylesheet" href="sidebar.css">
+</head>
+<body>
+    <div class="blotter-container">
+        <!-- Blotter List View -->
+        <div id="blotterListView" class="page-view active">
+            <div class="page-header">
+                <div class="title-section">
+                    <h2 class="section-main-title">Blotter Cases</h2>
+                    <p class="section-description">Manage, track, and record community disputes and incidents.</p>
+                </div>
+                <div class="action-buttons">
+                    <button class="btn-secondary" id="exportBtn">
+                        <img src="Images/Download_Icon.svg" alt="Export Logs Icon">
+                        <span>Export Logs</span>
+                    </button>
+                    <button class="btn-primary" id="addCaseBtn">
+                        <img src="Images/Add_Icon.svg" alt="Add Icon">
+                        <span>Log New Case</span>
+                    </button>
+                </div>
+            </div>
+
+            <div class="stats-grid">
+                <div class="stat-card">
+                    <div class="stat-icon blue"><img src="Images/TotalCases_Icon.svg" alt="Total Cases Icon"></div>
+                    <div class="stat-info"><div class="stat-label">Total Cases</div><div class="stat-number" id="totalCases">0</div></div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-icon orange"><img src="Images/Active_Icon.svg" alt="Active Cases Icon"></div>
+                    <div class="stat-info"><div class="stat-label">Active / Ongoing</div><div class="stat-number" id="activeCases">0</div></div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-icon green"><img src="Images/Settled_Icon.svg" alt="Settled Cases Icon"></div>
+                    <div class="stat-info"><div class="stat-label">Settled / Resolved</div><div class="stat-number" id="settledCases">0</div></div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-icon red"><img src="Images/Escalated_Icon.svg" alt="Escalated Cases Icon"></div>
+                    <div class="stat-info"><div class="stat-label">Referred / Escalated</div><div class="stat-number" id="escalatedCases">0</div></div>
+                </div>
+            </div>
+
+            <div class="cases-table-container">
+                <div class="filters-bar">
+                    <div class="search-box">
+                        <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
+                            <circle cx="7.5" cy="7.5" r="5.5" stroke="#5F7385" stroke-width="1.33"/>
+                            <path d="M11.5 11.5L14.5 14.5" stroke="#5F7385" stroke-width="1.33" stroke-linecap="round"/>
+                        </svg>
+                        <input type="text" placeholder="Search case ID or name..." id="searchInput">
+                    </div>
+                    <select class="filter-select" id="caseTypeFilter" title="Filter by case type" aria-label="Filter by case type">
+                        <option value="">Case Type</option>
+                        <option value="Physical Injury">Physical Injury</option>
+                        <option value="Noise Complaint">Noise Complaint</option>
+                        <option value="Property Dispute">Property Dispute</option>
+                        <option value="Theft">Theft</option>
+                        <option value="Verbal Altercation">Verbal Altercation</option>
+                        <option value="Threats">Threats</option>
+                    </select>
+                    <select class="filter-select" id="statusFilter" title="Filter by status" aria-label="Filter by status">
+                        <option value="">Status</option>
+                        <option value="Ongoing">Ongoing</option>
+                        <option value="Settled">Settled</option>
+                        <option value="Escalated">Escalated</option>
+                    </select>
+                    <div class="date-filter">
+                        <input type="date" id="filterDate" placeholder="Filter by Date">
+                    </div>
+                </div>
+
+                <div class="table-wrapper">
+                    <table class="cases-table">
+                        <thead>
+                            <tr>
+                                <th>Case Details</th>
+                                <th>Complainant</th>
+                                <th>Respondent</th>
+                                <th>Incident Date</th>
+                                <th>Status</th>
+                                <th>Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody id="casesTableBody"></tbody>
+                    </table>
+                </div>
+
+                <div class="pagination">
+                    <div class="pagination-info" id="paginationInfo">Showing 0 to 0 of 0 cases</div>
+                    <div class="pagination-controls" id="paginationControls"></div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Log New Case View -->
+        <div id="logCaseView" class="page-view">
+            <div class="log-case-container">
+                <div class="log-case-header">
+                    <div class="back-button-wrapper">
+                        <button class="back-btn" id="backToListBtn">
+                            <svg width="20" height="20" viewBox="0 0 20 20" fill="none">
+                                <path d="M12.5 15L7.5 10L12.5 5" stroke="#16324A" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+                            </svg>
+                            <span>Back to Cases List</span>
+                        </button>
+                    </div>
+                    <div class="case-number-badge" id="caseNumberDisplay">Case No. BL-2025-0001</div>
+                </div>
+
+                <div class="info-banner">
+                    <div>
+                        <h3>Simple case entry form</h3>
+                        <p>Fill in the basic details, parties involved, and a short incident summary before saving the blotter case.</p>
+                    </div>
+                    <div class="banner-badge">Case No. BL-2025-0001</div>
+                </div>
+
+                <div class="form-container">
+                    <div class="form-section">
+                        <div class="section-title">Basic Details</div>
+                        <div class="form-row">
+                            <div class="form-group">
+                                <label>Date Reported <span class="required">*</span></label>
+                                <div class="date-time-group">
+                                    <input type="date" id="reportedDate" class="date-input" title="Date reported" aria-label="Date reported">
+                                    <input type="time" id="reportedTime" class="time-input" title="Time reported" aria-label="Time reported">
+                                </div>
+                            </div>
+                            <div class="form-group">
+                                <label>Case Type <span class="required">*</span></label>
+                                <select id="caseType" title="Case type" aria-label="Case type">
+                                    <option value="">Select Case Type</option>
+                                    <option value="Physical Injury">Physical Injury</option>
+                                    <option value="Noise Complaint">Noise Complaint</option>
+                                    <option value="Property Dispute">Property Dispute</option>
+                                    <option value="Theft">Theft</option>
+                                    <option value="Verbal Altercation">Verbal Altercation</option>
+                                    <option value="Threats">Threats</option>
+                                </select>
+                            </div>
+                        </div>
+                        <div class="form-group">
+                            <label>Location <span class="required">*</span></label>
+                            <select id="location" title="Location" aria-label="Location">
+                                <option value="">Select Location</option>
+                                <option value="Purok 1 - M. Gregorio St.">Purok 1 - M. Gregorio St.</option>
+                                <option value="Purok 2 - F. Javier St.">Purok 2 - F. Javier St.</option>
+                                <option value="Purok 3 - G. Santos St.">Purok 3 - G. Santos St.</option>
+                                <option value="Purok 4 - Mariano St.">Purok 4 - Mariano St.</option>
+                                <option value="Purok 5 - Crescini Ext.">Purok 5 - Crescini Ext.</option>
+                            </select>
+                        </div>
+                    </div>
+
+                    <div class="form-section">
+                        <div class="section-title">Case Status</div>
+                        <div class="status-options">
+                            <button type="button" class="status-option active" data-status="Ongoing">Ongoing</button>
+                            <button type="button" class="status-option" data-status="Settled">Settled</button>
+                            <button type="button" class="status-option" data-status="Escalated">Escalated</button>
+                        </div>
+                        <input type="hidden" id="caseStatus" value="Ongoing">
+                    </div>
+
+                    <div class="form-section">
+                        <div class="section-title">Complainant</div>
+                        <div class="form-row">
+                            <div class="form-group">
+                                <label>Full Name <span class="required">*</span></label>
+                                <input type="text" id="complainantName" placeholder="Enter full name">
+                            </div>
+                            <div class="form-group">
+                                <label>Contact Number</label>
+                                <input type="tel" id="complainantContact" placeholder="Enter contact number">
+                            </div>
+                        </div>
+                        <div class="form-row">
+                            <div class="form-group">
+                                <label>Address <span class="required">*</span></label>
+                                <input type="text" id="complainantAddress" placeholder="Enter complete address">
+                            </div>
+                            <div class="form-group">
+                                <label>Relationship to Incident</label>
+                                <select id="complainantRelation" title="Relationship to incident" aria-label="Relationship to incident">
+                                    <option value="">Select relationship</option>
+                                    <option value="Directly involved">Directly involved</option>
+                                    <option value="Witness">Witness</option>
+                                    <option value="Relative">Relative</option>
+                                    <option value="Neighbor">Neighbor</option>
+                                </select>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="form-section">
+                        <div class="section-title">Respondent</div>
+                        <div class="form-row">
+                            <div class="form-group">
+                                <label>Full Name <span class="required">*</span></label>
+                                <input type="text" id="respondentName" placeholder="Enter full name">
+                            </div>
+                            <div class="form-group">
+                                <label>Contact Number</label>
+                                <input type="tel" id="respondentContact" placeholder="Enter contact number">
+                            </div>
+                        </div>
+                        <div class="form-row">
+                            <div class="form-group">
+                                <label>Address <span class="required">*</span></label>
+                                <input type="text" id="respondentAddress" placeholder="Enter complete address">
+                            </div>
+                            <div class="form-group">
+                                <label>Resident Status</label>
+                                <select id="respondentStatus" title="Resident status" aria-label="Resident status">
+                                    <option value="">Select status</option>
+                                    <option value="Verified resident">Verified resident</option>
+                                    <option value="Non-resident">Non-resident</option>
+                                    <option value="Unknown">Unknown</option>
+                                </select>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="form-section incident-summary-section">
+                        <div class="section-title">Incident Summary</div>
+                        <p class="section-hint">Write a short and clear description of the incident.</p>
+                        <textarea id="incidentSummary" class="incident-textarea" rows="5" maxlength="500" title="Incident summary" aria-label="Incident summary"></textarea>
+                        <div class="char-counter"><span id="charCount">0</span> / 500 characters</div>
+                    </div>
+
+                    <div class="form-section">
+                        <div class="section-title">Next Step</div>
+                        <div class="form-row">
+                            <div class="form-group">
+                                <label>Assigned Officer</label>
+                                <select id="assignedOfficer" title="Assigned officer" aria-label="Assigned officer">
+                                    <option value="">Select assigned officer</option>
+                                    <option value="Kagawad Roberto Mendoza">Kagawad Roberto Mendoza</option>
+                                    <option value="Kagawad Maria Cruz">Kagawad Maria Cruz</option>
+                                    <option value="Kagawad Jose Reyes">Kagawad Jose Reyes</option>
+                                </select>
+                            </div>
+                            <div class="form-group">
+                                <label>Schedule</label>
+                                <div class="date-time-group">
+                                    <input type="date" id="scheduleDate" class="date-input" title="Schedule date" aria-label="Schedule date">
+                                    <input type="time" id="scheduleTime" class="time-input" title="Schedule time" aria-label="Schedule time">
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="form-actions">
+                        <button type="button" class="btn-cancel" id="cancelCaseBtn">Cancel</button>
+                        <button type="button" class="btn-submit" id="submitCaseBtn">Submit Case</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Case Details View -->
+        <div id="caseDetailsView" class="page-view">
+            <div id="caseDetailsContent"></div>
+        </div>
+
+        <!-- Edit Case View -->
+        <div id="editCaseView" class="page-view">
+            <div class="edit-case-container">
+                <div class="edit-case-header">
+                    <div class="back-button-wrapper">
+                        <button class="back-btn" id="backFromEditBtn">
+                            <svg width="20" height="20" viewBox="0 0 20 20" fill="none">
+                                <path d="M12.5 15L7.5 10L12.5 5" stroke="#16324A" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+                            </svg>
+                            <span>Back to Case Details</span>
+                        </button>
+                    </div>
+                </div>
+                <div class="edit-title-section">
+                    <div class="edit-title-wrapper">
+                        <h1 class="edit-main-title" id="editCaseTitle">Edit Case</h1>
+                        <p class="edit-subtitle">Update the information and status of this blotter case.</p>
+                    </div>
+                    <div class="edit-actions">
+                        <button class="btn-cancel-edit" id="cancelEditBtn">Cancel</button>
+                        <button class="btn-save-edit" id="saveEditBtn">
+                            <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
+                                <rect x="2.5" y="2.5" width="11" height="11" rx="1.5" stroke="white" stroke-width="1.33"/>
+                                <path d="M5 8L7.5 10.5L11 5.5" stroke="white" stroke-width="1.33" stroke-linecap="round" stroke-linejoin="round"/>
+                            </svg>
+                            <span>Save Changes</span>
+                        </button>
+                    </div>
+                </div>
+                <div class="edit-form-container">
+                    <div class="edit-form-section">
+                        <div class="edit-section-title">Case Information</div>
+                        <div class="edit-form-grid">
+                            <div class="edit-form-group"><label>Incident Date <span class="required">*</span></label><input type="date" id="editIncidentDate" class="edit-input" title="Incident date" aria-label="Incident date"></div>
+                            <div class="edit-form-group"><label>Incident Time <span class="required">*</span></label><input type="time" id="editIncidentTime" class="edit-input" title="Incident time" aria-label="Incident time"></div>
+                            <div class="edit-form-group full-width"><label>Location <span class="required">*</span></label><select id="editLocation" class="edit-input" title="Location" aria-label="Location"></select></div>
+                            <div class="edit-form-group"><label>Case Status <span class="required">*</span></label><select id="editCaseStatus" class="edit-input" title="Case status" aria-label="Case status"><option value="Ongoing">Ongoing</option><option value="Settled">Settled</option><option value="Escalated">Escalated</option></select></div>
+                            <div class="edit-form-group"><label>Incident Type <span class="required">*</span></label><select id="editCaseType" class="edit-input" title="Incident type" aria-label="Incident type"></select></div>
+                            <div class="edit-form-group full-width"><label>Handling Officer <span class="required">*</span></label><select id="editAssignedOfficer" class="edit-input" title="Handling officer" aria-label="Handling officer"></select></div>
+                        </div>
+                    </div>
+                    <div class="edit-two-columns">
+                        <div class="edit-form-section">
+                            <div class="edit-section-title">Complainant Details</div>
+                            <div class="edit-form-group"><label>Name <span class="required">*</span></label><input type="text" id="editComplainantName" class="edit-input" title="Complainant name" aria-label="Complainant name"></div>
+                            <div class="edit-form-group"><label>Contact Number</label><input type="tel" id="editComplainantContact" class="edit-input" title="Complainant contact" aria-label="Complainant contact"></div>
+                            <div class="edit-form-group"><label>Address <span class="required">*</span></label><input type="text" id="editComplainantAddress" class="edit-input" title="Complainant address" aria-label="Complainant address"></div>
+                        </div>
+                        <div class="edit-form-section">
+                            <div class="edit-section-title">Respondent Details</div>
+                            <div class="edit-form-group"><label>Name <span class="required">*</span></label><input type="text" id="editRespondentName" class="edit-input" title="Respondent name" aria-label="Respondent name"></div>
+                            <div class="edit-form-group"><label>Contact Number</label><input type="tel" id="editRespondentContact" class="edit-input" title="Respondent contact" aria-label="Respondent contact"></div>
+                            <div class="edit-form-group"><label>Address <span class="required">*</span></label><input type="text" id="editRespondentAddress" class="edit-input" title="Respondent address" aria-label="Respondent address"></div>
+                        </div>
+                    </div>
+                    <div class="edit-form-section">
+                        <div class="edit-section-title">Incident Details</div>
+                        <div class="edit-form-group"><label>Incident Summary <span class="required">*</span></label><textarea id="editIncidentSummary" class="edit-textarea" rows="5" title="Incident summary" aria-label="Incident summary"></textarea></div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Export Blotter Data View (PAGE VIEW) -->
+        <div id="exportBlotterView" class="page-view">
+            <div class="export-container">
+                <div class="export-back-wrapper">
+                    <button class="back-btn" id="backToListFromExportBtn">
+                        <svg width="20" height="20" viewBox="0 0 20 20" fill="none">
+                            <path d="M12.5 15L7.5 10L12.5 5" stroke="#16324A" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+                        </svg>
+                        <span>Back to Cases List</span>
+                    </button>
+                </div>
+
+                <div class="export-header-section">
+                    <div class="export-title-section">
+                        <h1>Prepare Export Data</h1>
+                        <p>Filter and customize the blotter cases data you want to export.</p>
+                    </div>
+                </div>
+
+                <div class="export-config-card">
+                    <div class="config-header"><h3>New Export Configuration</h3></div>
+                    <div class="config-body">
+                        <div class="filter-section">
+                            <div class="filter-label">1. Filter Records</div>
+                            <div class="filter-row">
+                                <div class="filter-group">
+                                    <label>Incident Type</label>
+                                    <div class="filter-select-wrapper">
+                                        <select id="exportCaseTypeFilter" class="export-filter-select" title="Filter by case type" aria-label="Filter by case type">
+                                            <option value="">All Incident Types</option>
+                                            <option value="Physical Injury">Physical Injury</option>
+                                            <option value="Noise Complaint">Noise Complaint</option>
+                                            <option value="Property Dispute">Property Dispute</option>
+                                            <option value="Theft">Theft</option>
+                                            <option value="Verbal Altercation">Verbal Altercation</option>
+                                            <option value="Threats">Threats</option>
+                                        </select>
+                                        <span class="select-arrow">▼</span>
+                                    </div>
+                                </div>
+                                <div class="filter-group">
+                                    <label>Month</label>
+                                    <div class="filter-select-wrapper">
+                                        <select id="exportMonthFilter" class="export-filter-select" title="Filter by month" aria-label="Filter by month">
+                                            <option value="">All Months</option>
+                                            <option value="1">January</option>
+                                            <option value="2">February</option>
+                                            <option value="3">March</option>
+                                            <option value="4">April</option>
+                                            <option value="5">May</option>
+                                            <option value="6">June</option>
+                                            <option value="7">July</option>
+                                            <option value="8">August</option>
+                                            <option value="9">September</option>
+                                            <option value="10">October</option>
+                                            <option value="11">November</option>
+                                            <option value="12">December</option>
+                                        </select>
+                                        <span class="select-arrow">▼</span>
+                                    </div>
+                                </div>
+                                <div class="filter-group">
+                                    <label>Case Status</label>
+                                    <div class="filter-select-wrapper">
+                                        <select id="exportStatusFilter" class="export-filter-select" title="Filter by status" aria-label="Filter by status">
+                                            <option value="">All Statuses</option>
+                                            <option value="Ongoing">Ongoing</option>
+                                            <option value="Settled">Settled</option>
+                                            <option value="Escalated">Escalated</option>
+                                        </select>
+                                        <span class="select-arrow">▼</span>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="export-format-section">
+                            <div class="filter-header">Export Format</div>
+                            <div class="format-options">
+                                <label class="format-option">
+                                    <input type="radio" name="exportFormat" value="pdf" checked>
+                                    <span class="format-badge pdf">PDF Document (.pdf)</span>
+                                </label>
+                            </div>
+                        </div>
+
+                        <div class="estimated-records">
+                            <div>
+                                <div class="estimated-title">Estimated records matching criteria:</div>
+                                <div class="estimated-filters" id="estimatedFiltersText">Selected: All Months | All Statuses | All Types</div>
+                            </div>
+                            <div class="estimated-count" id="estimatedCount">0</div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="export-actions">
+                    <button class="btn-cancel-export" id="cancelExportBtn">Cancel</button>
+                    <button class="btn-generate-export" id="generateExportBtn">
+                        <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
+                            <rect x="2.67" y="1.33" width="10.67" height="13.33" rx="1" stroke="white" stroke-width="1.33"/>
+                            <path d="M5.33 5.33H10.67M5.33 8H10.67M5.33 10.67H8" stroke="white" stroke-width="1.33" stroke-linecap="round"/>
+                        </svg>
+                        Generate Export
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Archive Confirmation Modal -->
+        <div id="archiveModal" class="modal">
+            <div class="modal-content archive-modal">
+                <div class="archive-modal-body">
+                    <div class="archive-warning-icon">
+                        <div class="archive-icon-circle">
+                            <svg width="24" height="24" viewBox="0 0 24 24" fill="none">
+                                <rect x="3" y="5" width="18" height="16" rx="1" stroke="#C94A4A" stroke-width="1.5"/>
+                                <path d="M8 5V3H16V5" stroke="#C94A4A" stroke-width="1.5" stroke-linecap="round"/>
+                                <path d="M10 10H14" stroke="#C94A4A" stroke-width="1.5" stroke-linecap="round"/>
+                            </svg>
+                        </div>
+                    </div>
+                    <div class="archive-text"><h3>Archive Blotter Case</h3><p>Are you sure you want to archive this case? It will be moved to the System Archives.</p></div>
+                </div>
+                <div class="archive-case-details" id="archiveCaseDetails">
+                    <div class="archive-detail-row"><span class="archive-label">Case Number</span><span class="archive-value" id="archiveCaseNumber">—</span></div>
+                    <div class="archive-detail-row"><span class="archive-label">Case Type</span><span class="archive-value" id="archiveCaseType">—</span></div>
+                    <div class="archive-detail-row"><span class="archive-label">Complainant</span><span class="archive-value" id="archiveComplainant">—</span></div>
+                    <div class="archive-detail-row"><span class="archive-label">Respondent</span><span class="archive-value" id="archiveRespondent">—</span></div>
+                </div>
+                <div class="archive-confirm-section">
+                    <label class="archive-checkbox">
+                        <input type="checkbox" id="archiveConfirmCheckbox">
+                        <span class="checkmark"></span>
+                        <span class="checkbox-text">I confirm that this case has been resolved or is ready to be archived.</span>
+                    </label>
+                </div>
+                <div class="archive-modal-footer">
+                    <button class="btn-archive-cancel" id="cancelArchiveBtn">Cancel</button>
+                    <button class="btn-archive-confirm" id="confirmArchiveBtn" disabled>Archive Case</button>
+                </div>
+            </div>
+        </div>
+       
+    </div>
+    
+</body>
+</html>

@@ -1,0 +1,307 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Barangay 49 Akasya - User Profile</title>
+    <link rel="stylesheet" href="profile.css">
+    <link rel="stylesheet" href="sidebar.css">
+</head>
+<body>
+    <div class="profile-container">
+         <!-- Sidebar -->
+        <aside class="sidebar">
+            <div class="sidebar-header">
+                <div class="logo-container">
+                    <div class="logo-placeholder">
+                        <img src="Images/Brgy.png" alt="Logo" class="logo-img">
+                    </div>
+                    <h2 class="barangay-name">BARANGGAY 49<br/>AKASYA</h2>
+                </div>
+            </div>
+            
+            <nav class="sidebar-nav">
+                <!-- Main Menu Section -->
+                <div class="nav-section">
+                    <div class="nav-section-title">Main Menu</div>
+                    <a href="#" class="nav-item">
+                        <span class="nav-icon">
+                            <image src="Images/Dashboard_Icon.svg" alt="Dashboard Icon">
+                        </span>
+                        <span class="nav-text">Dashboard</span>
+                    </a>
+                    <a href="#" class="nav-item">
+                        <span class="nav-icon">
+                            <image src="Images/Mapping_Icon.svg" alt="Mapping Icon"></image>
+                        </span>
+                        <span class="nav-text">Mapping</span>
+                    </a>
+                </div>
+
+                <!-- Records Section -->
+                <div class="nav-section">
+                    <div class="nav-section-title">Records</div>
+                    <a href="#" class="nav-item">
+                        <span class="nav-icon">
+                            <image src="Images/Residents_Icon.svg" alt="Residents Icon">
+                        </span>
+                        <span class="nav-text">Residents</span>
+                    </a>
+                    <a href="#" class="nav-item">
+                        <span class="nav-icon">
+                            <image src="Images/Blotter_Icon.svg" alt="Blotter Icon">
+                        </span>
+                        <span class="nav-text">Blotter Cases</span>
+                    </a>
+                    <a href="#" class="nav-item">
+                        <span class="nav-icon">
+                            <image src="Images/Certificates_Icon.svg" alt="Certificates Icon">
+                        </span>
+                        <span class="nav-text">Certificates</span>
+                    </a>
+                    <a href="#" class="nav-item active">
+                        <span class="nav-icon">
+                           <image src="Images/Inventory_Icon.svg" alt="Inventory Icon"></image>
+                        </span>
+                        <span class="nav-text">Inventory</span>
+                    </a>
+                </div>
+
+                <!-- Administrator Section -->
+                <div class="nav-section">
+                    <div class="nav-section-title">Administrator</div>
+                    <a href="#" class="nav-item">
+                        <span class="nav-icon">
+                            <image src="Images/Offcials_Icon.svg" alt="Officials Icon"></image>
+                        </span>
+                        <span class="nav-text">Officials</span>
+                    </a>
+                    <a href="#" class="nav-item">
+                        <span class="nav-icon">
+                            <image src="Images/DutySchedule_Icon.svg" alt="Duty Schedule Icon"></image>
+                        </span>
+                        <span class="nav-text">Duty Schedule</span>
+                    </a>
+                    <a href="#" class="nav-item">
+                        <span class="nav-icon">
+                           <image src="Images/Reports_Icon.svg" alt="Reports Icon"></image>
+                        </span>
+                        <span class="nav-text">Reports</span>
+                    </a>
+                    <a href="#" class="nav-item">
+                        <span class="nav-icon">
+                            <image src="Images/UserManagement_Icon.svg" alt="User Management Icon"></image>
+                        </span>
+                        <span class="nav-text">User Management</span>
+                    </a>
+                    <a href="#" class="nav-item">
+                        <span class="nav-icon">
+                            <image src="Images/Archive_Icon.svg" alt="Archives Icon"></image>
+                        </span>
+                        <span class="nav-text">Archives</span>
+                    </a>
+                </div>
+            </nav>
+        </aside>
+
+        <!-- Main Content -->
+        <main class="main-content">
+            <!-- Header -->
+            <header class="profile-header">
+                <h1 class="page-title">User Profile</h1>
+                <div class="user-info">
+                    <div class="user-details">
+                        <div class="user-name" id="headerName">Maria Santos</div>
+                        <div class="user-role" id="headerRole">Barangay Secretary</div>
+                    </div>
+                    <div class="user-avatar">
+                        <img src="Images/Secretary-User.jpg" alt="User Avatar" id="headerAvatar">
+                    </div>
+                </div>
+            </header>
+
+            <!-- Content Area -->
+            <div class="content-area">
+                <!-- Profile Sidebar and Main Content -->
+                <div class="profile-layout">
+                    <!-- Profile Sidebar Card -->
+                    <div class="profile-sidebar">
+                        <div class="profile-avatar">
+                            <img src="Images/Secretary-User.jpg" alt="Profile Avatar" id="profileAvatar">
+                        </div>
+                        <div class="profile-info">
+                            <h2 id="profileName">Maria Santos</h2>
+                            <p class="profile-position" id="profilePosition">Barangay Secretary</p>
+                            <div class="status-badge">
+                                <img src="/Images/ActiveAccount_Icon.svg" alt="Active Account">
+                                <span>Active Account</span>
+                            </div>
+                        </div>
+                        <div class="profile-actions">
+                            <button class="btn-edit" id="editProfileBtn">
+                                <img src="/Images/EditProfile_Icon.svg" alt="Edit Profile">
+                                <span>Edit Profile</span>
+                            </button>
+                            <button class="btn-photo" id="updatePhotoBtn">
+                                <img src="/Images/UpdatePhoto_Icon.svg" alt="Update Photo">
+                                <span>Update Photo</span>
+                            </button>
+                        </div>
+                    </div>
+
+                    <!-- Profile Details -->
+                    <div class="profile-details">
+                        <!-- Account Details Section -->
+                        <div class="detail-card">
+                            <div class="card-header">
+                                <div>
+                                    <h3>Account Details</h3>
+                                    <p>Core information used across the BMIS modules.</p>
+                                </div>
+                            </div>
+                            <div class="details-grid">
+                                <div class="detail-field">
+                                    <label>First Name</label>
+                                    <div class="field-value" id="firstName">Maria</div>
+                                </div>
+                                <div class="detail-field">
+                                    <label>Middle Name</label>
+                                    <div class="field-value" id="middleName">Lopez</div>
+                                </div>
+                                <div class="detail-field">
+                                    <label>Last Name</label>
+                                    <div class="field-value" id="lastName">Santos</div>
+                                </div>
+                                <div class="detail-field">
+                                    <label>Official Email Address</label>
+                                    <div class="field-value" id="email">m.santos@brgy49akasya.gov.ph</div>
+                                </div>
+                                <div class="detail-field">
+                                    <label>Contact Number</label>
+                                    <div class="field-value" id="contact">+63 917 123 4567</div>
+                                </div>
+                                <div class="detail-field full-width">
+                                    <label>Residential Address</label>
+                                    <div class="field-value" id="address">Block 4, Lot 12, M. Gregorio Street, Barangay 49 Akasya, Cavite City</div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Office Assignment Section -->
+                        <div class="detail-card">
+                            <div class="card-header">
+                                <div>
+                                    <h3>Office Assignment</h3>
+                                    <p>Current work designation and module access permissions.</p>
+                                </div>
+                            </div>
+                            <div class="assignment-grid">
+                                <div class="assignment-field">
+                                    <label>Position</label>
+                                    <div class="field-value" id="position">Barangay Secretary</div>
+                                </div>
+                                <div class="assignment-field">
+                                    <label>Module Access</label>
+                                    <div class="field-value" id="moduleAccess">Residents, Certificates, Reports</div>
+                                </div>
+                                <div class="assignment-field full-width">
+                                    <label>Office Status</label>
+                                    <div class="field-value" id="officeStatus">Assigned for daily front desk and records processing</div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Recent Activity Section -->
+                        <div class="detail-card">
+                            <div class="card-header">
+                                <div>
+                                    <h3>Recent Activity</h3>
+                                    <p>Latest account-related actions and BMIS usage summary.</p>
+                                </div>
+                            </div>
+                            <div class="activity-list" id="activityList">
+                                <!-- Activity items will be dynamically loaded -->
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </main>
+    </div>
+
+    <!-- Edit Profile Modal -->
+    <div class="modal" id="editProfileModal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3>Edit Profile</h3>
+                <button class="modal-close">&times;</button>
+            </div>
+            <div class="modal-body">
+                <form id="editProfileForm">
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label for="editFirstName">First Name</label>
+                            <input type="text" id="editFirstName" value="Maria" title="First name" aria-label="First name" placeholder="First name">
+                        </div>
+                        <div class="form-group">
+                            <label for="editMiddleName">Middle Name</label>
+                            <input type="text" id="editMiddleName" value="Lopez" title="Middle name" aria-label="Middle name" placeholder="Middle name">
+                        </div>
+                    </div>
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label for="editLastName">Last Name</label>
+                            <input type="text" id="editLastName" value="Santos" title="Last name" aria-label="Last name" placeholder="Last name">
+                        </div>
+                        <div class="form-group">
+                            <label for="editPosition">Position</label>
+                            <input type="text" id="editPosition" value="Barangay Secretary" title="Position" aria-label="Position" placeholder="Position">
+                        </div>
+                    </div>
+                    <div class="form-group">
+                        <label for="editEmail">Email Address</label>
+                        <input type="email" id="editEmail" value="m.santos@brgy49akasya.gov.ph" title="Email address" aria-label="Email address" placeholder="Email address">
+                    </div>
+                    <div class="form-group">
+                        <label for="editContact">Contact Number</label>
+                        <input type="text" id="editContact" value="+63 917 123 4567" title="Contact number" aria-label="Contact number" placeholder="Contact number">
+                    </div>
+                    <div class="form-group">
+                        <label for="editAddress">Residential Address</label>
+                        <textarea id="editAddress" rows="3" title="Residential address" aria-label="Residential address" placeholder="Residential address">Block 4, Lot 12, M. Gregorio Street, Barangay 49 Akasya, Cavite City</textarea>
+                    </div>
+                    <div class="form-actions">
+                        <button type="button" class="btn-secondary modal-cancel">Cancel</button>
+                        <button type="submit" class="btn-primary">Save Changes</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <!-- Update Photo Modal -->
+    <div class="modal" id="photoModal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3>Update Profile Photo</h3>
+                <button class="modal-close">&times;</button>
+            </div>
+            <div class="modal-body">
+                <div class="photo-preview">
+                    <img src="https://placehold.co/120x120" alt="Preview" id="photoPreview">
+                </div>
+                <div class="photo-upload">
+                    <input type="file" id="photoUpload" accept="image/*">
+                    <label for="photoUpload" class="upload-label">Choose New Photo</label>
+                </div>
+                <div class="form-actions">
+                    <button type="button" class="btn-secondary modal-cancel">Cancel</button>
+                    <button type="button" class="btn-primary" id="savePhotoBtn">Save Photo</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="profile.js"></script>
+</body>
+</html>

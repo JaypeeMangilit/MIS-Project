@@ -1,0 +1,166 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Barangay 49 Akasya - Barangay Mapping</title>
+    <link rel="stylesheet" href="modules/mapping.css">
+    <link rel="stylesheet" href="sidebar.css">
+</head>
+<body>
+    <div class="mapping-container">
+            <!-- Content Area -->
+            <div class="content-area">
+                <!-- Page Header -->
+                <div class="page-header">
+                    <div>
+                        <h2>Barangay 49 Akasya Spot Map</h2>
+                        <p>Isometric neighborhood view showing streets, houses, and public landmarks for quick area reference.</p>
+                    </div>
+                    <div class="search-box">
+                        <svg width="18" height="18" viewBox="0 0 18 18" fill="none">
+                            <circle cx="8.5" cy="8.5" r="6.5" stroke="#6B7B88" stroke-width="1.5"/>
+                            <path d="M13 13L16.5 16.5" stroke="#6B7B88" stroke-width="1.5" stroke-linecap="round"/>
+                        </svg>
+                        <input type="text" placeholder="Search street or landmark" id="searchInput">
+                    </div>
+                </div>
+
+                <!-- Map and Info Panel -->
+                <div class="map-container">
+                    <!-- Spot Map Card -->
+                    <div class="spot-map-card">
+                        <div class="spot-map-header">
+                            <div class="map-label">SPOT MAP</div>
+                            <h3>Barangay 49 Akasya – Cavite City</h3>
+                        </div>
+
+                        <div class="map-wrapper">
+                            <div class="map-content">
+                                <div class="map-title-section">
+                                    <div class="map-title">SPOT MAP OF BARANGAY 49 AKASYA</div>
+                                    <div class="map-subtitle">Cavite City</div>
+                                </div>
+
+                                <div class="map-grid-container">
+                                    <!-- Compass Rose -->
+                                    <div class="compass">
+                                        <div class="compass-n">N</div>
+                                        <div class="compass-e">E</div>
+                                        <div class="compass-s">S</div>
+                                        <div class="compass-w">W</div>
+                                        <div class="compass-circle"></div>
+                                        <div class="compass-line-v"></div>
+                                        <div class="compass-line-h"></div>
+                                    </div>
+
+                                    <!-- Roads -->
+                                    <div class="road road-1"></div>
+                                    <div class="road road-2"></div>
+                                    <div class="road road-3"></div>
+                                    <div class="road road-4"></div>
+                                    <div class="road road-5"></div>
+                                    <div class="road road-6"></div>
+                                    <div class="road road-7"></div>
+                                    
+                                    <!-- Circle Markers -->
+                                    <div class="circle-marker circle-1"></div>
+                                    <div class="circle-marker circle-2"></div>
+                                    <div class="circle-marker circle-3"></div>
+                                    <div class="circle-marker circle-4"></div>
+
+                                    <!-- Zone Labels -->
+                                    <div class="zone-label zone-a" data-zone="M. Gregorio">Zone A</div>
+                                    <div class="zone-label zone-b" data-zone="F. Javier">Zone B</div>
+                                    <div class="zone-label zone-c" data-zone="G. Santos">Zone C</div>
+
+                                    <!-- Street Labels -->
+                                    <div class="street-label street-crescini" data-zone="Crescini Ext.">Crescini</div>
+                                    <div class="street-label street-gregorio" data-zone="M. Gregorio">M. Gregorio</div>
+                                    <div class="street-label street-mariano" data-zone="Mariano">Mariano</div>
+                                    <div class="street-label street-javier" data-zone="F. Javier">F. Javier</div>
+                                    <div class="street-label street-santos" data-zone="G. Santos">G. Santos</div>
+
+                                    <!-- Residential Clusters -->
+                                    <div class="cluster cluster-1" data-zone="M. Gregorio"></div>
+                                    <div class="cluster cluster-2" data-zone="M. Gregorio"></div>
+                                    <div class="cluster cluster-3" data-zone="Crescini Ext."></div>
+                                    <div class="cluster cluster-4" data-zone="F. Javier"></div>
+                                    <div class="cluster cluster-5" data-zone="G. Santos"></div>
+                                    <div class="cluster cluster-6" data-zone="Mariano"></div>
+                                    <div class="cluster cluster-7" data-zone="Crescini Ext."></div>
+                                    <div class="cluster cluster-8" data-zone="Crescini Ext."></div>
+
+                                    <!-- Facility Markers -->
+                                    <div class="facility facility-barangay-hall" data-zone="M. Gregorio">
+                                        
+                                    </div>
+                                    <div class="facility facility-health-center" data-zone="F. Javier">
+                                        
+                                    </div>
+                                    <div class="facility facility-church" data-zone="Mariano">
+                                       
+                                    </div>
+                                    <div class="facility facility-school" data-zone="M. Gregorio">
+                                       
+                                    </div>
+                                    <div class="facility facility-store" data-zone="Crescini Ext.">
+                                        
+                                    </div>
+                                    <div class="facility facility-park" data-zone="G. Santos">
+                                       
+                                    </div>
+                                </div>
+
+                                <!-- Legend -->
+                                <div class="map-legend">
+                                    <div class="legend-title">Legend</div>
+                                    <div class="legend-item">
+                                        <div class="legend-color low"></div>
+                                        <span class="legend-text">Low population</span>
+                                    </div>
+                                    <div class="legend-item">
+                                        <div class="legend-color medium"></div>
+                                        <span class="legend-text">Medium population</span>
+                                    </div>
+                                    <div class="legend-item">
+                                        <div class="legend-color high"></div>
+                                        <span class="legend-text">High population</span>
+                                    </div>
+                                    <div class="legend-item">
+                                        <div class="legend-icon residential"></div>
+                                        <span class="legend-text">Residential clusters</span>
+                                    </div>
+                                    <div class="legend-item">
+                                        <div class="legend-icon facility-icon-legend"></div>
+                                        <span class="legend-text">Key facility</span>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div class="map-footer">
+                                <span>Based on the triangular layout reference of Barangay 49 Akasya</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Zone Info Panel -->
+                    <div class="zone-info-card" id="zoneInfoPanel">
+                        <div class="zone-header" id="zoneHeader">
+                            <div class="zone-label">Selected Zone</div>
+                            <div class="zone-name">Crescini Ext.</div>
+                            <div class="zone-description">Southern edge of Barangay 49 Akasya</div>
+                            <div class="zone-badge">High Population Area</div>
+                        </div>
+                        <div class="zone-stats" id="zoneStats">
+                            <!-- Zone statistics will be dynamically loaded -->
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </main>
+    </div>
+
+    <script src="mapping.js"></script>
+</body>
+</html>

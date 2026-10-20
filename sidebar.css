@@ -1,0 +1,249 @@
+/* Ensure content area has proper display */
+.content-area {
+    min-height: 400px;
+    width: 100%;
+}
+
+.loading-container {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    min-height: 400px;
+}
+
+.loading-spinner {
+    width: 40px;
+    height: 40px;
+    border: 3px solid #D6E2EA;
+    border-top-color: #0F6CBD;
+    border-radius: 50%;
+    animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+    to { transform: rotate(360deg); }
+}
+
+/* Sidebar Styles */
+.sidebar {
+    width: 260px;
+    background: #EAF3FA;
+    border-right: 1px solid #D6E2EA;
+    display: flex;
+    flex-direction: column;
+    position: fixed;
+    height: 100vh;
+    overflow-y: auto;
+    z-index: 100;
+}
+
+.sidebar-header {
+    padding: 0 20px;
+    border-bottom: 1px solid #D6E2EA;
+    min-height: 80px;
+    display: flex;
+    align-items: center;
+}
+
+.logo-container {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+}
+
+.logo-placeholder {
+    width: 32px;
+    height: 32px;
+    border-radius: 6px;
+    overflow: hidden;
+    flex-shrink: 0;
+}
+
+.logo-img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+}
+
+.barangay-name {
+    color: #16324A;
+    font-size: 16px;
+    font-weight: 600;
+    line-height: 1.2;
+}
+
+/* Sidebar Navigation */
+.sidebar-nav {
+    flex: 1;
+    padding: 20px 12px;
+    display: flex;
+    flex-direction: column;
+    gap: 24px;
+}
+
+.nav-section {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+}
+
+.nav-section-title {
+    color: #5F7385;
+    font-size: 11px;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    padding: 12px 12px 4px 12px;
+}
+
+.nav-item {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 10px 12px;
+    border-radius: 6px;
+    text-decoration: none;
+    transition: all 0.2s ease;
+    color: #16324A;
+}
+
+.nav-item:hover {
+    background: rgba(13, 110, 188, 0.08);
+}
+
+.nav-item.active {
+    background: #D8EAF8;
+}
+
+.nav-item.active .nav-text {
+    color: #0F6CBD;
+    font-weight: 600;
+}
+
+.nav-icon {
+    width: 20px;
+    height: 20px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+}
+
+.nav-text {
+    font-size: 14px;
+    font-weight: 500;
+    line-height: 1.4;
+}
+
+/* Main Content */
+.main-content {
+    flex: 1;
+    margin-left: 260px;
+    display: flex;
+    flex-direction: column;
+    min-height: 100vh;
+}
+
+/* Dashboard Header */
+.dashboard-header {
+    height: 64px;
+    background: white;
+    border-bottom: 1px solid #D6E2EA;
+    padding: 0 24px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    position: sticky;
+    top: 0;
+    z-index: 50;
+}
+
+.page-title {
+    color: #16324A;
+    font-size: 20px;
+    font-weight: 700;
+}
+
+.user-info {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+}
+
+.user-details {
+    text-align: right;
+}
+
+.user-name {
+    color: #16324A;
+    font-size: 14px;
+    font-weight: 600;
+}
+
+.user-role {
+    color: #5F7385;
+    font-size: 12px;
+    font-weight: 500;
+}
+
+.user-avatar {
+    width: 36px;
+    height: 36px;
+    border-radius: 18px;
+    overflow: hidden;
+}
+
+.user-avatar img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+}
+
+/* Sign out control in the dashboard header */
+.user-info {
+    cursor: pointer;
+}
+
+.signout-button {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    height: 32px;
+    padding: 0 12px;
+    margin-left: 4px;
+    background: #0E6EB8;
+    color: #FFFFFF;
+    border: none;
+    border-radius: 6px;
+    font-family: 'Inter', sans-serif;
+    font-size: 12px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: background 0.2s ease;
+}
+
+.signout-button:hover {
+    background: #0c5d9e;
+}
+
+.signout-button img {
+    width: 14px;
+    height: 14px;
+    display: block;
+    filter: brightness(0) invert(1);
+}
+
+@media screen and (max-width: 560px) {
+    .signout-button span {
+        display: none;
+    }
+
+    .signout-button {
+        padding: 0 9px;
+    }
+
+    .user-details {
+        display: none;
+    }
+}

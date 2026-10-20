@@ -1,0 +1,735 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Barangay 49 Akasya - Inventory Management</title>
+    <link rel="stylesheet" href="modules/inventory.css">
+    <link rel="stylesheet" href="sidebar.css">
+</head>
+<body>
+    <div class="inventory-container">
+        <div class="content-area" id="dynamicContent">
+            <!-- Inventory List View -->
+            <div id="inventoryListView" class="page-view active">
+                <div class="stats-grid">
+                    <div class="stat-card">
+                        <div class="stat-info">
+                            <div class="stat-label">Total Items</div>
+                            <div class="stat-number" id="totalItems">0</div>
+                            <div class="stat-description">Across office supplies, equipment, and emergency assets</div>
+                        </div>
+                        <div class="stat-icon-bg">
+                            <img src="Images/TotalItems_Icon.svg" alt="Total Items Icon">
+                        </div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-info">
+                            <div class="stat-label">Available Stock</div>
+                            <div class="stat-number" id="availableStock">0</div>
+                            <div class="stat-description">Items ready for issue and field use</div>
+                        </div>
+                        <div class="stat-icon-bg">
+                            <img src="Images/AvailableStock_Icon.svg" alt="Available Stock Icon">
+                        </div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-info">
+                            <div class="stat-label">Borrowed Items</div>
+                            <div class="stat-number" id="borrowedItemsCount">0</div>
+                            <div class="stat-description">Currently assigned to purok leaders and events</div>
+                        </div>
+                        <div class="stat-icon-bg">
+                            <img src="Images/BorrowedItems_Icon.svg" alt="Borrowed Items Icon">
+                        </div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-info">
+                            <div class="stat-label">Low Stock Alerts</div>
+                            <div class="stat-number" id="lowStockAlerts">0</div>
+                            <div class="stat-description">Items that are running low in stock</div>
+                        </div>
+                        <div class="stat-icon-bg">
+                            <img src="Images/LowStockAlerts_Icon.svg" alt="Low Stock Icon">
+                        </div>
+                    </div>
+                </div>
+
+                <div class="actions-bar">
+                    <div class="search-filters">
+                        <div class="search-box">
+                            <svg width="18" height="18" viewBox="0 0 18 18" fill="none">
+                                <circle cx="8.5" cy="8.5" r="6.5" stroke="#5F7385" stroke-width="1.5"/>
+                                <path d="M13 13L16.5 16.5" stroke="#5F7385" stroke-width="1.5" stroke-linecap="round"/>
+                            </svg>
+                            <input type="text" placeholder="Search item name, category, or property code" id="searchInput">
+                        </div>
+                        <select class="filter-select" id="categoryFilter" title="Filter by category" aria-label="Filter by category">
+                            <option value="">Category: All</option>
+                            <option value="Office Supply">Office Supply</option>
+                            <option value="Emergency">Emergency</option>
+                            <option value="Facility Use">Facility Use</option>
+                            <option value="Equipment">Equipment</option>
+                        </select>
+                        <select class="filter-select" id="statusFilter" title="Filter by status" aria-label="Filter by status">
+                            <option value="">Status: All</option>
+                            <option value="Available">Available</option>
+                            <option value="Low Stock">Low Stock</option>
+                            <option value="Borrowed">Borrowed</option>
+                            <option value="Critical">Critical</option>
+                        </select>
+                    </div>
+                    <div class="action-buttons">
+                        <button class="btn-stock-in" id="stockInBtn">
+                            <img src="Images/StockIn_Icon.svg" alt="Stock In Icon">
+                            <span>Stock In</span>
+                        </button>
+                        <button class="btn-stock-out" id="stockOutBtn">
+                            <img src="Images/Inventory_Icon.svg" alt="Stock Out Icon">
+                            <span>Borrow Log</span>
+                        </button>
+                        <button class="btn-primary" id="addItemBtn">
+                            <img src="Images/Add_Icon.svg" alt="Add Item Icon">
+                            <span>Add Item</span>
+                        </button>
+                    </div>
+                </div>
+
+                <div class="main-grid">
+                    <div class="inventory-table-container">
+                        <div class="table-header">
+                            <h3>Inventory List</h3>
+                            <p>Track quantity, condition, and stock movement for barangay assets.</p>
+                        </div>
+                        <div class="table-wrapper">
+                            <table class="inventory-table">
+                                <thead>
+                                    <tr>
+                                        <th>Item</th>
+                                        <th>Category</th>
+                                        <th>Stock</th>
+                                        <th>Status</th>
+                                        <th>Last Updated</th>
+                                        <th>Actions</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="inventoryTableBody"></tbody>
+                            </table>
+                        </div>
+                    </div>
+
+                    <div class="side-panels">
+                        <div class="panel">
+                            <div class="panel-header">
+                                <h4>Borrowed Items Tracking</h4>
+                                <p>Current item releases and expected return dates</p>
+                            </div>
+                            <div class="borrowed-list" id="borrowedList"></div>
+                        </div>
+                        <div class="panel">
+                            <div class="panel-header">
+                                <h4>Stock Status Guide</h4>
+                                <p>Simple color reference for staff use</p>
+                            </div>
+                            <div class="status-guide">
+                                <div class="guide-item">
+                                    <div class="guide-dot available"></div>
+                                    <div class="guide-info">
+                                        <span class="guide-label">Available</span>
+                                        <span class="guide-desc">Sufficient stock on hand</span>
+                                    </div>
+                                    <span class="guide-badge">Normal</span>
+                                </div>
+                                <div class="guide-item">
+                                    <div class="guide-dot low-stock"></div>
+                                    <div class="guide-info">
+                                        <span class="guide-label">Low Stock</span>
+                                        <span class="guide-desc">Needs replenishment soon</span>
+                                    </div>
+                                    <span class="guide-badge">Monitor</span>
+                                </div>
+                                <div class="guide-item">
+                                    <div class="guide-dot borrowed"></div>
+                                    <div class="guide-info">
+                                        <span class="guide-label">Borrowed</span>
+                                        <span class="guide-desc">Temporarily issued outside storage</span>
+                                    </div>
+                                    <span class="guide-badge">Track</span>
+                                </div>
+                                <div class="guide-item">
+                                    <div class="guide-dot critical"></div>
+                                    <div class="guide-info">
+                                        <span class="guide-label">Critical</span>
+                                        <span class="guide-desc">Immediate action required</span>
+                                    </div>
+                                    <span class="guide-badge">Priority</span>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="panel">
+                            <div class="panel-header">
+                                <h4>Recent Activity</h4>
+                                <p>Latest inventory transactions</p>
+                            </div>
+                            <div class="activity-list" id="activityList"></div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Add Item View -->
+            <div id="addItemView" class="page-view">
+                <div class="add-item-container">
+                    <div class="add-item-header">
+                        <div class="back-button-wrapper">
+                            <button class="back-btn" id="backToListFromAddBtn">
+                                <svg width="20" height="20" viewBox="0 0 20 20" fill="none">
+                                    <path d="M12.5 15L7.5 10L12.5 5" stroke="#16324A" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+                                </svg>
+                                <span>Back to Inventory List</span>
+                            </button>
+                        </div>
+                    </div>
+                    <div class="info-banner-add">
+                        <h3>Register Property or Equipment</h3>
+                        <p>Add details of newly acquired or existing barangay assets to keep track of the inventory effectively.</p>
+                    </div>
+                    <div class="form-container-add">
+                        <div class="form-section-add">
+                            <div class="section-title-add">Basic Information</div>
+                            <div class="form-group-add">
+                                <label>Item Name <span class="required">*</span></label>
+                                <input type="text" id="itemName" placeholder="e.g. Monobloc Chair, Fire Extinguisher">
+                            </div>
+                            <div class="form-group-add">
+                                <label>Category <span class="required">*</span></label>
+                                <select id="category" title="Category" aria-label="Category">
+                                    <option value="">Select Category</option>
+                                    <option value="Office Supply">Office Supply</option>
+                                    <option value="Emergency">Emergency</option>
+                                    <option value="Facility Use">Facility Use</option>
+                                    <option value="Equipment">Equipment</option>
+                                </select>
+                            </div>
+                            <div class="form-group-add">
+                                <label>Brand / Model</label>
+                                <input type="text" id="brandModel" placeholder="Enter brand or model if applicable">
+                            </div>
+                            <div class="form-group-add">
+                                <label>Serial Number (Optional)</label>
+                                <input type="text" id="serialNumber" placeholder="Enter serial number">
+                            </div>
+                        </div>
+                        <div class="form-section-add">
+                            <div class="section-title-add">Stock Details</div>
+                            <div class="form-group-add">
+                                <label>Quantity <span class="required">*</span></label>
+                                <input type="number" id="quantity" value="0" min="0" title="Quantity" aria-label="Quantity" placeholder="Quantity">
+                            </div>
+                            <div class="form-group-add">
+                                <label>Unit of Measurement <span class="required">*</span></label>
+                                <select id="unit" title="Unit of measurement" aria-label="Unit of measurement">
+                                    <option value="">Select Unit</option>
+                                    <option value="Pieces">Pieces</option>
+                                    <option value="Boxes">Boxes</option>
+                                    <option value="Sets">Sets</option>
+                                    <option value="Units">Units</option>
+                                    <option value="Packs">Packs</option>
+                                    <option value="Rolls">Rolls</option>
+                                </select>
+                            </div>
+                            <div class="form-group-add">
+                                <label>Date Acquired</label>
+                                <input type="date" id="dateAcquired" title="Date acquired" aria-label="Date acquired">
+                            </div>
+                        </div>
+                        <div class="form-section-add">
+                            <div class="section-title-add">Location & Assignment</div>
+                            <div class="form-group-add">
+                                <label>Storage / Deployment Location</label>
+                                <select id="location" title="Storage location" aria-label="Storage location">
+                                    <option value="">Select Facility</option>
+                                    <option value="Barangay Hall">Barangay Hall</option>
+                                    <option value="Health Center">Health Center</option>
+                                    <option value="Day Care Center">Day Care Center</option>
+                                    <option value="Covered Court">Covered Court</option>
+                                    <option value="Storage Room">Storage Room</option>
+                                </select>
+                            </div>
+                            <div class="form-group-add">
+                                <label>Assigned Officer (Optional)</label>
+                                <select id="assignedOfficer" title="Assigned officer" aria-label="Assigned officer">
+                                    <option value="">Select Official / Staff</option>
+                                    <option value="Ricardo Dalisay">Ricardo Dalisay - Barangay Captain</option>
+                                    <option value="Maria Santos">Maria Santos - Barangay Secretary</option>
+                                    <option value="Roberto Mendoza">Roberto Mendoza - Kagawad</option>
+                                </select>
+                            </div>
+                        </div>
+                        <div class="form-section-add">
+                            <div class="section-title-add">Description / Notes</div>
+                            <p class="section-hint-add">Provide any additional details or remarks about this item.</p>
+                            <textarea id="notes" rows="4" placeholder="Add notes regarding funding source, warranty, or general description..."></textarea>
+                        </div>
+                        <div class="form-actions-add">
+                            <button type="button" class="btn-cancel-add" id="cancelAddItemBtn">Cancel</button>
+                            <button type="button" class="btn-submit-add" id="saveItemBtn">
+                                <svg width="14" height="14" viewBox="0 0 14 14" fill="none">
+                                    <path d="M2.33 7H11.67M7 2.33V11.67" stroke="white" stroke-width="1.17" stroke-linecap="round"/>
+                                </svg>
+                                Add Item
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Stock In/Out View -->
+            <div id="stockInOutView" class="page-view">
+                <div class="stock-container">
+                    <div class="stock-header">
+                        <div class="back-button-wrapper">
+                            <button class="back-btn" id="backToListFromStockBtn">
+                                <svg width="20" height="20" viewBox="0 0 20 20" fill="none">
+                                    <path d="M12.5 15L7.5 10L12.5 5" stroke="#16324A" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+                                </svg>
+                                <span>Back to Inventory List</span>
+                            </button>
+                        </div>
+                    </div>
+                    <div class="stock-tabs">
+                        <button class="stock-tab" data-tab="stockin">Stock In</button>
+                        <button class="stock-tab active" data-tab="stockout">Stock Out</button>
+                    </div>
+                    <div class="stock-form-container" id="stockOutForm">
+                        <div class="stock-form-header">
+                            <h3>Record Stock Out / Release</h3>
+                            <p>Deduct stock quantities for distribution, borrowing, or disposal.</p>
+                        </div>
+                        <div class="stock-form-body">
+                            <div class="stock-form-group">
+                                <label>Select Item <span class="required">*</span></label>
+                                <select id="stockOutItemSelect" title="Select item" aria-label="Select item">
+                                    <option value="">Choose an item from inventory...</option>
+                                </select>
+                                <p class="stock-hint">Only items with available stock can be selected.</p>
+                            </div>
+                            <div class="stock-form-group">
+                                <label>Date Released <span class="required">*</span></label>
+                                <input type="date" id="stockOutDate" title="Date released" aria-label="Date released">
+                            </div>
+                            <div class="stock-form-group">
+                                <label>Current Stock Available</label>
+                                <div class="stock-current-display">
+                                    <span id="stockOutCurrentValue">0</span>
+                                    <span id="stockOutCurrentUnit">pcs</span>
+                                </div>
+                            </div>
+                            <div class="stock-form-group">
+                                <label>Quantity to Release <span class="required">*</span></label>
+                                <div class="stock-quantity-input">
+                                    <input type="number" id="quantityToRelease" placeholder="e.g., 20">
+                                    <span id="releaseUnit">pcs</span>
+                                </div>
+                            </div>
+                            <div class="stock-form-group">
+                                <label>Purpose / Reason <span class="required">*</span></label>
+                                <select id="purposeSelect" title="Purpose" aria-label="Purpose">
+                                    <option value="">Select purpose...</option>
+                                    <option value="Borrowed">Borrowed</option>
+                                    <option value="Distribution">Distribution</option>
+                                    <option value="Internal Use">Internal Use</option>
+                                    <option value="Disposal">Disposal</option>
+                                </select>
+                            </div>
+                            <div class="stock-form-group">
+                                <label>Released To <span class="required">*</span></label>
+                                <input type="text" id="releasedTo" placeholder="Enter recipient name or group">
+                            </div>
+                            <div class="stock-form-group">
+                                <label>Released By</label>
+                                <input type="text" id="releasedBy" value="Ricardo Dalisay" readonly title="Released by" aria-label="Released by" placeholder="Released by">
+                            </div>
+                            <div class="stock-form-group">
+                                <label>Remarks / Notes (Optional)</label>
+                                <textarea id="stockOutRemarks" rows="3" placeholder="Add any additional details..."></textarea>
+                            </div>
+                        </div>
+                        <div class="stock-form-actions">
+                            <button type="button" class="btn-cancel-stock" id="cancelStockOutBtn">Cancel</button>
+                            <button type="button" class="btn-submit-stock" id="confirmStockOutBtn">
+                                <svg width="14" height="14" viewBox="0 0 14 14" fill="none">
+                                    <path d="M2.33 7H11.67M7 2.33V11.67" stroke="white" stroke-width="1.17" stroke-linecap="round"/>
+                                </svg>
+                                Confirm Stock Out
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- View Item Details View -->
+            <div id="viewItemView" class="page-view">
+                <div class="view-item-container">
+                    <div class="view-back-wrapper">
+                        <button class="back-btn" id="backToListFromViewBtn">
+                            <svg width="20" height="20" viewBox="0 0 20 20" fill="none">
+                                <path d="M12.5 15L7.5 10L12.5 5" stroke="#16324A" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+                            </svg>
+                            <span>Back to Inventory List</span>
+                        </button>
+                    </div>
+                    <div class="view-header-section">
+                        <div class="view-title-section">
+                            <h1>Item Details</h1>
+                            <p>View and manage information for this inventory item.</p>
+                        </div>
+                        <div class="view-action-buttons">
+                            <button class="btn-edit-item" id="editItemFromViewBtn">
+                                <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
+                                    <path d="M11.33 1.33L14.67 4.67M3.33 12.67L2 14L3.33 12.67ZM12.67 3.33L14 4.67L6.67 12L3.33 12.67L4 9.33L12.67 3.33Z" stroke="#16324A" stroke-width="1.33" stroke-linecap="round"/>
+                                </svg>
+                                <span>Edit Item</span>
+                            </button>
+                            <button class="btn-stock-action" id="stockActionFromViewBtn">
+                                <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
+                                    <rect x="2" y="4" width="12" height="10" rx="1" stroke="white" stroke-width="1.33"/>
+                                    <path d="M5 2H11" stroke="white" stroke-width="1.33" stroke-linecap="round"/>
+                                    <path d="M8 7V11M6 9H10" stroke="white" stroke-width="1.33" stroke-linecap="round"/>
+                                </svg>
+                                <span>Stock In / Out</span>
+                            </button>
+                        </div>
+                    </div>
+                    <div class="view-main-content">
+                        <div class="view-left-column">
+                            <div class="item-image-card">
+                                <div class="item-image-placeholder">
+                                    <svg width="48" height="48" viewBox="0 0 48 48" fill="none">
+                                        <rect x="10" y="14" width="28" height="28" rx="2" stroke="#5F7385" stroke-width="2"/>
+                                        <path d="M16 10H32" stroke="#5F7385" stroke-width="2" stroke-linecap="round"/>
+                                        <path d="M24 20V34M18 26H30" stroke="#5F7385" stroke-width="2" stroke-linecap="round"/>
+                                    </svg>
+                                </div>
+                                <div class="item-title-section">
+                                    <h2 id="viewItemName">-</h2>
+                                    <p class="item-code" id="viewItemCode">-</p>
+                                </div>
+                                <div class="item-status-badge" id="viewItemStatusBadge">
+                                    <span>-</span>
+                                </div>
+                            </div>
+                            <div class="stock-summary-cards">
+                                <div class="stock-summary-card available">
+                                    <div class="stock-summary-number" id="viewAvailableStock">0</div>
+                                    <div class="stock-summary-label">Available</div>
+                                </div>
+                                <div class="stock-summary-card borrowed">
+                                    <div class="stock-summary-number" id="viewBorrowedStock">0</div>
+                                    <div class="stock-summary-label">Borrowed</div>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="view-right-column">
+                            <div class="details-card">
+                                <div class="details-list">
+                                    <div class="detail-row"><div class="detail-label">Category</div><div class="detail-value" id="viewCategory">-</div></div>
+                                    <div class="detail-row"><div class="detail-label">Total Quantity</div><div class="detail-value" id="viewTotalQuantity">-</div></div>
+                                    <div class="detail-row"><div class="detail-label">Date Acquired</div><div class="detail-value" id="viewDateAcquired">-</div></div>
+                                    <div class="detail-row"><div class="detail-label">Supplier / Donor</div><div class="detail-value" id="viewSupplier">-</div></div>
+                                    <div class="detail-row"><div class="detail-label">Brand / Model</div><div class="detail-value" id="viewBrandModel">-</div></div>
+                                    <div class="detail-row"><div class="detail-label">Serial Number</div><div class="detail-value" id="viewSerialNumber">-</div></div>
+                                    <div class="detail-row"><div class="detail-label">Storage Location</div><div class="detail-value" id="viewLocation">-</div></div>
+                                    <div class="detail-row"><div class="detail-label">Assigned Officer</div><div class="detail-value" id="viewAssignedOfficer">-</div></div>
+                                    <div class="detail-row"><div class="detail-label">Last Updated</div><div class="detail-value" id="viewLastUpdated">-</div></div>
+                                    <div class="detail-row full-width"><div class="detail-label">Notes</div><div class="detail-value" id="viewNotes">-</div></div>
+                                </div>
+                            </div>
+                            <div class="archive-section">
+                                <button class="btn-archive-item" id="archiveItemFromViewBtn">
+                                    <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
+                                        <rect x="2" y="4" width="12" height="10" rx="1" stroke="#C94A4A" stroke-width="1.33"/>
+                                        <path d="M5 2H11" stroke="#C94A4A" stroke-width="1.33" stroke-linecap="round"/>
+                                        <path d="M7 7H9" stroke="#C94A4A" stroke-width="1.33" stroke-linecap="round"/>
+                                    </svg>
+                                    <span>Archive Item</span>
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="transaction-history-section">
+                        <div class="history-header">
+                            <div class="history-tabs">
+                                <button class="history-tab active" data-tab="transactions">Transaction History</button>
+                            </div>
+                        </div>
+                        <div class="history-content">
+                            <div class="recent-transactions-header"><h3>Recent Transactions</h3></div>
+                            <div class="transactions-table-wrapper">
+                                <table class="transactions-table">
+                                    <thead><tr><th>Date & Time</th><th>Type</th><th>Quantity</th><th>Processed By</th><th>Remarks / Recipient</th></tr></thead>
+                                    <tbody id="transactionsTableBody"></tbody>
+                                </table>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Edit Item View -->
+            <div id="editItemView" class="page-view">
+                <div class="edit-item-container">
+                    <div class="edit-item-wrapper">
+                        <div class="edit-header-section">
+                            <div class="edit-title-section">
+                                <h1>Edit Item Details</h1>
+                                <p id="editItemSubtitle">Update information for item.</p>
+                            </div>
+                            <div class="edit-action-buttons">
+                                <button class="btn-cancel-edit-item" id="cancelEditItemBtn">Cancel</button>
+                                <button class="btn-save-edit-item" id="saveEditItemBtn">
+                                    <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
+                                        <path d="M2 12H14M8 2V10M8 10L5 7M8 10L11 7" stroke="white" stroke-width="1.33" stroke-linecap="round"/>
+                                    </svg>
+                                    <span>Save Changes</span>
+                                </button>
+                            </div>
+                        </div>
+                        <div class="edit-form-wrapper">
+                            <div class="edit-form-card">
+                                <div class="edit-section">
+                                    <div class="edit-section-header"><h3>Item Image</h3></div>
+                                    <div class="edit-image-area">
+                                        <div class="edit-image-preview" id="editImagePreview">
+                                            <svg width="48" height="48" viewBox="0 0 48 48" fill="none">
+                                                <rect x="10" y="14" width="28" height="28" rx="2" stroke="#5F7385" stroke-width="2"/>
+                                                <path d="M16 10H32" stroke="#5F7385" stroke-width="2" stroke-linecap="round"/>
+                                                <path d="M24 20V34M18 26H30" stroke="#5F7385" stroke-width="2" stroke-linecap="round"/>
+                                            </svg>
+                                        </div>
+                                        <div class="edit-image-actions">
+                                            <button class="btn-upload-image" id="uploadImageBtn"><span>Upload New Image</span></button>
+                                            <button class="btn-remove-image" id="removeImageBtn"><span>Remove Image</span></button>
+                                            <input type="file" id="editImageUpload" accept="image/jpeg,image/png" class="hidden-file-input" title="Upload item image" aria-label="Upload item image">
+                                            <p class="image-hint">Recommended size: 500x500px (JPG, PNG)</p>
+                                        </div>
+                                    </div>
+                                </div>
+                                <div class="edit-section">
+                                    <div class="edit-section-header"><h3>Basic Information</h3></div>
+                                    <div class="edit-form-group"><label>Item Name <span class="required">*</span></label><input type="text" id="editItemName" placeholder="Enter item name"></div>
+                                    <div class="edit-form-group"><label>Item Code</label><input type="text" id="editItemCode" class="readonly-field" readonly title="Item code" aria-label="Item code"></div>
+                                    <div class="edit-form-group"><label for="editCategory">Category <span class="required">*</span></label><select id="editCategory" title="Category" aria-label="Category"><option value="">Select Category</option><option value="Office Supply">Office Supply</option><option value="Emergency">Emergency</option><option value="Facility Use">Facility Use</option><option value="Equipment">Equipment</option><option value="Furniture">Furniture</option></select></div>
+                                    <div class="edit-form-group"><label for="editTotalQuantity">Total Base Quantity</label><input type="text" id="editTotalQuantity" class="readonly-field" readonly title="Total base quantity" aria-label="Total base quantity"><p class="field-hint">To modify quantity, use Stock In/Out.</p></div>
+                                </div>
+                                <div class="edit-section">
+                                    <div class="edit-section-header"><h3>Additional Details</h3></div>
+                                    <div class="edit-form-group"><label for="editUnit">Unit of Measurement <span class="required">*</span></label><select id="editUnit" title="Unit of measurement" aria-label="Unit of measurement"><option value="">Select Unit</option><option value="Pieces">Pieces</option><option value="Boxes">Boxes</option><option value="Sets">Sets</option><option value="Units">Units</option><option value="Packs">Packs</option><option value="Rolls">Rolls</option></select></div>
+                                    <div class="edit-form-group"><label for="editBrandModel">Brand / Model</label><input type="text" id="editBrandModel" placeholder="Enter brand or model" title="Brand or model" aria-label="Brand or model"></div>
+                                    <div class="edit-form-group"><label for="editSerialNumber">Serial Number</label><input type="text" id="editSerialNumber" placeholder="Enter serial number" title="Serial number" aria-label="Serial number"></div>
+                                    <div class="edit-form-group"><label for="editCondition">Condition <span class="required">*</span></label><select id="editCondition" title="Condition" aria-label="Condition"><option value="">Select Condition</option><option value="New">New</option><option value="Good Condition">Good Condition</option><option value="Fair Condition">Fair Condition</option><option value="Needs Repair">Needs Repair</option><option value="Damaged">Damaged</option></select></div>
+                                    <div class="edit-form-group"><label for="editLocation">Storage Location <span class="required">*</span></label><select id="editLocation" title="Storage location" aria-label="Storage location"><option value="">Select Location</option><option value="Barangay Hall">Barangay Hall</option><option value="Health Center">Health Center</option><option value="Day Care Center">Day Care Center</option><option value="Covered Court">Covered Court</option><option value="Storage Room">Storage Room</option></select></div>
+                                    <div class="edit-form-group"><label for="editAssignedOfficer">Assigned Officer</label><select id="editAssignedOfficer" title="Assigned officer" aria-label="Assigned officer"><option value="">Select Official / Staff</option><option value="Ricardo Dalisay">Ricardo Dalisay - Barangay Captain</option><option value="Maria Santos">Maria Santos - Barangay Secretary</option><option value="Roberto Mendoza">Roberto Mendoza - Kagawad</option></select></div>
+                                    <div class="edit-form-group"><label for="editSupplier">Supplier / Donor</label><input type="text" id="editSupplier" placeholder="Enter supplier or donor name" title="Supplier or donor" aria-label="Supplier or donor"></div>
+                                    <div class="edit-form-group"><label for="editDateAcquired">Date Acquired</label><input type="date" id="editDateAcquired" title="Date acquired" aria-label="Date acquired"></div>
+                                    <div class="edit-form-group"><label for="editStatus">Status <span class="required">*</span></label><select id="editStatus" title="Status" aria-label="Status"><option value="Available">Available</option><option value="Low Stock">Low Stock</option><option value="Borrowed">Borrowed</option><option value="Critical">Critical</option></select></div>
+                                    <div class="edit-form-group"><label for="editNotes">Description / Remarks</label><textarea id="editNotes" rows="4" placeholder="Enter description or remarks" title="Description or remarks" aria-label="Description or remarks"></textarea></div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Borrow Log View -->
+            <div id="borrowLogView" class="page-view">
+                <div class="borrow-log-container">
+                    <div class="borrow-log-header">
+                        <div class="borrow-log-title-section">
+                            <h1>Borrow Log</h1>
+                            <p>Track barangay inventory items borrowed by residents or staff.</p>
+                        </div>
+                        <div class="borrow-log-actions">
+                            <button class="btn-export-log" id="exportLogBtn">
+                                <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
+                                    <path d="M2.67 10.67V13.33H13.33V10.67M8 2V10.67M8 10.67L5.33 8M8 10.67L10.67 8" stroke="#16324A" stroke-width="1.33" stroke-linecap="round"/>
+                                </svg>
+                                <span>Export Log</span>
+                            </button>
+                            <button class="btn-log-new-borrow" id="logNewBorrowBtn">
+                                <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
+                                    <rect x="2.67" y="2.67" width="10.67" height="10.67" rx="1.33" stroke="white" stroke-width="1.33"/>
+                                    <path d="M5.33 8H10.67M8 5.33V10.67" stroke="white" stroke-width="1.33" stroke-linecap="round"/>
+                                </svg>
+                                <span>Log New Borrow</span>
+                            </button>
+                        </div>
+                    </div>
+                    <div class="borrow-log-filters">
+                        <div class="borrow-search-box">
+                            <svg width="18" height="18" viewBox="0 0 18 18" fill="none">
+                                <circle cx="8.5" cy="8.5" r="6.5" stroke="#5F7385" stroke-width="1.5"/>
+                                <path d="M13 13L16.5 16.5" stroke="#5F7385" stroke-width="1.5" stroke-linecap="round"/>
+                            </svg>
+                            <input type="text" placeholder="Search borrower, item, or log ID..." id="borrowSearchInput">
+                        </div>
+                        <select class="borrow-filter-select" id="borrowStatusFilter" title="Filter borrow log by status" aria-label="Filter borrow log by status"><option value="">All Statuses</option><option value="Borrowed">Borrowed</option><option value="Returned">Returned</option><option value="Overdue">Overdue</option></select>
+                        <select class="borrow-filter-select" id="borrowCategoryFilter" title="Filter borrow log by category" aria-label="Filter borrow log by category"><option value="">All Categories</option><option value="Office Supply">Office Supply</option><option value="Emergency">Emergency</option><option value="Facility Use">Facility Use</option><option value="Equipment">Equipment</option></select>
+                    </div>
+                    <div class="borrow-log-table-container">
+                        <div class="table-wrapper">
+                            <table class="borrow-log-table">
+                                <thead><tr><th>Log ID</th><th>Item Details</th><th>Borrower</th><th>Date Borrowed</th><th>Expected Return</th><th>Status</th><th>Actions</th></tr></thead>
+                                <tbody id="borrowLogTableBody"></tbody>
+                            </table>
+                        </div>
+                    </div>
+                    <div class="borrow-log-pagination">
+                        <div class="pagination-info" id="borrowPaginationInfo">Showing 1 to 5 of 0 entries</div>
+                        <div class="pagination-controls" id="borrowPaginationControls"></div>
+                    </div>
+                </div>
+            </div>
+
+                        <!-- Log New Borrow View -->
+            <div id="logNewBorrowView" class="page-view">
+                <div class="log-borrow-container">
+                    <div class="log-borrow-wrapper">
+                        <!-- Header Section -->
+                        <div class="log-borrow-header">
+                            <div class="log-borrow-title-section">
+                                <h1>Log New Borrow</h1>
+                                <p>Record borrowed inventory items, borrower details, release schedule, and expected return information.</p>
+                            </div>
+                            <div class="log-borrow-actions">
+                                <button class="btn-cancel-log-borrow" id="cancelLogBorrowBtn">
+                                    <span>Cancel</span>
+                                </button>
+                                <button class="btn-save-log-borrow" id="saveLogBorrowBtn">
+                                    <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
+                                        <path d="M2 12H14M8 2V10M8 10L5 7M8 10L11 7" stroke="white" stroke-width="1.33" stroke-linecap="round"/>
+                                    </svg>
+                                    <span>Save Borrow Record</span>
+                                </button>
+                            </div>
+                        </div>
+
+                        <!-- Borrower Information Section -->
+                        <div class="log-borrow-section">
+                            <div class="section-header">
+                                <h3>Borrower Information</h3>
+                                <p>Resident or organization details linked to this transaction</p>
+                            </div>
+                            
+                            <div class="log-borrow-form-row">
+                                <div class="log-borrow-form-group">
+                                    <label>Requester Name <span class="required">*</span></label>
+                                    <input type="text" id="logBorrowRequester" placeholder="Enter requester name">
+                                </div>
+                                <div class="log-borrow-form-group">
+                                    <label>Contact Number <span class="required">*</span></label>
+                                    <input type="tel" id="logBorrowContact" placeholder="Enter contact number">
+                                </div>
+                            </div>
+                            <div class="log-borrow-form-group">
+                                <label>Purpose of Borrowing <span class="required">*</span></label>
+                                <textarea id="logBorrowPurpose" rows="3" placeholder="e.g., Use of 30 monoblock chairs and 4 folding tables for a community youth assembly"></textarea>
+                            </div>
+                        </div>
+
+                        <!-- Borrow Details Section -->
+                        <div class="log-borrow-section">
+                            <div class="section-header">
+                                <h3>Borrow Details</h3>
+                                <p>Item quantity, release details, and due schedule</p>
+                            </div>
+                            <div class="log-borrow-form-group">
+                                <label for="logBorrowCategory">Item Category <span class="required">*</span></label>
+                                <select id="logBorrowCategory" title="Item category" aria-label="Item category">
+                                    <option value="">Select Category</option>
+                                    <option value="Office Supply">Office Supply</option>
+                                    <option value="Emergency">Emergency</option>
+                                    <option value="Facility Use">Facility Use</option>
+                                    <option value="Equipment">Equipment</option>
+                                    <option value="Furniture">Furniture</option>
+                                </select>
+                            </div>
+                            <div class="log-borrow-form-group">
+                                <label for="logBorrowItemName">Item Name <span class="required">*</span></label>
+                                <select id="logBorrowItemName" title="Item name" aria-label="Item name">
+                                    <option value="">Select Item</option>
+                                </select>
+                            </div>
+                            <div class="log-borrow-form-row">
+                                <div class="log-borrow-form-group">
+                                    <label>Quantity to Borrow <span class="required">*</span></label>
+                                    <input type="number" id="logBorrowQuantity" min="1" placeholder="Enter quantity">
+                                </div>
+                                <div class="log-borrow-form-group">
+                                    <label>Available Stock</label>
+                                    <div class="available-stock-display" id="logBorrowAvailableStock">0 units</div>
+                                </div>
+                            </div>
+                            <div class="log-borrow-form-row">
+                                <div class="log-borrow-form-group">
+                                    <label>Date Released <span class="required">*</span></label>
+                                    <input type="date" id="logBorrowDateReleased" title="Date released" aria-label="Date released">
+                                </div>
+                                <div class="log-borrow-form-group">
+                                    <label>Expected Return Date <span class="required">*</span></label>
+                                    <input type="date" id="logBorrowExpectedReturn" title="Expected return date" aria-label="Expected return date">
+                                </div>
+                            </div>
+                            <div class="log-borrow-form-group">
+                                <label>Released By <span class="required">*</span></label>
+                                <input type="text" id="logBorrowReleasedBy" value="Ricardo Dalisay" readonly title="Released by" aria-label="Released by" placeholder="Released by">
+                            </div>
+                        </div>
+
+                        <!-- Form Actions -->
+                        <div class="log-borrow-footer">
+                            <button class="btn-clear-form" id="clearBorrowFormBtn">
+                                <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
+                                    <rect x="2" y="2" width="12" height="12" rx="1" stroke="#C94A4A" stroke-width="1.33"/>
+                                </svg>
+                                <span>Clear Form</span>
+                            </button>
+                            <div class="log-borrow-footer-actions">
+                                <button class="btn-back-to-log" id="backToBorrowLogBtn">
+                                    <span>Back to Borrow Log</span>
+                                </button>
+                                <button class="btn-submit-borrow" id="submitBorrowRecordBtn">
+                                    <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
+                                        <path d="M2 12H14M8 2V10M8 10L5 7M8 10L11 7" stroke="white" stroke-width="1.33" stroke-linecap="round"/>
+                                    </svg>
+                                    <span>Save Borrow Record</span>
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div id="returnItemModal" class="modal-overlay hidden" aria-hidden="true">
+                <div class="modal-container return-modal">
+                    <div class="modal-header"><h3>Return Item</h3><button class="modal-close" id="closeReturnModalBtn">&times;</button></div>
+                    <div class="modal-body">
+                        <div class="return-form">
+                            <div class="return-item-info" id="returnItemInfo">
+                                <div class="info-row"><span>Item:</span> <strong id="returnItemName">—</strong></div>
+                                <div class="info-row"><span>Quantity Borrowed:</span> <strong id="returnQuantity">—</strong></div>
+                                <div class="info-row"><span>Borrower:</span> <strong id="returnBorrower">—</strong></div>
+                            </div>
+                            <div class="form-field"><label>Return Date <span class="required">*</span></label><input type="date" id="returnDate"></div>
+                            <div class="form-field"><label>Item Condition</label><select id="returnCondition"><option value="Good">Good</option><option value="Fair">Fair</option><option value="Damaged">Damaged</option><option value="Lost">Lost</option></select></div>
+                            <div class="form-field"><label>Remarks (Optional)</label><textarea id="returnRemarks" rows="3" placeholder="Any additional notes about the return..."></textarea></div>
+                        </div>
+                    </div>
+                    <div class="modal-footer"><button class="btn-cancel-modal" id="cancelReturnModalBtn">Cancel</button><button class="btn-save-modal" id="confirmReturnBtn">Confirm Return</button></div>
+                </div>
+            </div>
+        </div>
+    </div>
+    <script src="modules/inventory.js"></script>
+</body>
+</html>

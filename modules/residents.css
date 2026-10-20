@@ -1,0 +1,544 @@
+/* resisdents.css - Residents Management Landing Page */
+
+/* ============================================
+   PAGE VIEW SYSTEM
+   ============================================ */
+.page-view {
+    display: none;
+}
+
+.page-view.active {
+    display: block;
+}
+
+/* ============================================
+   PAGE HEADER (Title + Action Buttons)
+   ============================================ */
+.residents-module {
+    padding: 0;
+}
+
+.page-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    padding: 20px 24px;
+    background: #FFFFFF;
+    border-bottom: 1px solid #E5EAF0;
+    flex-wrap: wrap;
+    gap: 16px;
+}
+
+.title-section {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+}
+
+.section-main-title {
+    font-size: 26px;
+    font-weight: 700;
+    color: #193653;
+    margin: 0;
+    line-height: 1.2;
+}
+
+.section-description {
+    font-size: 13px;
+    color: #647D96;
+    margin: 0;
+    line-height: 1.4;
+}
+
+.action-buttons {
+    display: flex;
+    gap: 10px;
+    align-items: center;
+}
+
+.btn-secondary {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    padding: 8px 16px;
+    background: #FFFFFF;
+    border: 1px solid #E5EAF0;
+    border-radius: 6px;
+    font-size: 13px;
+    font-weight: 600;
+    color: #193653;
+    cursor: pointer;
+    transition: background 0.2s ease, border-color 0.2s ease;
+    height: 36px;
+}
+
+.btn-secondary:hover {
+    background: #F5F9FC;
+    border-color: #D0DCE6;
+}
+
+.btn-secondary img {
+    width: 16px;
+    height: 16px;
+}
+
+.btn-primary {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    padding: 8px 16px;
+    background: #1474B8;
+    border: none;
+    border-radius: 6px;
+    font-size: 13px;
+    font-weight: 600;
+    color: #FFFFFF;
+    cursor: pointer;
+    transition: background 0.2s ease;
+    height: 36px;
+}
+
+.btn-primary:hover {
+    background: #12649F;
+}
+
+.btn-primary img {
+    width: 16px;
+    height: 16px;
+}
+
+/* ============================================
+   STATISTICS CARDS
+   ============================================ */
+.stats-grid {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 16px;
+    padding: 20px 24px;
+    background: #F5F9FC;
+}
+
+.stat-card {
+    display: flex;
+    align-items: center;
+    gap: 14px;
+    padding: 18px 20px;
+    background: #FFFFFF;
+    border: 1px solid #E5EAF0;
+    border-radius: 8px;
+    min-height: 80px;
+}
+
+.stat-icon {
+    width: 44px;
+    height: 44px;
+    border-radius: 8px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+}
+
+.stat-icon.green {
+    background: #E4F7ED;
+}
+
+.stat-icon.orange {
+    background: #FFF0E6;
+}
+
+.stat-icon.purple {
+    background: #F1E6FF;
+}
+
+.stat-icon img {
+    width: 22px;
+    height: 22px;
+}
+
+.stat-info {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+}
+
+.stat-label {
+    font-size: 12px;
+    color: #647D96;
+    font-weight: 500;
+}
+
+.stat-number {
+    font-size: 24px;
+    font-weight: 700;
+    color: #193653;
+    line-height: 1.1;
+}
+
+/* ============================================
+   RESIDENTS TABLE CONTAINER
+   ============================================ */
+.residents-table-container {
+    padding: 0 24px 24px;
+    background: #F5F9FC;
+}
+
+/* ============================================
+   FILTERS BAR
+   ============================================ */
+.filters-bar {
+    display: flex;
+    gap: 12px;
+    padding: 16px;
+    background: #FFFFFF;
+    border: 1px solid #E5EAF0;
+    border-bottom: none;
+    border-radius: 8px 8px 0 0;
+    flex-wrap: wrap;
+    align-items: center;
+}
+
+.search-box {
+    position: relative;
+    flex: 1;
+    min-width: 200px;
+}
+
+.search-box img {
+    position: absolute;
+    left: 12px;
+    top: 50%;
+    transform: translateY(-50%);
+    width: 16px;
+    height: 16px;
+    opacity: 0.55;
+    pointer-events: none;
+}
+
+.search-box input {
+    width: 100%;
+    height: 36px;
+    padding: 0 12px 0 36px;
+    background: #F5F9FC;
+    border: 1px solid #E5EAF0;
+    border-radius: 6px;
+    font-size: 13px;
+    color: #193653;
+    outline: none;
+    transition: border-color 0.2s ease, box-shadow 0.2s ease;
+}
+
+.search-box input:focus {
+    border-color: #1474B8;
+    box-shadow: 0 0 0 2px rgba(20, 116, 184, 0.08);
+}
+
+.search-box input::placeholder {
+    color: #8A9AAB;
+}
+
+.filter-select {
+    height: 36px;
+    padding: 0 32px 0 12px;
+    background: #F5F9FC;
+    border: 1px solid #E5EAF0;
+    border-radius: 6px;
+    font-size: 13px;
+    color: #193653;
+    cursor: pointer;
+    outline: none;
+    min-width: 140px;
+    appearance: none;
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 12 12'%3E%3Cpath d='M2 4L6 8L10 4' stroke='%23647D96' stroke-width='1.5' fill='none' stroke-linecap='round'/%3E%3C/svg%3E");
+    background-repeat: no-repeat;
+    background-position: right 10px center;
+    transition: border-color 0.2s ease;
+}
+
+.filter-select:focus {
+    border-color: #1474B8;
+}
+
+/* ============================================
+   TABLE
+   ============================================ */
+.table-wrapper {
+    background: #FFFFFF;
+    border: 1px solid #E5EAF0;
+    border-top: none;
+    border-bottom: none;
+    overflow-x: auto;
+}
+
+.residents-table {
+    width: 100%;
+    border-collapse: collapse;
+}
+
+.residents-table thead {
+    background: #F5F9FC;
+}
+
+.residents-table th {
+    padding: 10px 16px;
+    text-align: left;
+    font-size: 10px;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    color: #647D96;
+    border-bottom: 1px solid #E5EAF0;
+    white-space: nowrap;
+}
+
+.residents-table td {
+    padding: 10px 16px;
+    border-bottom: 1px solid #EDF2F7;
+    vertical-align: middle;
+    font-size: 13px;
+    color: #193653;
+    height: 56px;
+}
+
+.residents-table tbody tr {
+    transition: background 0.15s ease;
+}
+
+.residents-table tbody tr:hover {
+    background: #F8FBFD;
+}
+
+.residents-table tbody tr:last-child td {
+    border-bottom: none;
+}
+
+/* Resident Info Cell */
+.resident-info {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+
+.resident-avatar {
+    width: 32px;
+    height: 32px;
+    border-radius: 50%;
+    overflow: hidden;
+    flex-shrink: 0;
+    background: #E5EAF0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.resident-avatar img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+}
+
+.avatar-placeholder {
+    font-size: 11px;
+    font-weight: 700;
+    color: #647D96;
+    text-transform: uppercase;
+}
+
+.resident-name {
+    font-size: 13px;
+    font-weight: 600;
+    color: #193653;
+    white-space: nowrap;
+}
+
+/* Sex & Age Cell */
+.sex-age {
+    font-size: 13px;
+    color: #193653;
+    white-space: nowrap;
+}
+
+/* Purok / Street Cell */
+.purok-street {
+    font-size: 13px;
+    color: #193653;
+    max-width: 200px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+/* Voter Status Cell */
+.voter-status {
+    font-size: 13px;
+    color: #193653;
+    white-space: nowrap;
+}
+
+/* Status Badge */
+.status-badge {
+    display: inline-block;
+    padding: 3px 10px;
+    border-radius: 12px;
+    font-size: 11px;
+    font-weight: 600;
+    white-space: nowrap;
+}
+
+.status-badge.active {
+    background: #E4F7ED;
+    color: #16A66A;
+}
+
+.status-badge.moved {
+    background: #FFF0E6;
+    color: #F26A21;
+}
+
+.status-badge.deceased {
+    background: #F1F3F5;
+    color: #647D96;
+}
+
+/* Action Buttons Cell */
+.action-buttons-cell {
+    display: flex;
+    gap: 6px;
+    align-items: center;
+}
+
+.action-icon {
+    width: 30px;
+    height: 30px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: #FFFFFF;
+    border: 1px solid #E5EAF0;
+    border-radius: 5px;
+    cursor: pointer;
+    transition: background 0.2s ease, border-color 0.2s ease;
+}
+
+.action-icon:hover {
+    background: #F5F9FC;
+    border-color: #D0DCE6;
+}
+
+.action-icon.archive:hover {
+    background: #FEF2F2;
+    border-color: #F5C6C6;
+}
+
+.action-icon img {
+    width: 14px;
+    height: 14px;
+}
+
+/* ============================================
+   PAGINATION
+   ============================================ */
+.pagination {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 14px 16px;
+    background: #FFFFFF;
+    border: 1px solid #E5EAF0;
+    border-top: none;
+    border-radius: 0 0 8px 8px;
+    flex-wrap: wrap;
+    gap: 12px;
+}
+
+.pagination-info {
+    font-size: 12px;
+    color: #647D96;
+}
+
+.pagination-controls {
+    display: flex;
+    gap: 4px;
+    align-items: center;
+}
+
+.pagination-btn {
+    min-width: 32px;
+    height: 32px;
+    padding: 0 8px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: #FFFFFF;
+    border: 1px solid #E5EAF0;
+    border-radius: 4px;
+    font-size: 12px;
+    font-weight: 500;
+    color: #193653;
+    cursor: pointer;
+    transition: background 0.2s ease, border-color 0.2s ease;
+}
+
+.pagination-btn:hover:not(:disabled):not(.active) {
+    background: #F5F9FC;
+    border-color: #D0DCE6;
+}
+
+.pagination-btn.active {
+    background: #1474B8;
+    border-color: #1474B8;
+    color: #FFFFFF;
+    font-weight: 600;
+}
+
+.pagination-btn:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+}
+
+.pagination-ellipsis {
+    padding: 0 4px;
+    font-size: 12px;
+    color: #647D96;
+}
+
+/* ============================================
+   RESPONSIVE
+   ============================================ */
+@media screen and (max-width: 900px) {
+    .page-header {
+        flex-direction: column;
+        align-items: stretch;
+    }
+
+    .action-buttons {
+        justify-content: flex-start;
+    }
+
+    .stats-grid {
+        grid-template-columns: 1fr;
+    }
+
+    .filters-bar {
+        flex-direction: column;
+        align-items: stretch;
+    }
+
+    .filter-select {
+        width: 100%;
+    }
+}
+
+@media screen and (max-width: 600px) {
+    .residents-table-container {
+        padding: 0 12px 12px;
+    }
+
+    .stats-grid {
+        padding: 12px;
+    }
+
+    .page-header {
+        padding: 12px;
+    }
+}

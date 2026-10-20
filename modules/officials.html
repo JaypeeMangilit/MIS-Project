@@ -1,0 +1,223 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Barangay 49 Akasya - Barangay Officials</title>
+    <link rel="stylesheet" href="modules/officials.css">
+    <link rel="stylesheet" href="sidebar.css">
+</head>
+<body>
+    <div class="officials-container">
+        <!-- Dynamic Content Area -->
+        <div class="content-area" id="dynamicContent">
+            <!-- Officials List View -->
+            <div id="officialsListView" class="page-view active">
+                <!-- Search and Actions Bar -->
+                <div class="actions-bar">
+                    <div class="search-box">
+                        <img src="Images/Search_Icon.svg" alt="Search">
+                        <input type="text" placeholder="Search official name..." id="searchInput">
+                    </div>
+                    <div class="action-buttons">
+                        <button class="btn-filter" id="filterBtn">
+                            <img src="Images/Filter_Icon.svg" alt="Filter">
+                            <span>Filter by Term</span>
+                        </button>
+                        <button class="btn-primary" id="addOfficialBtn">
+                            <img src="Images/Add_Icon.svg" alt="Add Icon">
+                            <span>Add Official</span>
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Officials Grid -->
+                <div class="officials-grid" id="officialsGrid">
+                    <!-- Official cards will be dynamically loaded -->
+                </div>
+            </div>
+
+            <!-- Add New Official View - New Design -->
+            <div id="addOfficialView" class="page-view">
+                <div class="add-official-container">
+                    <!-- Header with back button -->
+                    <div class="add-official-header">
+                        <div class="back-button-wrapper">
+                            <button class="back-btn" id="backToListBtn">
+                                <svg width="20" height="20" viewBox="0 0 20 20" fill="none">
+                                    <path d="M12.5 15L7.5 10L12.5 5" stroke="#16324A" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+                                </svg>
+                                <span>Back to Officials List</span>
+                            </button>
+                        </div>
+                    </div>
+
+                    <!-- Info Banner -->
+                    <div class="info-banner-new">
+                        <div>
+                            <h3>Register Elected or Appointed Official</h3>
+                            <p>Add a new official to the barangay directory, including their designation, contact details, and committee chairmanship.</p>
+                        </div>
+                    </div>
+
+                    <!-- Form Container -->
+                    <div class="form-container-new">
+                        <!-- Profile Photo Section -->
+                        <div class="form-section-new">
+                            <div class="section-title-new">Profile Photo</div>
+                            <div class="photo-upload-area-new">
+                                <div class="photo-placeholder-new" id="photoPlaceholder">
+                                    <svg width="32" height="32" viewBox="0 0 32 32" fill="none">
+                                        <circle cx="16" cy="16" r="12" stroke="#5F7385" stroke-width="2"/>
+                                        <path d="M16 12V20M12 16H20" stroke="#5F7385" stroke-width="2" stroke-linecap="round"/>
+                                    </svg>
+                                </div>
+                                <div class="photo-info-new">
+                                    <button type="button" class="upload-btn-new" id="uploadPhotoBtn">Upload Image</button>
+                                    <p>Recommended size: 300x300px (JPG, PNG)</p>
+                                    <input type="file" id="photoUpload" accept="image/jpeg,image/png" class="hidden-file-input" title="Upload official photo" aria-label="Upload official photo">
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Personal Information Section -->
+                        <div class="form-section-new">
+                            <div class="section-title-new">Personal Information</div>
+                            <div class="form-grid">
+                                <div class="form-group-new">
+                                    <label for="firstName">First Name <span class="required">*</span></label>
+                                    <input type="text" id="firstName" placeholder="Enter first name" title="First name" aria-label="First name">
+                                </div>
+                                <div class="form-group-new">
+                                    <label for="middleName">Middle Name</label>
+                                    <input type="text" id="middleName" placeholder="Enter middle name" title="Middle name" aria-label="Middle name">
+                                </div>
+                                <div class="form-group-new">
+                                    <label for="lastName">Last Name <span class="required">*</span></label>
+                                    <input type="text" id="lastName" placeholder="Enter last name" title="Last name" aria-label="Last name">
+                                </div>
+                                <div class="form-group-new">
+                                    <label for="suffix">Suffix (Optional)</label>
+                                    <select id="suffix" title="Suffix" aria-label="Suffix">
+                                        <option value="">Select Suffix</option>
+                                        <option value="Jr.">Jr.</option>
+                                        <option value="Sr.">Sr.</option>
+                                        <option value="III">III</option>
+                                        <option value="IV">IV</option>
+                                    </select>
+                                </div>
+                                <div class="form-group-new">
+                                    <label for="gender">Gender <span class="required">*</span></label>
+                                    <select id="gender" title="Gender" aria-label="Gender">
+                                        <option value="">Select Gender</option>
+                                        <option value="Male">Male</option>
+                                        <option value="Female">Female</option>
+                                    </select>
+                                </div>
+                                <div class="form-group-new">
+                                    <label for="birthdate">Birthdate</label>
+                                    <input type="date" id="birthdate" title="Birthdate" aria-label="Birthdate">
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Official Designation Section -->
+                        <div class="form-section-new">
+                            <div class="section-title-new">Official Designation</div>
+                            <div class="form-grid">
+                                <div class="form-group-new">
+                                    <label for="position">Position / Role <span class="required">*</span></label>
+                                    <select id="position" title="Position" aria-label="Position">
+                                        <option value="">Select Position</option>
+                                        <option value="Punong Barangay">Punong Barangay</option>
+                                        <option value="Barangay Kagawad">Barangay Kagawad</option>
+                                        <option value="SK Chairman">SK Chairman</option>
+                                        <option value="Barangay Secretary">Barangay Secretary</option>
+                                        <option value="Barangay Treasurer">Barangay Treasurer</option>
+                                    </select>
+                                </div>
+                                <div class="form-group-new">
+                                    <label for="committee">Committee Chairmanship (If applicable)</label>
+                                    <select id="committee" title="Committee" aria-label="Committee">
+                                        <option value="">Select Committee</option>
+                                        <option value="Peace and Order">Peace and Order</option>
+                                        <option value="Education">Education</option>
+                                        <option value="Health">Health</option>
+                                        <option value="Infrastructure">Infrastructure</option>
+                                        <option value="Agriculture">Agriculture</option>
+                                        <option value="Youth and Sports">Youth and Sports</option>
+                                        <option value="Women and Family">Women and Family</option>
+                                    </select>
+                                </div>
+                                <div class="form-group-new">
+                                    <label for="termStart">Term Start Date <span class="required">*</span></label>
+                                    <input type="date" id="termStart" title="Term start date" aria-label="Term start date">
+                                </div>
+                                <div class="form-group-new">
+                                    <label for="termEnd">Term End Date <span class="required">*</span></label>
+                                    <input type="date" id="termEnd" title="Term end date" aria-label="Term end date">
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Contact Information Section -->
+                        <div class="form-section-new">
+                            <div class="section-title-new">Contact Information</div>
+                            <div class="form-grid">
+                                <div class="form-group-new">
+                                    <label>Mobile Number <span class="required">*</span></label>
+                                    <input type="tel" id="mobile" placeholder="09xx xxx xxxx">
+                                </div>
+                                <div class="form-group-new">
+                                    <label>Email Address (Optional)</label>
+                                    <input type="email" id="email" placeholder="example@email.com">
+                                </div>
+                                <div class="form-group-new full-width">
+                                    <label>Address in Barangay</label>
+                                    <input type="text" id="address" placeholder="Enter house number, street, purok">
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Current Status Section -->
+                        <div class="form-section-new">
+                            <div class="section-title-new">Current Status</div>
+                            <div class="status-options-new">
+                                <button type="button" class="status-option-new active" data-status="Active">Active</button>
+                                <button type="button" class="status-option-new" data-status="Inactive">Inactive / End of Term</button>
+                            </div>
+                            <input type="hidden" id="officialStatus" value="Active">
+                        </div>
+
+                        <!-- Form Actions -->
+                        <div class="form-actions-new">
+                            <button type="button" class="btn-cancel-new" id="cancelAddBtn">Cancel</button>
+                            <button type="button" class="btn-submit-new" id="saveOfficialBtn">
+                                <svg width="14" height="14" viewBox="0 0 14 14" fill="none">
+                                    <path d="M2.33 7H11.67M7 2.33V11.67" stroke="white" stroke-width="1.17" stroke-linecap="round"/>
+                                </svg>
+                                Save Official Record
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- View Official Modal -->
+    <div class="modal" id="viewOfficialModal">
+        <div class="modal-content modal-large">
+            <div class="modal-header">
+                <h3>Official Details</h3>
+                <button class="modal-close">&times;</button>
+            </div>
+            <div class="modal-body" id="viewOfficialContent">
+                <!-- Official details will be loaded here -->
+            </div>
+        </div>
+    </div>
+
+    <script src="modules/officials.js"></script>
+</body>
+</html>

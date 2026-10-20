@@ -1,0 +1,324 @@
+/* login.css - Sign-in screen for the Barangay Management Information System */
+
+/* Reset and Base Styles */
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+}
+
+body {
+    font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', 'Helvetica Neue', sans-serif;
+    background: #F5F9FC;
+    min-height: 100vh;
+}
+
+/* Full screen layout */
+.login-page {
+    width: 100%;
+    min-height: 100vh;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 24px;
+}
+
+.login-content {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    width: 100%;
+    max-width: 345px;
+}
+
+/* ---------- Branding ---------- */
+.login-branding {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    text-align: center;
+    margin-bottom: 24px;
+}
+
+.login-logo {
+    width: 56px;
+    height: 56px;
+    border-radius: 50%;
+    object-fit: cover;
+    display: block;
+    margin-bottom: 12px;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+}
+
+.login-title {
+    color: #193653;
+    font-size: 20px;
+    font-weight: 700;
+    letter-spacing: 0.5px;
+    margin-bottom: 4px;
+}
+
+.login-subtitle {
+    color: #647D96;
+    font-size: 11px;
+    font-weight: 400;
+}
+
+/* ---------- Login Card ---------- */
+.login-card {
+    width: 100%;
+    background: #FFFFFF;
+    border: 1px solid #E5EAF0;
+    border-radius: 8px;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.04);
+    padding: 24px 26px;
+}
+
+/* Alert */
+.alert {
+    padding: 10px 12px;
+    border-radius: 5px;
+    font-size: 12px;
+    font-weight: 500;
+    line-height: 1.45;
+    border: 1px solid transparent;
+    margin-bottom: 16px;
+}
+
+.alert-error {
+    color: #A5271F;
+    background: #FDECEA;
+    border-color: #F6C6C1;
+}
+
+.alert-success {
+    color: #14593B;
+    background: #E7F6EE;
+    border-color: #B7E2CB;
+}
+
+/* Form Container */
+.form-container {
+    width: 100%;
+    display: flex;
+    flex-direction: column;
+}
+
+/* Input Groups */
+.input-group {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    width: 100%;
+    margin-bottom: 14px;
+}
+
+.input-group:last-of-type {
+    margin-bottom: 0;
+}
+
+.input-label {
+    color: #193653;
+    font-size: 12px;
+    font-weight: 600;
+    line-height: 1.4;
+}
+
+.input-wrapper {
+    position: relative;
+    width: 100%;
+}
+
+.input-icon {
+    position: absolute;
+    left: 10px;
+    top: 50%;
+    transform: translateY(-50%);
+    width: 16px;
+    height: 16px;
+    display: block;
+    opacity: 0.55;
+    pointer-events: none;
+}
+
+.input-field {
+    width: 100%;
+    height: 35px;
+    padding: 0 36px 0 34px;
+    background: white;
+    border: 1px solid #E5EAF0;
+    border-radius: 5px;
+    font-size: 13px;
+    font-family: 'Inter', sans-serif;
+    color: #193653;
+    transition: border-color 0.2s ease, box-shadow 0.2s ease;
+}
+
+.input-field:focus {
+    outline: none;
+    border-color: #1474B8;
+    box-shadow: 0 0 0 2px rgba(20, 116, 184, 0.08);
+}
+
+.input-field::placeholder {
+    color: #8A9AAB;
+}
+
+/* Toggle Password Button */
+.toggle-password {
+    position: absolute;
+    right: 8px;
+    top: 50%;
+    transform: translateY(-50%);
+    background: none;
+    border: none;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 4px;
+    color: #71869B;
+    transition: color 0.2s ease;
+}
+
+.toggle-password:hover {
+    color: #193653;
+}
+
+/* Options Row */
+.options-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 10px;
+    margin-top: 14px;
+    margin-bottom: 16px;
+}
+
+/* Checkbox Styles */
+.checkbox-label {
+    display: flex;
+    align-items: center;
+    gap: 7px;
+    cursor: pointer;
+    -webkit-user-select: none;
+    user-select: none;
+}
+
+.checkbox-input {
+    display: none;
+}
+
+.checkbox-custom {
+    width: 15px;
+    height: 15px;
+    background: #1474B8;
+    border-radius: 3px;
+    position: relative;
+    transition: all 0.2s ease;
+    flex-shrink: 0;
+}
+
+.checkbox-input:checked + .checkbox-custom::after {
+    content: '';
+    position: absolute;
+    left: 50%;
+    top: 50%;
+    width: 8px;
+    height: 5px;
+    border-left: 2px solid white;
+    border-bottom: 2px solid white;
+    transform: translate(-50%, -60%) rotate(-45deg);
+}
+
+.checkbox-input:not(:checked) + .checkbox-custom {
+    background: white;
+    border: 1px solid #1474B8;
+}
+
+.checkbox-text {
+    color: #193653;
+    font-size: 12px;
+    font-weight: 400;
+}
+
+/* Sign In Button */
+.signin-button {
+    width: 100%;
+    height: 35px;
+    background: #1474B8;
+    border: none;
+    border-radius: 5px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 7px;
+    cursor: pointer;
+    transition: background 0.2s ease, transform 0.2s ease, box-shadow 0.2s ease;
+    font-family: 'Inter', sans-serif;
+}
+
+.signin-button:hover:not(:disabled) {
+    background: #12649F;
+    transform: translateY(-1px);
+    box-shadow: 0 3px 10px rgba(20, 116, 184, 0.18);
+}
+
+.signin-button:active:not(:disabled) {
+    transform: translateY(0);
+}
+
+.signin-button:disabled {
+    opacity: 0.7;
+    cursor: not-allowed;
+}
+
+.signin-label {
+    color: white;
+    font-size: 13px;
+    font-weight: 600;
+}
+
+.arrow-icon {
+    width: 14px;
+    height: 14px;
+    display: block;
+}
+
+.signin-button.loading .arrow-icon {
+    display: none;
+}
+
+/* ---------- Footer ---------- */
+.login-footer {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 3px;
+    text-align: center;
+    margin-top: 20px;
+}
+
+.login-footer .copyright,
+.login-footer .authorized {
+    color: #647D96;
+    font-size: 10px;
+    font-weight: 400;
+    line-height: 1.5;
+}
+
+/* ---------- Responsive ---------- */
+@media screen and (max-width: 480px) {
+    .login-page {
+        padding: 16px;
+    }
+
+    .login-card {
+        padding: 20px 22px;
+    }
+
+    .login-branding {
+        margin-bottom: 20px;
+    }
+}
