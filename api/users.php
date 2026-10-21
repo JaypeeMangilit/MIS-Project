@@ -65,8 +65,8 @@ switch($method) {
         $count = (int) (($row['count'] ?? 0) + 1);
         $user_id = "USR-" . str_pad($count, 4, '0', STR_PAD_LEFT);
         
-        // Store a bcrypt hash (legacy MD5 values still verify on login).
-        $hashed_password = hash_password($data['password']);
+        // Store the password as typed (see store_password() in config/functions.php).
+        $storedPassword = store_password($data['password']);
         
         $sql = "INSERT INTO system_users (user_id, first_name, middle_name, last_name, suffix, username, 
                 password, email, mobile_number, role, status) 
@@ -79,7 +79,7 @@ switch($method) {
             $data['last_name'],
             $data['suffix'] ?? '',
             $data['username'],
-            $hashed_password,
+            $storedPassword,
             $data['email'],
             $data['mobile_number'] ?? '',
             $data['role'] ?? 'Encoder',
@@ -94,7 +94,7 @@ switch($method) {
         $data = json_decode(file_get_contents('php://input'), true);
         
         if(isset($data['password']) && !empty($data['password'])) {
-            $hashed_password = hash_password($data['password']);
+            $storedPassword = store_password($data['password']);
             $sql = "UPDATE system_users SET first_name=?, middle_name=?, last_name=?, suffix=?, 
                     username=?, password=?, email=?, mobile_number=?, role=?, status=? WHERE id=?";
             $params = [
@@ -103,7 +103,7 @@ switch($method) {
                 $data['last_name'],
                 $data['suffix'] ?? '',
                 $data['username'],
-                $hashed_password,
+                $storedPassword,
                 $data['email'],
                 $data['mobile_number'] ?? '',
                 $data['role'],

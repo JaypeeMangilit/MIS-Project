@@ -469,6 +469,11 @@ async function loadResidentForEdit(id) {
         document.getElementById('editEmergencyPerson').value = resident.emergency_person || '';
         document.getElementById('editEmergencyRelation').value = resident.emergency_relation || '';
         document.getElementById('editEmergencyContact').value = resident.emergency_contact || '';
+
+        // Photo state is per-edit: show the stored photo but do not treat it as a
+        // newly chosen file, so an untouched photo is left alone on save.
+        editResidentPhotoBase64 = null;
+        renderEditResidentPhotoPreview(resident.profile_image || null);
     }
 }
 
@@ -518,13 +523,69 @@ function proceedWithEdit() {
 // ============================================
 // CRUD OPERATIONS
 // ============================================
+// ============================================
+// REGISTER FORM - photo + phone helpers
+// ============================================
+
+// Base64 of the photo chosen in the Register form (null when none selected).
+let newResidentPhotoBase64 = null;
+
+// Base64 of the photo chosen in the Edit form (null when none selected).
+let editResidentPhotoBase64 = null;
+
+/**
+ * Normalise a phone field: digits only, capped at 11 characters.
+ * Keeps leading zeros because the value is handled as text.
+ */
+function sanitizePhoneNumber(value) {
+    if (!value) return '';
+    return String(value).replace(/\D/g, '').slice(0, 11);
+}
+
+/**
+ * Read the chosen photo as a base64 data URL after validating type and size.
+ * Returns null when the file is not a supported image or exceeds 2MB.
+ */
+function readResidentPhoto(file) {
+    if (!file) return Promise.resolve(null);
+
+    // Only JPG and PNG are accepted, up to 2MB.
+    var allowed = ['image/jpeg', 'image/png'];
+    if (allowed.indexOf(file.type) === -1) {
+        showNotification('Invalid photo. Accepted formats: JPG, PNG. Max size: 2MB.', 'error');
+        return Promise.resolve(null);
+    }
+
+    if (file.size > 2 * 1024 * 1024) {
+        showNotification('Invalid photo. Accepted formats: JPG, PNG. Max size: 2MB.', 'error');
+        return Promise.resolve(null);
+    }
+
+    return new Promise(function (resolve) {
+        var reader = new FileReader();
+        reader.onload = function (event) {
+            resolve(event.target.result);
+        };
+        reader.onerror = function () {
+            showNotification('Unable to read the selected photo.', 'error');
+            resolve(null);
+        };
+        reader.readAsDataURL(file);
+    });
+}
+
 async function saveNewResident() {
+    const birthDate = document.getElementById('birthDate')?.value || '';
+    const mobileNumber = sanitizePhoneNumber(document.getElementById('mobile')?.value || '');
+    const emergencyContact = sanitizePhoneNumber(document.getElementById('emergencyContact')?.value || '');
+
     const formData = {
         first_name: document.getElementById('firstName')?.value || '',
         middle_name: document.getElementById('middleName')?.value || '',
         last_name: document.getElementById('lastName')?.value || '',
         suffix: document.getElementById('suffix')?.value || '',
-        birth_date: document.getElementById('birthDate')?.value || '',
+        birth_date: birthDate,
+        age: birthDate ? calculateAgeFromBirthDate(birthDate) : '',
         place_of_birth: document.getElementById('birthPlace')?.value || '',
         gender: document.getElementById('gender')?.value || '',
         civil_status: document.getElementById('civilStatus')?.value || '',
@@ -533,19 +594,30 @@ async function saveNewResident() {
         purok: document.getElementById('purok')?.value || '',
         street_name: document.getElementById('street')?.value || '',
         house_no: document.getElementById('houseNo')?.value || '',
-        mobile_number: document.getElementById('mobile')?.value || '',
+        mobile_number: mobileNumber,
         email: document.getElementById('email')?.value || '',
         emergency_person: document.getElementById('emergencyPerson')?.value || '',
         emergency_relation: document.getElementById('emergencyRelation')?.value || '',
-        emergency_contact: document.getElementById('emergencyContact')?.value || '',
+        emergency_contact: emergencyContact,
         voter_status: document.getElementById('voterStatus')?.value || 'Not Registered',
-        resident_status: document.getElementById('residentStatusSelect')?.value || 'Active'
+        resident_status: document.getElementById('residentStatusSelect')?.value || 'Active',
+        photo_base64: newResidentPhotoBase64 || ''
     };
-    
-    if (!formData.first_name || !formData.last_name || !formData.birth_date || !formData.gender || 
-        !formData.civil_status || !formData.purok || !formData.street_name || 
+
+    if (!formData.first_name || !formData.last_name || !formData.birth_date || !formData.gender ||
+        !formData.civil_status || !formData.purok || !formData.street_name ||
         !formData.house_no || !formData.mobile_number) {
         showNotification('Please fill in all required fields marked with *', 'error');
+        return;
+    }
+
+    // Phone numbers must be exactly 11 digits; the emergency number is optional.
+    if (!/^\d{11}$/.test(mobileNumber)) {
+        showNotification('Mobile Number must be exactly 11 digits (numbers only).', 'error');
+        return;
+    }
+    if (emergencyContact && !/^\d{11}$/.test(emergencyContact)) {
+        showNotification('Emergency Contact Number must be exactly 11 digits (numbers only).', 'error');
         return;
     }
     
@@ -577,7 +649,11 @@ async function saveNewResident() {
 
 async function saveEditResident() {
     if (!currentEditId) return;
-    
+
+    const birthDate = document.getElementById('editBirthDate')?.value || '';
+    const mobileNumber = sanitizePhoneNumber(document.getElementById('editMobile')?.value || '');
+    const emergencyContact = sanitizePhoneNumber(document.getElementById('editEmergencyContact')?.value || '');
+
     const formData = {
         id: currentEditId,
         first_name: document.getElementById('editFirstName')?.value || '',
@@ -593,15 +669,27 @@ async function saveEditResident() {
         purok: document.getElementById('editPurok')?.value || '',
         street_name: document.getElementById('editStreet')?.value || '',
         house_no: document.getElementById('editHouseNo')?.value || '',
-        mobile_number: document.getElementById('editMobile')?.value || '',
+        mobile_number: mobileNumber,
         email: document.getElementById('editEmail')?.value || '',
         emergency_person: document.getElementById('editEmergencyPerson')?.value || '',
         emergency_relation: document.getElementById('editEmergencyRelation')?.value || '',
-        emergency_contact: document.getElementById('editEmergencyContact')?.value || '',
+        emergency_contact: emergencyContact,
+        age: birthDate ? calculateAgeFromBirthDate(birthDate) : null,
+        photo_base64: editResidentPhotoBase64 || '',
         voter_status: document.getElementById('editVoterStatus')?.value || 'Not Registered',
         resident_status: document.getElementById('editResidentStatus')?.value || 'Active'
     };
-    
+
+    // Phone numbers must be exactly 11 digits; the emergency number is optional.
+    if (!/^\d{11}$/.test(mobileNumber)) {
+        showNotification('Mobile Number must be exactly 11 digits (numbers only).', 'error');
+        return;
+    }
+    if (emergencyContact && !/^\d{11}$/.test(emergencyContact)) {
+        showNotification('Emergency Contact Number must be exactly 11 digits (numbers only).', 'error');
+        return;
+    }
+
     const saveBtn = document.getElementById('saveEditBtn');
     if (!saveBtn) return;
     
@@ -682,6 +770,8 @@ function resetForm() {
     const photoPlaceholder = document.getElementById('photoPlaceholder');
     
     if (photoUpload) photoUpload.value = '';
+    newResidentPhotoBase64 = null;
+    renderNewResidentPhotoPreview(null);
     if (fileName) fileName.textContent = 'No file chosen';
     if (photoPlaceholder) {
         photoPlaceholder.innerHTML = `
@@ -716,6 +806,10 @@ window.viewResident = async function(id) {
         const fullName = `${resident.last_name}, ${resident.first_name} ${resident.middle_name ? resident.middle_name.charAt(0) + '.' : ''}`;
         
         document.getElementById('viewFullName').textContent = fullName;
+        const viewAvatar = document.getElementById('viewAvatar');
+        if (viewAvatar) {
+            viewAvatar.src = resident.profile_image || 'https://placehold.co/96x96';
+        }
         document.getElementById('viewPurok').textContent = resident.purok || '—';
         document.getElementById('viewFirstName').textContent = resident.first_name || '—';
         document.getElementById('viewMiddleName').textContent = resident.middle_name || '—';
@@ -1279,25 +1373,144 @@ function setupFormEventListeners() {
     if (chooseFileBtn && photoUpload) {
         const newChooseFileBtn = chooseFileBtn.cloneNode(true);
         chooseFileBtn.parentNode.replaceChild(newChooseFileBtn, chooseFileBtn);
-        newChooseFileBtn.addEventListener('click', () => photoUpload.click());
-        
+
         const newPhotoUpload = photoUpload.cloneNode(true);
         photoUpload.parentNode.replaceChild(newPhotoUpload, photoUpload);
+
+        // The button has to open the input that is actually in the DOM. photoUpload
+        // is detached by the replaceChild above, and clicking a detached file
+        // input never opens the picker.
+        newChooseFileBtn.addEventListener('click', () => newPhotoUpload.click());
+
         newPhotoUpload.addEventListener('change', function(e) {
             const fileNameSpan = document.getElementById('fileName');
-            if (this.files && this.files[0] && fileNameSpan) {
-                fileNameSpan.textContent = this.files[0].name;
+            const file = this.files && this.files[0];
+
+            if (!file) {
+                newResidentPhotoBase64 = null;
+                if (fileNameSpan) fileNameSpan.textContent = 'No file chosen';
+                renderNewResidentPhotoPreview(null);
+                return;
             }
+
+            readResidentPhoto(file).then(function (dataUrl) {
+                if (!dataUrl) {
+                    // Rejected: clear the control so an invalid file cannot be submitted.
+                    newResidentPhotoBase64 = null;
+                    e.target.value = '';
+                    if (fileNameSpan) fileNameSpan.textContent = 'No file chosen';
+                    renderNewResidentPhotoPreview(null);
+                    return;
+                }
+
+                if (fileNameSpan) fileNameSpan.textContent = file.name;
+                newResidentPhotoBase64 = dataUrl;
+                renderNewResidentPhotoPreview(dataUrl);
+            });
         });
     }
-    
+
     const replacePhotoBtn = document.getElementById('replacePhotoBtn');
     const editPhotoUpload = document.getElementById('editPhotoUpload');
     if (replacePhotoBtn && editPhotoUpload) {
         const newReplaceBtn = replacePhotoBtn.cloneNode(true);
         replacePhotoBtn.parentNode.replaceChild(newReplaceBtn, replacePhotoBtn);
-        newReplaceBtn.addEventListener('click', () => editPhotoUpload.click());
+
+        // The file input is a sibling of the button. Re-bind it so an inline
+        // handler added elsewhere cannot be lost when the markup is re-rendered.
+        const newEditPhotoUpload = editPhotoUpload.cloneNode(true);
+        editPhotoUpload.parentNode.replaceChild(newEditPhotoUpload, editPhotoUpload);
+
+        // Open the input that is actually in the DOM, not the detached original.
+        newReplaceBtn.addEventListener('click', () => newEditPhotoUpload.click());
+
+        newEditPhotoUpload.addEventListener('change', function (e) {
+            const file = this.files && this.files[0];
+
+            if (!file) {
+                editResidentPhotoBase64 = null;
+                renderEditResidentPhotoPreview(null);
+                return;
+            }
+
+            readResidentPhoto(file).then(function (dataUrl) {
+                if (!dataUrl) {
+                    // Rejected: clear the control so an invalid file cannot be submitted.
+                    editResidentPhotoBase64 = null;
+                    e.target.value = '';
+                    renderEditResidentPhotoPreview(null);
+                    return;
+                }
+
+                editResidentPhotoBase64 = dataUrl;
+                renderEditResidentPhotoPreview(dataUrl);
+            });
+        });
     }
+
+    // Phone fields: digits only, capped at 11, applied as the user types.
+    ['mobile', 'emergencyContact', 'editMobile', 'editEmergencyContact'].forEach(function (fieldId) {
+        const field = document.getElementById(fieldId);
+        if (!field) return;
+
+        const newField = field.cloneNode(true);
+        field.parentNode.replaceChild(newField, field);
+
+        newField.addEventListener('input', function () {
+            const sanitised = sanitizePhoneNumber(this.value);
+            if (sanitised !== this.value) {
+                this.value = sanitised;
+            }
+        });
+
+        newField.addEventListener('paste', function (e) {
+            const pasted = (e.clipboardData || window.clipboardData).getData('text');
+            const sanitised = sanitizePhoneNumber(pasted);
+            if (sanitised !== pasted) {
+                e.preventDefault();
+                const start = this.selectionStart || 0;
+                this.value = sanitizePhoneNumber(this.value.slice(0, start) + sanitised + this.value.slice(this.selectionEnd || start));
+            }
+        });
+    });
+}
+
+/**
+ * Show the chosen photo inside the Register form placeholder.
+ */
+function renderNewResidentPhotoPreview(dataUrl) {
+    const placeholder = document.getElementById('photoPlaceholder');
+    if (!placeholder) return;
+
+    if (!dataUrl) {
+        placeholder.innerHTML = '\n' +
+            '            <svg width="24" height="24" viewBox="0 0 24 24" fill="none">\n' +
+            '                <path d="M4 4H20V20H4V4Z" stroke="#5F7385" stroke-width="2"/>\n' +
+            '                <circle cx="12" cy="12" r="3" stroke="#5F7385" stroke-width="2"/>\n' +
+            '                <path d="M16 8L18 10" stroke="#5F7385" stroke-width="2" stroke-linecap="round"/>\n' +
+            '            </svg>\n' +
+            '            <span>Upload Photo</span>\n';
+        return;
+    }
+
+    placeholder.innerHTML = '<img src="' + dataUrl + '" alt="Resident photo preview" ' +
+        'style="width:100%;height:100%;object-fit:cover;border-radius:6px;">';
+}
+
+/**
+ * Show the chosen (or stored) photo as the avatar on the Edit Resident form.
+ * Passing null restores the placeholder image.
+ */
+function renderEditResidentPhotoPreview(dataUrl) {
+    const avatar = document.getElementById('editAvatar');
+    if (!avatar) return;
+
+    if (!dataUrl) {
+        avatar.src = 'https://placehold.co/88x88';
+        return;
+    }
+
+    avatar.src = dataUrl;
 }
 
 function setupModalEventListeners() {

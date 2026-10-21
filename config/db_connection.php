@@ -115,6 +115,8 @@ function ensureSqliteDatabase() {
             suffix TEXT,
             gender TEXT,
             birth_date TEXT,
+            age INTEGER,
+            place_of_birth TEXT,
             civil_status TEXT,
             nationality TEXT,
             occupation TEXT,
@@ -128,6 +130,7 @@ function ensureSqliteDatabase() {
             emergency_person TEXT,
             emergency_relation TEXT,
             emergency_contact TEXT,
+            profile_image TEXT,
             created_at DATETIME DEFAULT CURRENT_TIMESTAMP
         );
     ");
@@ -179,6 +182,8 @@ function ensureSqliteDatabase() {
             suffix TEXT,
             gender TEXT,
             birth_date TEXT,
+            age INTEGER,
+            place_of_birth TEXT,
             civil_status TEXT,
             nationality TEXT,
             occupation TEXT,
@@ -192,6 +197,7 @@ function ensureSqliteDatabase() {
             emergency_person TEXT,
             emergency_relation TEXT,
             emergency_contact TEXT,
+            profile_image TEXT,
             created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
             archived_at DATETIME DEFAULT CURRENT_TIMESTAMP
         );
@@ -200,10 +206,47 @@ function ensureSqliteDatabase() {
     $count = (int) $conn->query('SELECT COUNT(*) FROM system_users')->fetchColumn();
     if ($count === 0) {
         $conn->prepare("INSERT INTO system_users (user_id, first_name, last_name, username, password, email, role, status) VALUES (?, ?, ?, ?, ?, ?, ?, ?)")
-            ->execute(['USR-0001', 'System', 'Admin', 'admin', md5('admin123'), 'admin@barangay.local', 'Administrator', 'Active']);
+            ->execute(['USR-0001', 'System', 'Admin', 'admin', 'admin1234', 'admin@barangay.local', 'Administrator', 'Active']);
     }
 
+    ensureSqliteResidentsColumns($conn);
+
     return $conn;
+}
+
+/**
+ * Bring an existing SQLite residents table up to date.
+ *
+ * CREATE TABLE IF NOT EXISTS cannot add columns to a table that already exists,
+ * and the fallback database predates age / place_of_birth / profile_image.
+ * ADD COLUMN is non-destructive: existing rows and data are left untouched.
+ */
+function ensureSqliteResidentsColumns(PDO $conn) {
+    $additions = [
+        'residents' => [
+            'age' => 'INTEGER',
+            'place_of_birth' => 'TEXT',
+            'profile_image' => 'TEXT',
+        ],
+        'archived_residents' => [
+            'age' => 'INTEGER',
+            'place_of_birth' => 'TEXT',
+            'profile_image' => 'TEXT',
+        ],
+    ];
+
+    foreach ($additions as $table => $columns) {
+        $existing = [];
+        foreach ($conn->query("PRAGMA table_info($table)") as $row) {
+            $existing[] = $row['name'];
+        }
+
+        foreach ($columns as $column => $type) {
+            if (!in_array($column, $existing, true)) {
+                $conn->exec("ALTER TABLE $table ADD COLUMN $column $type");
+            }
+        }
+    }
 }
 
 function getConnection() {

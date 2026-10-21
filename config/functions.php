@@ -79,64 +79,36 @@ function js_version(string $file): string {
 
 
 /**
- * Hash a password with the algorithm PHP supports.
+ * Store a password for a system user.
+ *
+ * Passwords are kept in plain text on purpose: this system is used by barangay
+ * staff who are not programmers, and the owner needs to be able to read and
+ * reset a password directly in the database. Do not reintroduce hashing here
+ * without the owner's explicit approval.
  *
  * @param string $password
  * @return string
  */
-function hash_password(string $password): string {
-    return password_hash($password, PASSWORD_DEFAULT);
+function store_password(string $password): string {
+    return $password;
 }
 
 /**
- * Verify a plain password against a stored value.
+ * Verify a plain password against the stored value.
  *
- * Supports three formats:
- * - Modern bcrypt (password_hash / password_verify)
- * - Legacy MD5 (32-char hex)
- * - Plaintext (direct comparison, for beginner-friendly setup)
+ * The stored value is plain text (see store_password()), so this is a direct
+ * comparison.
  *
  * @param string $password
- * @param string $hash
+ * @param string $stored
  * @return bool
  */
-function verify_password(string $password, string $hash): bool {
-    if ($hash === '') {
+function verify_password(string $password, string $stored): bool {
+    if ($stored === '') {
         return false;
     }
 
-    // bcrypt hash
-    if (str_starts_with($hash, '$2y$') || str_starts_with($hash, '$2a$')) {
-        return password_verify($password, $hash);
-    }
-
-    // Legacy MD5 hashes
-    if (strlen($hash) === 32 && ctype_xdigit($hash)) {
-        return hash_equals($hash, md5($password));
-    }
-
-    // Plaintext comparison (for beginner-friendly setup)
-    return hash_equals($hash, $password);
-}
-
-/**
- * Whether a stored value should be upgraded to password_hash() on next login.
- *
- * @param string $hash
- * @return bool
- */
-function needs_password_rehash(string $hash): bool {
-    if ($hash === '') {
-        return true;
-    }
-
-    // bcrypt hash
-    if (str_starts_with($hash, '$2y$') || str_starts_with($hash, '$2a$')) {
-        return password_needs_rehash($hash, PASSWORD_DEFAULT);
-    }
-
-    // MD5 or plaintext — both should be upgraded
-    return true;
+    return hash_equals($stored, $password);
 }
 
 // ============================================

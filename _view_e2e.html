@@ -1,0 +1,91 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>View Resident E2E</title>
+<link rel="stylesheet" href="modules/resisdents.css">
+<link rel="stylesheet" href="sidebar.css">
+</head>
+<body>
+<div id="dynamicContent"></div>
+
+<script src="modules/residents.js"></script>
+<script>
+// ---------------------------------------------------------------------------
+// Harness: loads the REAL module markup the way router.js does, stubs the one
+// API call viewResident() makes, then drives it with a known resident record.
+// ---------------------------------------------------------------------------
+const SAMPLE = {
+    id: 7,
+    first_name: 'Maria',
+    middle_name: 'Santos',
+    last_name: 'Dela Cruz',
+    suffix: 'Jr',
+    birth_date: '1995-03-15',
+    age: 31,
+    gender: 'Female',
+    civil_status: 'Single',
+    place_of_birth: 'Quezon City',
+    occupation: 'Public School Teacher',
+    nationality: 'Filipino',
+    voter_status: 'Registered',
+    resident_status: 'Active',
+    house_no: '12',
+    street: 'Mabini Street',
+    purok: 'Purok 1',
+    mobile_number: '09171234567',
+    email: 'maria.delacruz@example.com',
+    emergency_contact_person: 'Juan Dela Cruz',
+    emergency_contact_number: '09181234567',
+    emergency_contact_relation: 'Spouse',
+    profile_image: 'uploads/residents/sample.jpg',
+};
+
+const realFetch = window.fetch.bind(window);
+window.fetch = function (url, opts) {
+    if (String(url).includes('residents.php')) {
+        return Promise.resolve({ ok: true, json: () => Promise.resolve({ success: true, data: SAMPLE }) });
+    }
+    return realFetch(url, opts);
+};
+
+async function boot() {
+    const res = await realFetch('modules/resisdents.html');
+    const html = await res.text();
+
+    const start = html.indexOf('<div class="residents-module">');
+    const lastClose = html.lastIndexOf('</div>');
+    const markup = html.slice(start, lastClose + 6);
+
+    document.getElementById('dynamicContent').innerHTML = markup;
+
+    await window.viewResident(7);
+
+    const ids = [
+        'viewAvatar','viewFullName','viewPurok','viewStatusBadge',
+        'viewFirstName','viewMiddleName','viewLastName','viewSuffix',
+        'viewBirthDate','viewAge','viewGender','viewCivilStatus','viewBirthPlace',
+        'viewOccupation','viewNationality','viewVoterStatus','viewResidentStatus',
+        'viewHouseNo','viewStreet','viewPurokDetail','viewMobile','viewEmail',
+        'viewEmergencyPerson','viewEmergencyRelation','viewEmergencyContact',
+    ];
+    const out = [];
+    out.push('markup injected : ' + (document.getElementById('viewResidentView') ? 'yes' : 'NO'));
+    out.push('info cards       : ' + document.querySelectorAll('.info-card').length);
+    out.push('info fields      : ' + document.querySelectorAll('.info-field').length);
+    out.push('grid columns     : ' + getComputedStyle(document.querySelector('.info-grid')).gridTemplateColumns.split(' ').length);
+    out.push('avatar src       : ' + document.getElementById('viewAvatar').getAttribute('src'));
+    out.push('--- fields ---');
+    for (const id of ids.slice(3)) {
+        const el = document.getElementById(id);
+        out.push('  #' + id.padEnd(22) + ' = ' + (el ? JSON.stringify(el.textContent) : 'MISSING'));
+    }
+    document.title = 'E2E-DONE';
+    window.__e2e = out.join('\n');
+    console.log(out.join('\n'));
+}
+
+boot().catch(e => { document.title = 'E2E-FAIL'; console.error('E2E ERROR', e); });
+</script>
+</body>
+</html>

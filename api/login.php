@@ -86,13 +86,6 @@ if (!validate_user_role($userId, $role)) {
     exit;
 }
 
-// --- Upgrade a legacy MD5 hash to a modern bcrypt hash on successful login ----
-if (needs_password_rehash((string) $user['password'])) {
-    $newHash = hash_password($password);
-    $updateHash = "UPDATE system_users SET password = ? WHERE id = ?";
-    executeStatement($updateHash, [$newHash, $user['id']], 'si');
-}
-
 // --- Record the session ------------------------------------------------------
 session_regenerate_id(true);
 

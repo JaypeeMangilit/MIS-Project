@@ -41,6 +41,109 @@ function generateResidentId(int $offset = 0) {
     return "RES-$year-" . str_pad($next, 4, '0', STR_PAD_LEFT);
 }
 
+/**
+ * Directory that holds resident photos, relative to the application root.
+ */
+function residentPhotoDirectory() {
+    return __DIR__ . DIRECTORY_SEPARATOR . '..' . DIRECTORY_SEPARATOR . 'uploads' . DIRECTORY_SEPARATOR . 'residents';
+}
+
+/**
+ * Persist a base64-encoded photo (data URL) and return the stored reference.
+ *
+ * The residents table keeps a path in profile_image rather than binary data, so
+ * the image is written to the uploads directory and the relative path is stored.
+ *
+ * @param string $dataUrl
+ * @return string|null Relative path on success, null when nothing usable was sent.
+ */
+function storeResidentPhoto($dataUrl) {
+    if (!is_string($dataUrl) || $dataUrl === '') {
+        return null;
+    }
+
+    // Accept the "data:<mime>;base64,<payload>" form produced by FileReader.
+    if (!preg_match('#^data:image/(jpeg|jpg|png);base64,(.+)$#i', $dataUrl, $matches)) {
+        return null;
+    }
+
+    $extension = strtolower($matches[1]) === 'png' ? 'png' : 'jpg';
+    $binary = base64_decode($matches[2], true);
+
+    if ($binary === false || $binary === '') {
+        return null;
+    }
+
+    // 2MB limit, matching the rule stated on the form.
+    if (strlen($binary) > 2 * 1024 * 1024) {
+        return null;
+    }
+
+    $directory = residentPhotoDirectory();
+    if (!is_dir($directory) && !mkdir($directory, 0777, true) && !is_dir($directory)) {
+        error_log('Unable to create resident photo directory: ' . $directory);
+        return null;
+    }
+
+    $fileName = 'resident-' . uniqid() . '.' . $extension;
+    $fullPath = $directory . DIRECTORY_SEPARATOR . $fileName;
+
+    if (file_put_contents($fullPath, $binary) === false) {
+        error_log('Unable to write resident photo: ' . $fullPath);
+        return null;
+    }
+
+    // Stored as a web-relative path so it can be used directly in an img src.
+    return 'uploads/residents/' . $fileName;
+}
+
+/**
+ * Age in whole years for a birth date, or null when the date is unusable.
+ *
+ * Mirrors calculateAgeFromBirthDate() in the UI so the stored value and the
+ * value shown on the page can never disagree.
+ *
+ * @param string $birthDate
+ * @return int|null
+ */
+function residentAgeFromBirthDate($birthDate) {
+    if (!is_string($birthDate) || !preg_match('/^(\d{4})-(\d{2})-(\d{2})$/', $birthDate, $matches)) {
+        return null;
+    }
+
+    $birthYear = (int) $matches[1];
+    $birthMonth = (int) $matches[2];
+    $birthDay = (int) $matches[3];
+
+    if (!checkdate($birthMonth, $birthDay, $birthYear)) {
+        return null;
+    }
+
+    $age = (int) date('Y') - $birthYear;
+    if ((int) date('n') < $birthMonth || ((int) date('n') === $birthMonth && (int) date('j') < $birthDay)) {
+        $age--;
+    }
+
+    return $age < 0 ? null : $age;
+}
+
+/**
+ * Recompute the age column from the birth date.
+ *
+ * Age is stored on write, but it drifts as the resident gets older. Deriving it
+ * again on read means a stale stored value can never be returned to the UI.
+ *
+ * @param array $resident
+ * @return array
+ */
+function withDerivedResidentAge(array $resident) {
+    $derived = residentAgeFromBirthDate($resident['birth_date'] ?? '');
+    if ($derived !== null) {
+        $resident['age'] = $derived;
+    }
+    return $resident;
+}
+
 $method = $_SERVER['REQUEST_METHOD'];
 
 // Check if database is connected
@@ -65,11 +168,9 @@ switch($method) {
             $allResidents = getRecords("SELECT birth_date FROM residents WHERE birth_date IS NOT NULL AND birth_date != ''");
             $seniors = 0; $minors = 0;
             if ($allResidents !== false) {
-                $currentYear = (int)date('Y');
                 foreach ($allResidents as $r) {
-                    $birthYear = (int)substr($r['birth_date'], 0, 4);
-                    if ($birthYear > 0) {
-                        $age = $currentYear - $birthYear;
+                    $age = residentAgeFromBirthDate($r['birth_date']);
+                    if ($age !== null) {
                         if ($age >= 60) $seniors++;
                         if ($age < 18) $minors++;
                     }
@@ -91,7 +192,7 @@ switch($method) {
             $sql = "SELECT * FROM residents WHERE id = ?";
             $resident = getRecord($sql, [$_GET['id']], 'i');
             if ($resident) {
-                echo json_encode($resident);
+                echo json_encode(withDerivedResidentAge($resident));
             } else {
                 echo json_encode(null);
             }
@@ -159,6 +260,7 @@ switch($method) {
             $sql .= " ORDER BY last_name ASC OFFSET " . $offset . " ROWS FETCH NEXT " . $limit . " ROWS ONLY";
             
             $residents = getRecords($sql, $params, $types);
+            $residents = array_map('withDerivedResidentAge', $residents ?: []);
             
             echo json_encode([
                 'success' => true,
@@ -174,13 +276,43 @@ switch($method) {
     case 'POST':
         // Create new resident
         $data = json_decode(file_get_contents('php://input'), true);
-        
+        if (!is_array($data)) {
+            $data = [];
+        }
+
+        // Server-side validation of the phone fields. The frontend already
+        // restricts these, but the API must not rely on that alone.
+        $mobileNumber = isset($data['mobile_number']) ? preg_replace('/\D/', '', (string) $data['mobile_number']) : '';
+        $emergencyContact = isset($data['emergency_contact']) ? preg_replace('/\D/', '', (string) $data['emergency_contact']) : '';
+
+        if (!preg_match('/^\d{11}$/', $mobileNumber)) {
+            echo json_encode([
+                'success' => false,
+                'message' => 'Mobile Number must be exactly 11 digits.',
+                'data' => null
+            ]);
+            break;
+        }
+
+        if ($emergencyContact !== '' && !preg_match('/^\d{11}$/', $emergencyContact)) {
+            echo json_encode([
+                'success' => false,
+                'message' => 'Emergency Contact Number must be exactly 11 digits when provided.',
+                'data' => null
+            ]);
+            break;
+        }
+
+        // The photo is written to disk only after the row exists, so a failed
+        // insert can never leave an unreferenced file behind.
+        $photoPayload = isset($data['photo_base64']) ? $data['photo_base64'] : '';
+
         $insertSql = "INSERT INTO residents (
                     resident_id, first_name, middle_name, last_name, suffix, gender, 
                     birth_date, place_of_birth, civil_status, nationality, occupation, voter_status, 
                     resident_status, purok, street_name, house_no, mobile_number, email, 
-                    emergency_person, emergency_relation, emergency_contact
-                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)";
+                    emergency_person, emergency_relation, emergency_contact, age
+                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)";
         
         // Generate the ID and insert, retrying with the next sequence number if a
         // concurrent request has already claimed the candidate ID.
@@ -208,14 +340,18 @@ switch($method) {
                 $data['purok'] ?? '',
                 $data['street_name'] ?? '',
                 $data['house_no'] ?? '',
-                $data['mobile_number'] ?? '',
+                $mobileNumber,
                 $data['email'] ?? '',
                 $data['emergency_person'] ?? '',
                 $data['emergency_relation'] ?? '',
-                $data['emergency_contact'] ?? ''
+                $emergencyContact,
+                // Age is derived from the birth date on both create and update so
+                // the client cannot store a value that disagrees with it.
+                residentAgeFromBirthDate($data['birth_date'] ?? '')
             ];
 
-            $id = insertRecord($insertSql, $params, 'sssssssssssssssssssss');
+            // 21 strings, then the integer age.
+            $id = insertRecord($insertSql, $params, 'sssssssssssssssssssssi');
             if ($id) {
                 break;
             }
@@ -232,6 +368,20 @@ switch($method) {
             break;
         }
         
+        // Now that the row exists, persist the optional photo and link it to the
+        // record. A photo that fails validation is skipped rather than failing the
+        // request: the photo is optional and the resident is already stored.
+        if (is_string($photoPayload) && $photoPayload !== '') {
+            $profileImage = storeResidentPhoto($photoPayload);
+            if ($profileImage !== null) {
+                executeStatement(
+                    "UPDATE residents SET profile_image = ? WHERE id = ?",
+                    [$profileImage, $id],
+                    'si'
+                );
+            }
+        }
+
         // Get the created resident
         $newResident = getRecord("SELECT * FROM residents WHERE id = ?", [$id], 'i');
         
@@ -246,27 +396,61 @@ switch($method) {
     case 'PUT':
         // Update resident
         $data = json_decode(file_get_contents('php://input'), true);
-        
+        if (!is_array($data)) {
+            $data = [];
+        }
+
         if (!isset($data['id'])) {
             echo json_encode(['success' => false, 'message' => 'ID is required']);
             break;
         }
-        
-        $sql = "UPDATE residents SET 
-                    first_name = ?, middle_name = ?, last_name = ?, suffix = ?, gender = ?, 
-                    birth_date = ?, place_of_birth = ?, civil_status = ?, nationality = ?, occupation = ?, 
-                    voter_status = ?, resident_status = ?, purok = ?, street_name = ?, 
-                    house_no = ?, mobile_number = ?, email = ?, emergency_person = ?, 
-                    emergency_relation = ?, emergency_contact = ? 
-                WHERE id = ?";
-        
+
+        // Server-side validation of the phone fields. The frontend already
+        // restricts these, but the API must not rely on that alone.
+        $mobileNumber = isset($data['mobile_number']) ? preg_replace('/\D/', '', (string) $data['mobile_number']) : '';
+        $emergencyContact = isset($data['emergency_contact']) ? preg_replace('/\D/', '', (string) $data['emergency_contact']) : '';
+
+        if (!preg_match('/^\d{11}$/', $mobileNumber)) {
+            echo json_encode([
+                'success' => false,
+                'message' => 'Mobile Number must be exactly 11 digits.',
+                'data' => null
+            ]);
+            break;
+        }
+
+        if ($emergencyContact !== '' && !preg_match('/^\d{11}$/', $emergencyContact)) {
+            echo json_encode([
+                'success' => false,
+                'message' => 'Emergency Contact Number must be exactly 11 digits when provided.',
+                'data' => null
+            ]);
+            break;
+        }
+
+        // Age follows the birth date, so it is recomputed here rather than
+        // trusted from the client. Mirrors calculateAgeFromBirthDate() in the UI.
+        $birthDate = isset($data['birth_date']) ? (string) $data['birth_date'] : '';
+        $age = residentAgeFromBirthDate($birthDate);
+
+        // The photo is written to disk only after the row has been successfully
+        // updated; an empty payload means "leave the current photo alone".
+        $photoPayload = isset($data['photo_base64']) ? $data['photo_base64'] : '';
+
+        $sql = "UPDATE residents SET
+                    first_name = ?, middle_name = ?, last_name = ?, suffix = ?, gender = ?,
+                    birth_date = ?, place_of_birth = ?, civil_status = ?, nationality = ?, occupation = ?,
+                    voter_status = ?, resident_status = ?, purok = ?, street_name = ?,
+                    house_no = ?, mobile_number = ?, email = ?, emergency_person = ?,
+                    emergency_relation = ?, emergency_contact = ?, age = ?";
+
         $params = [
             $data['first_name'] ?? '',
             $data['middle_name'] ?? '',
             $data['last_name'] ?? '',
             $data['suffix'] ?? '',
             $data['gender'] ?? '',
-            $data['birth_date'] ?? '',
+            $birthDate,
             $data['place_of_birth'] ?? '',
             $data['civil_status'] ?? '',
             $data['nationality'] ?? 'Filipino',
@@ -276,16 +460,33 @@ switch($method) {
             $data['purok'] ?? '',
             $data['street_name'] ?? '',
             $data['house_no'] ?? '',
-            $data['mobile_number'] ?? '',
+            $mobileNumber,
             $data['email'] ?? '',
             $data['emergency_person'] ?? '',
             $data['emergency_relation'] ?? '',
-            $data['emergency_contact'] ?? '',
-            $data['id']
+            $emergencyContact,
+            $age
         ];
-        
+
+        $sql .= " WHERE id = ?";
+        $params[] = $data['id'];
+
         $affected = executeStatement($sql, $params, 'sssssssssssssssssssssi');
-        
+
+        // Persist the newly chosen photo only now that the update succeeded. The
+        // guard is `$affected !== false` rather than `> 0`: PDO_ODBC reports 0 rows
+        // when the new values are identical to the old ones.
+        if ($affected !== false && is_string($photoPayload) && $photoPayload !== '') {
+            $profileImage = storeResidentPhoto($photoPayload);
+            if ($profileImage !== null) {
+                executeStatement(
+                    "UPDATE residents SET profile_image = ? WHERE id = ?",
+                    [$profileImage, $data['id']],
+                    'si'
+                );
+            }
+        }
+
         echo json_encode([
             'success' => $affected !== false,
             'affected' => $affected,

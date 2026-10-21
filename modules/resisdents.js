@@ -417,7 +417,9 @@ function showEditResidentView(id) {
 }
 
 async function loadResidentForEdit(id) {
-    let resident = residentsData.find(r => r.id === id);
+    // The id arrives from the row's onclick handler as a number while the API
+    // returns it as a string, so compare as text (the rule viewResident() uses).
+    let resident = residentsData.find(r => String(r.id) === String(id));
     
     if (!resident && !isOfflineMode) {
         const result = await apiCall(`residents.php?id=${id}`);
@@ -460,6 +462,11 @@ async function loadResidentForEdit(id) {
         document.getElementById('editEmergencyPerson').value = resident.emergency_person || '';
         document.getElementById('editEmergencyRelation').value = resident.emergency_relation || '';
         document.getElementById('editEmergencyContact').value = resident.emergency_contact || '';
+
+        // Photo state is per-edit: show the stored photo but do not treat it as a
+        // newly chosen file, so an untouched photo is left alone on save.
+        editResidentPhotoBase64 = null;
+        renderEditResidentPhotoPreview(resident.profile_image || null);
     }
 }
 
@@ -467,26 +474,26 @@ async function loadResidentForEdit(id) {
 // EDIT CONFIRMATION MODAL FUNCTIONS
 // ============================================
 
-function showEditConfirmModal(residentId) {
-    let resident = residentsData.find(r => r.id === residentId);
-    
-    if (!resident && !isOfflineMode) {
-        resident = SAMPLE_RESIDENTS.find(r => r.id === residentId);
+/**
+ * Open the Edit confirmation modal for a resident.
+ *
+ * `resident` is passed in by window.editResident(), which resolves it from the
+ * loaded page or the API. The id is compared as text there because the row's
+ * onclick handler passes a number while the API returns a string.
+ */
+function showEditConfirmModal(residentId, resident) {
+    pendingEditId = residentId;
+
+    const fullName = `${resident.first_name} ${resident.last_name}`;
+    const residentNameSpan = document.getElementById('editConfirmResidentName');
+    if (residentNameSpan) {
+        residentNameSpan.textContent = fullName;
     }
     
-    if (resident) {
-        pendingEditId = residentId;
-        const fullName = `${resident.first_name} ${resident.last_name}`;
-        const residentNameSpan = document.getElementById('editConfirmResidentName');
-        if (residentNameSpan) {
-            residentNameSpan.textContent = fullName;
-        }
-        
-        const modal = document.getElementById('editConfirmModal');
-        if (modal) {
-            modal.style.display = 'flex';
-            modal.classList.add('active');
-        }
+    const modal = document.getElementById('editConfirmModal');
+    if (modal) {
+        modal.style.display = 'flex';
+        modal.classList.add('active');
     }
 }
 
@@ -500,22 +507,82 @@ function closeEditConfirmModal() {
 }
 
 function proceedWithEdit() {
-    if (pendingEditId) {
-        closeEditConfirmModal();
-        showEditResidentView(pendingEditId);
-    }
+    // Capture the id first: closeEditConfirmModal() clears pendingEditId, so
+    // reading it after the close would pass null on to the editor.
+    const id = pendingEditId;
+
+    if (!id) return;
+
+    closeEditConfirmModal();
+    showEditResidentView(id);
 }
 
 // ============================================
 // CRUD OPERATIONS
 // ============================================
+// ============================================
+// REGISTER FORM - photo + phone helpers
+// ============================================
+
+// Base64 of the photo chosen in the Register form (null when none selected).
+let newResidentPhotoBase64 = null;
+
+// Base64 of the photo chosen in the Edit form (null when none selected).
+let editResidentPhotoBase64 = null;
+
+/**
+ * Normalise a phone field: digits only, capped at 11 characters.
+ * Keeps leading zeros because the value is handled as text.
+ */
+function sanitizePhoneNumber(value) {
+    if (!value) return '';
+    return String(value).replace(/\D/g, '').slice(0, 11);
+}
+
+/**
+ * Read the chosen photo as a base64 data URL after validating type and size.
+ * Returns null when the file is not a supported image or exceeds 2MB.
+ */
+function readResidentPhoto(file) {
+    if (!file) return Promise.resolve(null);
+
+    // Only JPG and PNG are accepted, up to 2MB.
+    var allowed = ['image/jpeg', 'image/png'];
+    if (allowed.indexOf(file.type) === -1) {
+        showNotification('Invalid photo. Accepted formats: JPG, PNG. Max size: 2MB.', 'error');
+        return Promise.resolve(null);
+    }
+
+    if (file.size > 2 * 1024 * 1024) {
+        showNotification('Invalid photo. Accepted formats: JPG, PNG. Max size: 2MB.', 'error');
+        return Promise.resolve(null);
+    }
+
+    return new Promise(function (resolve) {
+        var reader = new FileReader();
+        reader.onload = function (event) {
+            resolve(event.target.result);
+        };
+        reader.onerror = function () {
+            showNotification('Unable to read the selected photo.', 'error');
+            resolve(null);
+        };
+        reader.readAsDataURL(file);
+    });
+}
+
 async function saveNewResident() {
+    const birthDate = document.getElementById('birthDate')?.value || '';
+    const mobileNumber = sanitizePhoneNumber(document.getElementById('mobile')?.value || '');
+    const emergencyContact = sanitizePhoneNumber(document.getElementById('emergencyContact')?.value || '');
+
     const formData = {
         first_name: document.getElementById('firstName')?.value || '',
         middle_name: document.getElementById('middleName')?.value || '',
         last_name: document.getElementById('lastName')?.value || '',
         suffix: document.getElementById('suffix')?.value || '',
-        birth_date: document.getElementById('birthDate')?.value || '',
+        birth_date: birthDate,
+        age: birthDate ? calculateAgeFromBirthDate(birthDate) : '',
         place_of_birth: document.getElementById('birthPlace')?.value || '',
         gender: document.getElementById('gender')?.value || '',
         civil_status: document.getElementById('civilStatus')?.value || '',
@@ -524,19 +591,30 @@ async function saveNewResident() {
         purok: document.getElementById('purok')?.value || '',
         street_name: document.getElementById('street')?.value || '',
         house_no: document.getElementById('houseNo')?.value || '',
-        mobile_number: document.getElementById('mobile')?.value || '',
+        mobile_number: mobileNumber,
         email: document.getElementById('email')?.value || '',
         emergency_person: document.getElementById('emergencyPerson')?.value || '',
         emergency_relation: document.getElementById('emergencyRelation')?.value || '',
-        emergency_contact: document.getElementById('emergencyContact')?.value || '',
+        emergency_contact: emergencyContact,
         voter_status: document.getElementById('voterStatus')?.value || 'Not Registered',
-        resident_status: document.getElementById('residentStatusSelect')?.value || 'Active'
+        resident_status: document.getElementById('residentStatusSelect')?.value || 'Active',
+        photo_base64: newResidentPhotoBase64 || ''
     };
-    
-    if (!formData.first_name || !formData.last_name || !formData.birth_date || !formData.gender || 
-        !formData.civil_status || !formData.purok || !formData.street_name || 
+
+    if (!formData.first_name || !formData.last_name || !formData.birth_date || !formData.gender ||
+        !formData.civil_status || !formData.purok || !formData.street_name ||
         !formData.house_no || !formData.mobile_number) {
         showNotification('Please fill in all required fields marked with *', 'error');
+        return;
+    }
+
+    // Phone numbers must be exactly 11 digits; the emergency number is optional.
+    if (!/^\d{11}$/.test(mobileNumber)) {
+        showNotification('Mobile Number must be exactly 11 digits (numbers only).', 'error');
+        return;
+    }
+    if (emergencyContact && !/^\d{11}$/.test(emergencyContact)) {
+        showNotification('Emergency Contact Number must be exactly 11 digits (numbers only).', 'error');
         return;
     }
     
@@ -568,7 +646,11 @@ async function saveNewResident() {
 
 async function saveEditResident() {
     if (!currentEditId) return;
-    
+
+    const birthDate = document.getElementById('editBirthDate')?.value || '';
+    const mobileNumber = sanitizePhoneNumber(document.getElementById('editMobile')?.value || '');
+    const emergencyContact = sanitizePhoneNumber(document.getElementById('editEmergencyContact')?.value || '');
+
     const formData = {
         id: currentEditId,
         first_name: document.getElementById('editFirstName')?.value || '',
@@ -584,15 +666,27 @@ async function saveEditResident() {
         purok: document.getElementById('editPurok')?.value || '',
         street_name: document.getElementById('editStreet')?.value || '',
         house_no: document.getElementById('editHouseNo')?.value || '',
-        mobile_number: document.getElementById('editMobile')?.value || '',
+        mobile_number: mobileNumber,
         email: document.getElementById('editEmail')?.value || '',
         emergency_person: document.getElementById('editEmergencyPerson')?.value || '',
         emergency_relation: document.getElementById('editEmergencyRelation')?.value || '',
-        emergency_contact: document.getElementById('editEmergencyContact')?.value || '',
+        emergency_contact: emergencyContact,
+        age: birthDate ? calculateAgeFromBirthDate(birthDate) : null,
+        photo_base64: editResidentPhotoBase64 || '',
         voter_status: document.getElementById('editVoterStatus')?.value || 'Not Registered',
         resident_status: document.getElementById('editResidentStatus')?.value || 'Active'
     };
-    
+
+    // Phone numbers must be exactly 11 digits; the emergency number is optional.
+    if (!/^\d{11}$/.test(mobileNumber)) {
+        showNotification('Mobile Number must be exactly 11 digits (numbers only).', 'error');
+        return;
+    }
+    if (emergencyContact && !/^\d{11}$/.test(emergencyContact)) {
+        showNotification('Emergency Contact Number must be exactly 11 digits (numbers only).', 'error');
+        return;
+    }
+
     const saveBtn = document.getElementById('saveEditBtn');
     if (!saveBtn) return;
     
@@ -673,6 +767,8 @@ function resetForm() {
     const photoPlaceholder = document.getElementById('photoPlaceholder');
     
     if (photoUpload) photoUpload.value = '';
+    newResidentPhotoBase64 = null;
+    renderNewResidentPhotoPreview(null);
     if (fileName) fileName.textContent = 'No file chosen';
     if (photoPlaceholder) {
         photoPlaceholder.innerHTML = `
@@ -689,9 +785,64 @@ function resetForm() {
 // ============================================
 // VIEW, EDIT, ARCHIVE GLOBAL FUNCTIONS
 // ============================================
+// Default avatar shown when the resident has no stored photo.
+const DEFAULT_RESIDENT_AVATAR = 'Images/Anoymous.jpg';
+
+// Inline silhouette used if the default avatar file itself cannot be loaded.
+const FALLBACK_AVATAR_DATA_URI =
+    'data:image/svg+xml;charset=utf-8,' + encodeURIComponent(
+        '<svg xmlns="http://www.w3.org/2000/svg" width="96" height="96">' +
+        '<rect width="96" height="96" fill="#E8EEF3"/>' +
+        '<circle cx="48" cy="34" r="16" fill="#B8C6D2"/>' +
+        '<path d="M16 96c4-22 18-32 32-32s28 10 32 32z" fill="#B8C6D2"/>' +
+        '</svg>'
+    );
+
+/**
+ * Point the View Resident avatar at the stored photo.
+ *
+ * The photo is a web-relative path in profile_image (see storeResidentPhoto()
+ * in api/residents.php). Residents saved before photos existed, or whose file
+ * has since gone missing, fall back to the default avatar.
+ */
+function renderViewResidentAvatar(resident) {
+    const avatar = document.getElementById('viewAvatar');
+    if (!avatar) return;
+
+    avatar.onerror = function () {
+        avatar.onerror = null;
+        avatar.src = FALLBACK_AVATAR_DATA_URI;
+    };
+    avatar.src = resident.profile_image || DEFAULT_RESIDENT_AVATAR;
+}
+
+/**
+ * Show the age, preferring the value the API derived from the birth date and
+ * falling back to the local calculation when the record has none.
+ */
+function formatResidentAge(resident) {
+    const stored = resident.age;
+    const age = (stored !== null && stored !== undefined && stored !== '')
+        ? stored
+        : calculateAgeFromBirthDate(resident.birth_date);
+
+    return (typeof age === 'number' && !Number.isNaN(age)) ? `${age} years old` : '—';
+}
+
 window.viewResident = async function(id) {
-    let resident = residentsData.find(r => r.id === id);
-    
+    // Show the page straight away so the user sees a loading state instead of
+    // whichever record was open before.
+    showViewResidentView();
+
+    const fullNameEl = document.getElementById('viewFullName');
+    const editBtn = document.getElementById('editFromViewBtn');
+    if (fullNameEl) fullNameEl.textContent = 'Loading...';
+    if (editBtn) editBtn.disabled = true;
+
+    // The list passes a number while the API returns the id as a string, so
+    // compare as text to reuse the already-loaded row when it is available.
+    let resident = residentsData.find(r => String(r.id) === String(id));
+
     if (!resident) {
         try {
             const result = await apiCall(`residents.php?id=${id}`);
@@ -700,57 +851,95 @@ window.viewResident = async function(id) {
             console.error('Error fetching resident:', error);
         }
     }
-    
-    if (resident) {
-        currentEditId = id;
-        
-        const fullName = `${resident.last_name}, ${resident.first_name} ${resident.middle_name ? resident.middle_name.charAt(0) + '.' : ''}`;
-        
-        document.getElementById('viewFullName').textContent = fullName;
-        document.getElementById('viewPurok').textContent = resident.purok || '—';
-        document.getElementById('viewFirstName').textContent = resident.first_name || '—';
-        document.getElementById('viewMiddleName').textContent = resident.middle_name || '—';
-        document.getElementById('viewLastName').textContent = resident.last_name || '—';
-        document.getElementById('viewGender').textContent = resident.gender || '—';
-        document.getElementById('viewAge').textContent = `${resident.age || calculateAgeFromBirthDate(resident.birth_date)} years old`;
-        document.getElementById('viewPurokDetail').textContent = resident.purok || '—';
-        document.getElementById('viewVoterStatus').textContent = resident.voter_status || 'Not Registered';
-        document.getElementById('viewResidentStatus').textContent = resident.resident_status || 'Active';
-        document.getElementById('viewSuffix').textContent = resident.suffix || '—';
-        document.getElementById('viewBirthDate').textContent = resident.birth_date ? new Date(resident.birth_date).toLocaleDateString() : '—';
-        document.getElementById('viewBirthPlace').textContent = resident.place_of_birth || '—';
-        document.getElementById('viewCivilStatus').textContent = resident.civil_status || '—';
-        document.getElementById('viewOccupation').textContent = resident.occupation || '—';
-        document.getElementById('viewNationality').textContent = resident.nationality || 'Filipino';
-        document.getElementById('viewHouseNo').textContent = resident.house_no || '—';
-        document.getElementById('viewStreet').textContent = resident.street_name || '—';
-        document.getElementById('viewMobile').textContent = resident.mobile_number || '—';
-        document.getElementById('viewEmail').textContent = resident.email || '—';
-        document.getElementById('viewEmergencyPerson').textContent = resident.emergency_person || '—';
-        document.getElementById('viewEmergencyRelation').textContent = resident.emergency_relation || '—';
-        document.getElementById('viewEmergencyContact').textContent = resident.emergency_contact || '—';
-        
-        const statusBadge = document.getElementById('viewStatusBadge');
-        const status = resident.resident_status || 'Active';
-        statusBadge.textContent = `${status} Resident`;
-        statusBadge.className = `status-badge-large ${status.toLowerCase()}`;
-        
-        showViewResidentView();
-    }
-};
 
-window.editResident = function(id) {
-    showEditConfirmModal(id);
-};
-
-window.showArchiveModal = function(id) {
-    let resident = residentsData.find(r => r.id === id);
-    
     if (!resident) {
-        // Try to find in all loaded data or fetch
-        resident = { id: id, first_name: 'Unknown', last_name: 'Resident' };
+        if (fullNameEl) fullNameEl.textContent = 'Resident not found';
+        showNotification('Unable to load this resident. Please try again.', 'error');
+        return;
     }
-    
+
+    currentEditId = id;
+
+    const fullName = `${resident.last_name}, ${resident.first_name} ${resident.middle_name ? resident.middle_name.charAt(0) + '.' : ''}`;
+    const addressSummary = [resident.purok, resident.street_name].filter(Boolean).join(' • ') || '—';
+
+    if (fullNameEl) fullNameEl.textContent = fullName;
+    document.getElementById('viewPurok').textContent = addressSummary;
+    document.getElementById('viewResidentId').textContent = resident.resident_id || '—';
+    document.getElementById('viewFirstName').textContent = resident.first_name || '—';
+    document.getElementById('viewMiddleName').textContent = resident.middle_name || '—';
+    document.getElementById('viewLastName').textContent = resident.last_name || '—';
+    document.getElementById('viewGender').textContent = resident.gender || '—';
+    document.getElementById('viewAge').textContent = formatResidentAge(resident);
+    document.getElementById('viewPurokDetail').textContent = resident.purok || '—';
+    document.getElementById('viewVoterStatus').textContent = resident.voter_status || 'Not Registered';
+    document.getElementById('viewResidentStatus').textContent = resident.resident_status || 'Active';
+    document.getElementById('viewSuffix').textContent = resident.suffix || '—';
+    document.getElementById('viewBirthDate').textContent = resident.birth_date ? new Date(resident.birth_date).toLocaleDateString() : '—';
+    document.getElementById('viewBirthPlace').textContent = resident.place_of_birth || '—';
+    document.getElementById('viewCivilStatus').textContent = resident.civil_status || '—';
+    document.getElementById('viewOccupation').textContent = resident.occupation || '—';
+    document.getElementById('viewNationality').textContent = resident.nationality || 'Filipino';
+    document.getElementById('viewHouseNo').textContent = resident.house_no || '—';
+    document.getElementById('viewStreet').textContent = resident.street_name || '—';
+    document.getElementById('viewMobile').textContent = resident.mobile_number || '—';
+    document.getElementById('viewEmail').textContent = resident.email || '—';
+    document.getElementById('viewEmergencyPerson').textContent = resident.emergency_person || '—';
+    document.getElementById('viewEmergencyRelation').textContent = resident.emergency_relation || '—';
+    document.getElementById('viewEmergencyContact').textContent = resident.emergency_contact || '—';
+
+    renderViewResidentAvatar(resident);
+
+    const statusBadge = document.getElementById('viewStatusBadge');
+    const status = resident.resident_status || 'Active';
+    statusBadge.textContent = `${status} Resident`;
+    statusBadge.className = `status-badge-large ${status.toLowerCase()}`;
+
+    if (editBtn) editBtn.disabled = false;
+};
+
+window.editResident = async function(id) {
+    // The row's onclick handler passes a number while the API returns the id as
+    // a string, so compare as text. A resident on another page is fetched from
+    // the same endpoint the editor itself uses.
+    let resident = residentsData.find(r => String(r.id) === String(id));
+
+    if (!resident && !isOfflineMode) {
+        try {
+            const result = await apiCall(`residents.php?id=${id}`);
+            if (result && result.id) resident = result;
+        } catch (error) {
+            console.error('Error fetching resident for edit:', error);
+        }
+    }
+
+    if (!resident) {
+        showNotification('Unable to load this resident. Please try again.', 'error');
+        return;
+    }
+
+    showEditConfirmModal(id, resident);
+};
+
+window.showArchiveModal = async function(id) {
+    // Same id rule as editResident(): compare as text, and fetch the record
+    // when it is not on the loaded page so the dialog names the right resident.
+    let resident = residentsData.find(r => String(r.id) === String(id));
+
+    if (!resident && !isOfflineMode) {
+        try {
+            const result = await apiCall(`residents.php?id=${id}`);
+            if (result && result.id) resident = result;
+        } catch (error) {
+            console.error('Error fetching resident:', error);
+        }
+    }
+
+    if (!resident) {
+        showNotification('Unable to load this resident. Please try again.', 'error');
+        return;
+    }
+
     if (resident) {
         currentArchiveId = id;
         
@@ -1274,15 +1463,40 @@ function setupFormEventListeners() {
     if (chooseFileBtn && photoUpload) {
         const newChooseFileBtn = chooseFileBtn.cloneNode(true);
         chooseFileBtn.parentNode.replaceChild(newChooseFileBtn, chooseFileBtn);
-        newChooseFileBtn.addEventListener('click', () => photoUpload.click());
-        
+
         const newPhotoUpload = photoUpload.cloneNode(true);
         photoUpload.parentNode.replaceChild(newPhotoUpload, photoUpload);
+
+        // The button has to open the input that is actually in the DOM. photoUpload
+        // is detached by the replaceChild above, and clicking a detached file
+        // input never opens the picker.
+        newChooseFileBtn.addEventListener('click', () => newPhotoUpload.click());
+
         newPhotoUpload.addEventListener('change', function(e) {
             const fileNameSpan = document.getElementById('fileName');
-            if (this.files && this.files[0] && fileNameSpan) {
-                fileNameSpan.textContent = this.files[0].name;
+            const file = this.files && this.files[0];
+
+            if (!file) {
+                newResidentPhotoBase64 = null;
+                if (fileNameSpan) fileNameSpan.textContent = 'No file chosen';
+                renderNewResidentPhotoPreview(null);
+                return;
             }
+
+            readResidentPhoto(file).then(function (dataUrl) {
+                if (!dataUrl) {
+                    // Rejected: clear the control so an invalid file cannot be submitted.
+                    newResidentPhotoBase64 = null;
+                    e.target.value = '';
+                    if (fileNameSpan) fileNameSpan.textContent = 'No file chosen';
+                    renderNewResidentPhotoPreview(null);
+                    return;
+                }
+
+                if (fileNameSpan) fileNameSpan.textContent = file.name;
+                newResidentPhotoBase64 = dataUrl;
+                renderNewResidentPhotoPreview(dataUrl);
+            });
         });
     }
     
@@ -1291,8 +1505,104 @@ function setupFormEventListeners() {
     if (replacePhotoBtn && editPhotoUpload) {
         const newReplaceBtn = replacePhotoBtn.cloneNode(true);
         replacePhotoBtn.parentNode.replaceChild(newReplaceBtn, replacePhotoBtn);
-        newReplaceBtn.addEventListener('click', () => editPhotoUpload.click());
+
+        // The file input is a sibling of the button. Re-bind it so an inline
+        // handler added elsewhere cannot be lost when the markup is re-rendered.
+        const newEditPhotoUpload = editPhotoUpload.cloneNode(true);
+        editPhotoUpload.parentNode.replaceChild(newEditPhotoUpload, editPhotoUpload);
+
+        // Open the input that is actually in the DOM, not the detached original.
+        newReplaceBtn.addEventListener('click', () => newEditPhotoUpload.click());
+
+        newEditPhotoUpload.addEventListener('change', function (e) {
+            const file = this.files && this.files[0];
+
+            if (!file) {
+                editResidentPhotoBase64 = null;
+                renderEditResidentPhotoPreview(null);
+                return;
+            }
+
+            readResidentPhoto(file).then(function (dataUrl) {
+                if (!dataUrl) {
+                    // Rejected: clear the control so an invalid file cannot be submitted.
+                    editResidentPhotoBase64 = null;
+                    e.target.value = '';
+                    renderEditResidentPhotoPreview(null);
+                    return;
+                }
+
+                editResidentPhotoBase64 = dataUrl;
+                renderEditResidentPhotoPreview(dataUrl);
+            });
+        });
     }
+
+    // Phone fields: digits only, capped at 11, applied as the user types.
+    ['mobile', 'emergencyContact', 'editMobile', 'editEmergencyContact'].forEach(function (fieldId) {
+        const field = document.getElementById(fieldId);
+        if (!field) return;
+
+        const newField = field.cloneNode(true);
+        field.parentNode.replaceChild(newField, field);
+
+        newField.addEventListener('input', function () {
+            const sanitised = sanitizePhoneNumber(this.value);
+            if (sanitised !== this.value) {
+                this.value = sanitised;
+            }
+        });
+
+        newField.addEventListener('paste', function (e) {
+            const pasted = (e.clipboardData || window.clipboardData).getData('text');
+            const sanitised = sanitizePhoneNumber(pasted);
+            if (sanitised !== pasted) {
+                e.preventDefault();
+                const start = this.selectionStart || 0;
+                this.value = sanitizePhoneNumber(this.value.slice(0, start) + sanitised + this.value.slice(this.selectionEnd || start));
+            }
+        });
+    });
+}
+
+/**
+ * Show the chosen photo inside the Register form placeholder.
+ */
+function renderNewResidentPhotoPreview(dataUrl) {
+    const placeholder = document.getElementById('photoPlaceholder');
+    if (!placeholder) return;
+
+    if (!dataUrl) {
+        placeholder.innerHTML = '\n' +
+            '            <svg width="24" height="24" viewBox="0 0 24 24" fill="none">\n' +
+            '                <path d="M4 4H20V20H4V4Z" stroke="#5F7385" stroke-width="2"/>\n' +
+            '                <circle cx="12" cy="12" r="3" stroke="#5F7385" stroke-width="2"/>\n' +
+            '                <path d="M16 8L18 10" stroke="#5F7385" stroke-width="2" stroke-linecap="round"/>\n' +
+            '            </svg>\n' +
+            '            <span>Upload Photo</span>\n';
+        return;
+    }
+
+    placeholder.innerHTML = '<img src="' + dataUrl + '" alt="Resident photo preview" ' +
+        'style="width:100%;height:100%;object-fit:cover;border-radius:6px;">';
+}
+
+/**
+ * Show the chosen (or stored) photo as the avatar on the Edit Resident form.
+ * Passing null restores the placeholder image.
+ */
+function renderEditResidentPhotoPreview(dataUrl) {
+    const avatar = document.getElementById('editAvatar');
+    if (!avatar) return;
+
+    if (!dataUrl) {
+        // Local asset: the system runs on localhost only, so an external
+        // placeholder service would render as a broken image when offline.
+        avatar.src = DEFAULT_RESIDENT_AVATAR;
+        return;
+    }
+
+    avatar.src = dataUrl;
 }
 
 function setupModalEventListeners() {

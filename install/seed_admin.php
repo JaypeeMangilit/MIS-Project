@@ -21,7 +21,7 @@ if (!$conn) {
 echo "Connected: " . currentDbDriver() . " / " . DB_NAME . "\n\n";
 
 $username = 'admin';
-$password = 'admin123';
+$password = 'admin1234';
 
 $existing = getRecord(
     "SELECT id, username, role, status, password FROM system_users WHERE username = ?",
@@ -40,7 +40,7 @@ $countRow = getRecord("SELECT COUNT(*) AS n FROM system_users", []);
 $next = (int) ($countRow['n'] ?? 0) + 1;
 $userId = 'USR-' . str_pad((string) $next, 4, '0', STR_PAD_LEFT);
 
-$hash = hash_password($password);
+$storedPassword = store_password($password);
 
 $sql = "INSERT INTO system_users
             (user_id, first_name, middle_name, last_name, suffix, username, password,
@@ -54,7 +54,7 @@ $params = [
     'Admin',
     '',
     $username,
-    $hash,
+    $storedPassword,
     'admin@barangay.local',
     '',
     'Administrator',

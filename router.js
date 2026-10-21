@@ -19,7 +19,7 @@ const modules = {
     residents: {
         title: 'Residents Management',
         breadcrumb: 'Barangay Information System / Residents',
-        file: 'modules/residents.html',
+        file: 'modules/resisdents.html',
         initFunction: 'initResidentsModule',
         jsFile: 'modules/residents.js'
     },
