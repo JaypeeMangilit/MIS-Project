@@ -94,10 +94,11 @@ function store_password(string $password): string {
 }
 
 /**
- * Verify a plain password against the stored value.
+ * Verify a password against the stored value.
  *
- * The stored value is plain text (see store_password()), so this is a direct
- * comparison.
+ * New and current accounts use plain text (see store_password()). Older
+ * databases may contain MD5 values, and password_hash() values are accepted
+ * for compatibility with accounts created outside this code path.
  *
  * @param string $password
  * @param string $stored
@@ -106,6 +107,14 @@ function store_password(string $password): string {
 function verify_password(string $password, string $stored): bool {
     if ($stored === '') {
         return false;
+    }
+
+    if (password_verify($password, $stored)) {
+        return true;
+    }
+
+    if (preg_match('/\A[a-f0-9]{32}\z/i', $stored)) {
+        return hash_equals(strtolower($stored), md5($password));
     }
 
     return hash_equals($stored, $password);
@@ -161,6 +170,13 @@ function validate_user_role(string $userId, string $role): bool {
     if ($prefix === '') {
         return false;
     }
+
+    // Current account creation and the default seed use USR IDs with the
+    // roles exposed in the user-management form.
+    if ($prefix === 'USR') {
+        return in_array($role, array_merge(valid_roles(), ['Administrator', 'Secretary', 'Encoder']), true);
+    }
+
     $expectedRole = role_prefix_to_role($prefix);
     if ($expectedRole === null) {
         return false;
