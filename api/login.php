@@ -21,20 +21,6 @@ if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
     exit;
 }
 
-// --- Basic brute force protection -------------------------------------------
-$ipKey = 'login_attempts_' . md5($_SERVER['REMOTE_ADDR'] ?? 'unknown');
-$attempts = (int) ($_SESSION[$ipKey]['count'] ?? 0);
-$lastAttempt = (int) ($_SESSION[$ipKey]['time'] ?? 0);
-
-if ($attempts >= 10 && (time() - $lastAttempt) < 900) {
-    http_response_code(429);
-    echo json_encode([
-        'success' => false,
-        'message' => 'Too many attempts. Please try again in 15 minutes.',
-    ]);
-    exit;
-}
-
 $raw = file_get_contents('php://input');
 $data = json_decode($raw, true);
 
@@ -58,11 +44,6 @@ $sql = "SELECT * FROM system_users WHERE (username = ? OR email = ?) AND status 
 $user = getRecord($sql, [$username, $username], 'ss');
 
 if (!$user || !verify_password($password, (string) $user['password'])) {
-    $_SESSION[$ipKey] = [
-        'count' => $attempts + 1,
-        'time'  => time(),
-    ];
-
     http_response_code(401);
     echo json_encode(['success' => false, 'message' => 'Invalid username or password']);
     exit;
@@ -73,11 +54,6 @@ $userId = (string) ($user['user_id'] ?? '');
 $role = (string) ($user['role'] ?? '');
 
 if (!validate_user_role($userId, $role)) {
-    $_SESSION[$ipKey] = [
-        'count' => $attempts + 1,
-        'time'  => time(),
-    ];
-
     http_response_code(403);
     echo json_encode([
         'success' => false,
@@ -110,9 +86,6 @@ $logSql = "INSERT INTO user_activity_log (user_id, activity_type, activity_descr
            VALUES (?, 'Login', 'User logged in successfully', ?)";
 $ip = $_SERVER['REMOTE_ADDR'] ?? 'unknown';
 insertRecord($logSql, [$user['id'], $ip], 'is');
-
-// Clear the failed-attempt counter for this client.
-unset($_SESSION[$ipKey]);
 
 echo json_encode([
     'success' => true,
