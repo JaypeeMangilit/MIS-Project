@@ -967,6 +967,693 @@
 }
 
 /* ============================================
+   EDIT RESIDENT PAGE
+
+   Styled to match the Register New Resident form: same tokens (6px radius,
+   #D6E2EA borders, 42px inputs, Inter, 3-column grid, identical buttons).
+   The markup is unchanged — these class names simply had no rules at all,
+   which is why every field and button stacked unstyled down the left edge.
+   ============================================ */
+.edit-resident-container {
+    width: 100%;
+    padding: 28px;
+    box-sizing: border-box;
+}
+
+/* Header: back link + title on the left, Cancel / Save Changes on the right */
+.edit-page-header {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 20px;
+    margin-bottom: 24px;
+}
+
+.edit-title-header h1 {
+    font-size: 24px;
+    font-weight: 700;
+    color: #16324A;
+    margin-bottom: 6px;
+    line-height: 1.25;
+}
+
+.edit-title-header p {
+    font-size: 14px;
+    font-weight: 400;
+    color: #5F7385;
+    margin: 0;
+}
+
+.edit-actions {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    flex-shrink: 0;
+}
+
+.btn-cancel-edit,
+.btn-save-edit {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    padding: 10px 20px;
+    border-radius: 6px;
+    font-size: 14px;
+    font-weight: 600;
+    font-family: 'Inter', sans-serif;
+    cursor: pointer;
+    transition: all 0.2s ease;
+}
+
+.btn-cancel-edit {
+    background: white;
+    border: 1px solid #D6E2EA;
+    color: #16324A;
+}
+
+.btn-cancel-edit:hover {
+    background: #F4F8FB;
+}
+
+.btn-save-edit {
+    background: #0F6CBD;
+    border: 1px solid #0F6CBD;
+    color: white;
+}
+
+.btn-save-edit:hover {
+    background: #0c5d9e;
+    border-color: #0c5d9e;
+}
+
+.btn-save-edit:disabled {
+    opacity: 0.6;
+    cursor: not-allowed;
+}
+
+.btn-save-edit svg {
+    width: 16px;
+    height: 16px;
+}
+
+/* Photo summary card — same card treatment and 108px photo box as the
+   Register form's upload section. */
+.profile-summary-card {
+    background: white;
+    border: 1px solid #D6E2EA;
+    border-radius: 6px;
+    padding: 28px;
+    box-sizing: border-box;
+    margin-bottom: 24px;
+}
+
+.profile-summary-content {
+    display: flex;
+    align-items: flex-start;
+    gap: 20px;
+}
+
+.profile-summary-avatar {
+    width: 108px;
+    height: 108px;
+    flex-shrink: 0;
+    border: 1px solid #D6E2EA;
+    border-radius: 6px;
+    background: #F8FAFB;
+    overflow: hidden;
+}
+
+.profile-summary-avatar img {
+    display: block;
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+}
+
+.profile-summary-info {
+    flex: 1;
+    min-width: 0;
+    padding-top: 4px;
+}
+
+.profile-summary-info h3 {
+    font-size: 18px;
+    font-weight: 600;
+    color: #16324A;
+    margin: 0 0 10px 0;
+    line-height: 1.3;
+}
+
+.profile-tags {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    margin-bottom: 16px;
+}
+
+.profile-tags .tag {
+    display: inline-flex;
+    align-items: center;
+    padding: 3px 10px;
+    background: #E6F0FF;
+    border-radius: 999px;
+    font-size: 12px;
+    font-weight: 600;
+    color: #0F6CBD;
+}
+
+.btn-replace-photo {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    padding: 9px 16px;
+    background: white;
+    border: 1px solid #D6E2EA;
+    border-radius: 6px;
+    font-size: 13px;
+    font-weight: 600;
+    color: #16324A;
+    font-family: 'Inter', sans-serif;
+    cursor: pointer;
+    transition: all 0.2s ease;
+}
+
+.btn-replace-photo:hover {
+    background: #F4F8FB;
+    border-color: #B8C9D8;
+}
+
+/* Form card and sections */
+.edit-form-container {
+    background: white;
+    border: 1px solid #D6E2EA;
+    border-radius: 6px;
+    padding: 28px;
+    box-sizing: border-box;
+}
+
+.edit-form-section {
+    margin-bottom: 26px;
+}
+
+.edit-form-section:last-of-type {
+    margin-bottom: 0;
+}
+
+.edit-section-header {
+    padding-bottom: 12px;
+    margin-bottom: 20px;
+    border-bottom: 1px solid #D6E2EA;
+}
+
+.edit-section-header h3 {
+    font-size: 16px;
+    font-weight: 600;
+    color: #16324A;
+    margin: 0;
+}
+
+.edit-section-header span {
+    display: block;
+    margin-top: 4px;
+    font-size: 12px;
+    font-weight: 400;
+    color: #5F7385;
+}
+
+.edit-form-grid {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 18px 20px;
+}
+
+/* Contact Information (the 3rd section) holds two fields, matching the
+   Register form's two-column contact row, so they must not stretch over
+   three columns. */
+.edit-form-section:nth-of-type(3) .edit-form-grid {
+    grid-template-columns: repeat(2, 1fr);
+}
+
+.edit-form-group {
+    display: flex;
+    flex-direction: column;
+    min-width: 0;
+}
+
+.edit-form-group label {
+    font-size: 13px;
+    font-weight: 500;
+    color: #16324A;
+    margin-bottom: 7px;
+    line-height: 1.3;
+}
+
+.edit-form-group input,
+.edit-form-group select {
+    width: 100%;
+    height: 42px;
+    padding: 0 12px;
+    background: white;
+    border: 1px solid #D6E2EA;
+    border-radius: 6px;
+    font-size: 14px;
+    font-weight: 400;
+    color: #16324A;
+    font-family: 'Inter', sans-serif;
+    box-sizing: border-box;
+    transition: border-color 0.2s ease, box-shadow 0.2s ease;
+    appearance: none;
+}
+
+.edit-form-group input::placeholder {
+    color: #9AAAB8;
+}
+
+.edit-form-group input:focus,
+.edit-form-group select:focus {
+    outline: none;
+    border-color: #0F6CBD;
+    box-shadow: 0 0 0 3px rgba(15, 108, 189, 0.1);
+}
+
+.edit-form-group input[readonly] {
+    background: #F4F8FB;
+    color: #5F7385;
+}
+
+/* Custom dropdown arrow, identical to the Register form's selects */
+.edit-form-group select {
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 12 12'%3E%3Cpath d='M2 4L6 8L10 4' stroke='%235F7385' stroke-width='1.5' fill='none' stroke-linecap='round'/%3E%3C/svg%3E");
+    background-repeat: no-repeat;
+    background-position: right 12px center;
+    padding-right: 34px;
+    cursor: pointer;
+}
+
+/* ============================================
+   EDIT RESIDENT PAGE - Responsive
+   ============================================ */
+@media (max-width: 1024px) {
+    .edit-form-grid,
+    .edit-form-section:nth-of-type(3) .edit-form-grid {
+        grid-template-columns: repeat(2, 1fr);
+    }
+}
+
+@media (max-width: 768px) {
+    .edit-resident-container {
+        padding: 20px;
+    }
+
+    .profile-summary-card,
+    .edit-form-container {
+        padding: 20px;
+    }
+
+    .edit-page-header {
+        flex-direction: column;
+    }
+
+    .edit-actions {
+        width: 100%;
+    }
+
+    .btn-cancel-edit,
+    .btn-save-edit {
+        flex: 1;
+    }
+
+    .edit-form-grid,
+    .edit-form-section:nth-of-type(3) .edit-form-grid {
+        grid-template-columns: 1fr;
+    }
+
+    .profile-summary-content {
+        flex-direction: column;
+        align-items: center;
+        text-align: center;
+    }
+
+    .profile-tags {
+        justify-content: center;
+    }
+}
+
+@media (max-width: 480px) {
+    .edit-resident-container {
+        padding: 16px;
+    }
+
+    .profile-summary-card,
+    .edit-form-container {
+        padding: 16px;
+    }
+
+    .edit-title-header h1 {
+        font-size: 20px;
+    }
+}
+
+/* ============================================
+   EXPORT RESIDENTS VIEW
+
+   This view's markup was copied from the blotter / reports export screens, but
+   none of its class names existed in this stylesheet, so the whole page rendered
+   unstyled down the left edge. The rules below are the same component styles
+   those modules already use (blotter.css .export-* / .filter-* / .config-*,
+   reports.css .history-table / .format-badge), with the card radius matched to
+   this module's 6px.
+   ============================================ */
+.export-residents-container {
+    width: 100%;
+    padding: 28px;
+    box-sizing: border-box;
+}
+
+.export-back-wrapper {
+    margin-bottom: 24px;
+}
+
+.export-header-section {
+    margin-bottom: 24px;
+}
+
+.export-title-section h1 {
+    color: #16324A;
+    font-size: 24px;
+    font-weight: 700;
+    margin-bottom: 4px;
+    line-height: 1.25;
+}
+
+.export-title-section p {
+    color: #5F7385;
+    font-size: 14px;
+    margin: 0;
+}
+
+/* Configuration card */
+.export-config-card {
+    background: white;
+    border: 1px solid #D6E2EA;
+    border-radius: 6px;
+    overflow: hidden;
+    margin-bottom: 24px;
+}
+
+.config-header {
+    padding: 20px 24px;
+    border-bottom: 1px solid #D6E2EA;
+}
+
+.config-header h3 {
+    color: #16324A;
+    font-size: 16px;
+    font-weight: 600;
+    margin: 0;
+}
+
+.config-body {
+    padding: 24px;
+}
+
+.filter-section {
+    margin-bottom: 32px;
+}
+
+.filter-label {
+    color: #16324A;
+    font-size: 14px;
+    font-weight: 600;
+    margin-bottom: 16px;
+}
+
+/* Four filters: Purok, Resident Status, Voter Status, Age Range */
+.filter-row {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 16px;
+}
+
+.filter-group label {
+    display: block;
+    color: #5F7385;
+    font-size: 13px;
+    font-weight: 500;
+    margin-bottom: 6px;
+}
+
+.filter-select-wrapper {
+    position: relative;
+}
+
+.export-filter-select {
+    width: 100%;
+    height: 40px;
+    padding: 0 34px 0 12px;
+    background: #F4F8FB;
+    border: 1px solid #D6E2EA;
+    border-radius: 6px;
+    font-size: 14px;
+    color: #16324A;
+    font-family: 'Inter', sans-serif;
+    box-sizing: border-box;
+    appearance: none;
+    cursor: pointer;
+    transition: border-color 0.2s ease, box-shadow 0.2s ease;
+}
+
+.export-filter-select:focus {
+    outline: none;
+    border-color: #0F6CBD;
+    box-shadow: 0 0 0 3px rgba(15, 108, 189, 0.1);
+}
+
+.select-arrow {
+    position: absolute;
+    right: 12px;
+    top: 50%;
+    transform: translateY(-50%);
+    color: #5F7385;
+    font-size: 10px;
+    pointer-events: none;
+}
+
+/* Format picker + generate button, separated like the form action bar */
+.export-format-section {
+    display: flex;
+    align-items: flex-end;
+    justify-content: space-between;
+    gap: 20px;
+    padding-top: 24px;
+    border-top: 1px solid #D6E2EA;
+}
+
+.format-options {
+    padding-top: 8px;
+}
+
+.format-option {
+    display: flex;
+    align-items: center;
+    cursor: pointer;
+}
+
+.format-option input {
+    width: 18px;
+    height: 18px;
+    margin-right: 8px;
+    accent-color: #0F6CBD;
+}
+
+.format-badge {
+    color: #C94A4A;
+    font-size: 14px;
+    font-weight: 500;
+}
+
+.btn-generate-export {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    height: 40px;
+    padding: 0 18px;
+    background: #0F6CBD;
+    border: 1px solid #0F6CBD;
+    border-radius: 6px;
+    color: white;
+    font-size: 14px;
+    font-weight: 600;
+    font-family: 'Inter', sans-serif;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    white-space: nowrap;
+}
+
+.btn-generate-export:hover {
+    background: #0a5699;
+    border-color: #0a5699;
+}
+
+.btn-generate-export:disabled {
+    opacity: 0.6;
+    cursor: not-allowed;
+}
+
+/* Recent exports card */
+.recent-exports-card {
+    background: white;
+    border: 1px solid #D6E2EA;
+    border-radius: 6px;
+    overflow: hidden;
+}
+
+.recent-header {
+    padding: 20px 24px;
+    border-bottom: 1px solid #D6E2EA;
+}
+
+.recent-header h3 {
+    color: #16324A;
+    font-size: 16px;
+    font-weight: 600;
+    margin: 0;
+}
+
+.recent-table-wrapper {
+    overflow-x: auto;
+}
+
+.recent-exports-table {
+    width: 100%;
+    border-collapse: collapse;
+}
+
+.recent-exports-table th {
+    text-align: left;
+    padding: 14px 20px;
+    background: #EEF3F7;
+    color: #5F7385;
+    font-size: 13px;
+    font-weight: 600;
+    border-bottom: 1px solid #D6E2EA;
+    white-space: nowrap;
+}
+
+.recent-exports-table td {
+    padding: 14px 20px;
+    border-bottom: 1px solid #D6E2EA;
+    color: #16324A;
+    font-size: 13px;
+    vertical-align: middle;
+}
+
+.recent-exports-table tbody tr:last-child td {
+    border-bottom: none;
+}
+
+.recent-exports-table tbody tr:hover {
+    background: #F8FAFB;
+}
+
+/* "No exports yet" row rendered by loadRecentExports() */
+.recent-exports-table td[colspan] {
+    color: #5F7385;
+}
+
+.format-badge-small {
+    display: inline-block;
+    padding: 4px 8px;
+    border-radius: 4px;
+    font-size: 11px;
+    font-weight: 600;
+    text-transform: uppercase;
+    color: white;
+    background: #5F7385;
+}
+
+.format-badge-small.pdf {
+    background: #C94A4A;
+}
+
+.format-badge-small.csv,
+.format-badge-small.excel {
+    background: #1F8F5F;
+}
+
+.download-again-btn {
+    display: inline-flex;
+    align-items: center;
+    padding: 8px 12px;
+    background: white;
+    border: 1px solid #D6E2EA;
+    border-radius: 6px;
+    font-size: 12px;
+    font-weight: 500;
+    color: #16324A;
+    font-family: 'Inter', sans-serif;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    /* The Action column is narrow enough to wrap "Download Again" onto two lines. */
+    white-space: nowrap;
+}
+
+.download-again-btn:hover {
+    background: #F4F8FB;
+}
+
+/* ============================================
+   EXPORT RESIDENTS VIEW - Responsive
+   ============================================ */
+@media (max-width: 1024px) {
+    .filter-row {
+        grid-template-columns: repeat(2, 1fr);
+    }
+}
+
+@media (max-width: 768px) {
+    .export-residents-container {
+        padding: 20px;
+    }
+
+    .config-header,
+    .config-body,
+    .recent-header {
+        padding: 18px 20px;
+    }
+
+    .filter-row {
+        grid-template-columns: 1fr;
+    }
+
+    .export-format-section {
+        flex-direction: column;
+        align-items: stretch;
+    }
+
+    .btn-generate-export {
+        justify-content: center;
+        width: 100%;
+    }
+
+    .recent-exports-table th,
+    .recent-exports-table td {
+        padding: 12px 14px;
+    }
+}
+
+@media (max-width: 480px) {
+    .export-residents-container {
+        padding: 16px;
+    }
+
+    .export-title-section h1 {
+        font-size: 20px;
+    }
+}
+
+/* ============================================
    VIEW RESIDENT PAGE
    ============================================ */
 .view-resident-container {
@@ -1254,5 +1941,338 @@
         flex-direction: column;
         align-items: flex-start;
         gap: 14px;
+    }
+}
+
+/* ============================================================
+   Dialog (modal) styles for the Residents module.
+
+   Both dialogs are opened from modules/resisdents.js by toggling the
+   .active class (#archiveModal via window.showArchiveModal(), and
+   #editConfirmModal via window.editResident() -> showEditConfirmModal(),
+   which also sets an inline display:flex).
+
+   The overlay therefore has to be hidden by default and shown when
+   .active is present. #editConfirmModal ships with a .hidden class in the
+   markup, so the hidden rule is scoped to :not(.active) rather than using
+   the "display: none !important" utility found in certificates.css — that
+   utility would keep the Edit dialog hidden even after .active is added,
+   because the module never removes the .hidden class.
+   ============================================================ */
+
+.modal-overlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: rgba(0, 0, 0, 0.5);
+    display: none;
+    align-items: center;
+    justify-content: center;
+    padding: 20px;
+    z-index: 1000;
+}
+
+.modal-overlay.active {
+    display: flex;
+}
+
+.modal-overlay.hidden:not(.active) {
+    display: none;
+}
+
+.modal-container {
+    background: #FFFFFF;
+    border-radius: 8px;
+    width: 90%;
+    max-width: 500px;
+    max-height: 90vh;
+    overflow-y: auto;
+    box-shadow: 0 12px 32px rgba(22, 50, 74, 0.25);
+}
+
+/* ---------- Archive confirmation dialog ---------- */
+
+.modal-content {
+    padding: 24px;
+    text-align: center;
+}
+
+.modal-icon {
+    display: flex;
+    justify-content: center;
+    margin-bottom: 16px;
+}
+
+.icon-circle {
+    width: 48px;
+    height: 48px;
+    border-radius: 50%;
+    background: #FDECEC;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.modal-title {
+    font-size: 18px;
+    font-weight: 600;
+    color: #16324A;
+    margin-bottom: 8px;
+}
+
+.modal-message {
+    font-size: 14px;
+    line-height: 1.5;
+    color: #5F7385;
+    margin-bottom: 20px;
+}
+
+.resident-info-card {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 12px 16px;
+    border: 1px solid #D6E2EA;
+    border-radius: 8px;
+    background: #F4F8FB;
+    text-align: left;
+}
+
+.resident-info-card .resident-avatar {
+    width: 40px;
+    height: 40px;
+}
+
+.resident-info-card .resident-details {
+    flex: 1;
+    min-width: 0;
+}
+
+.resident-info-card .resident-name {
+    font-size: 14px;
+    font-weight: 600;
+    color: #16324A;
+}
+
+.resident-detail {
+    font-size: 12px;
+    color: #5F7385;
+    margin-top: 2px;
+}
+
+.resident-info-card .resident-status {
+    font-size: 12px;
+    font-weight: 600;
+    color: #FFFFFF;
+    background: #1F8F5F;
+    border-radius: 12px;
+    padding: 4px 10px;
+    white-space: nowrap;
+}
+
+.info-note {
+    display: flex;
+    align-items: flex-start;
+    gap: 8px;
+    margin-top: 16px;
+    padding: 12px;
+    background: #F4F8FB;
+    border-radius: 6px;
+    text-align: left;
+}
+
+.info-note svg {
+    flex-shrink: 0;
+    margin-top: 1px;
+}
+
+.note-text {
+    font-size: 12px;
+    line-height: 1.5;
+    color: #5F7385;
+}
+
+.modal-actions {
+    display: flex;
+    justify-content: flex-end;
+    gap: 10px;
+    margin-top: 20px;
+}
+
+.btn-cancel-modal,
+.btn-archive {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 10px 18px;
+    border-radius: 6px;
+    font-size: 14px;
+    font-weight: 600;
+    font-family: inherit;
+    cursor: pointer;
+}
+
+.btn-cancel-modal {
+    background: #FFFFFF;
+    border: 1px solid #D6E2EA;
+    color: #5F7385;
+}
+
+.btn-cancel-modal:hover {
+    background: #F4F8FB;
+}
+
+.btn-archive {
+    background: #C94A4A;
+    border: 1px solid #C94A4A;
+    color: #FFFFFF;
+}
+
+.btn-archive:hover {
+    background: #B03F3F;
+    border-color: #B03F3F;
+}
+
+/* ---------- Edit confirmation dialog ---------- */
+
+.edit-confirm-modal {
+    max-width: 460px;
+}
+
+.edit-confirm-content {
+    padding: 24px 24px 16px;
+}
+
+.edit-confirm-header {
+    display: flex;
+    align-items: flex-start;
+    gap: 12px;
+}
+
+.edit-confirm-icon {
+    width: 44px;
+    height: 44px;
+    border-radius: 50%;
+    background: #E6F0FF;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+}
+
+.edit-confirm-title-section {
+    min-width: 0;
+}
+
+.edit-confirm-title {
+    font-size: 18px;
+    font-weight: 600;
+    color: #16324A;
+    margin-bottom: 4px;
+}
+
+.edit-confirm-message {
+    font-size: 13px;
+    line-height: 1.5;
+    color: #5F7385;
+}
+
+.edit-confirm-info {
+    margin-top: 16px;
+    padding: 12px 16px;
+    background: #F4F8FB;
+    border: 1px solid #D6E2EA;
+    border-radius: 8px;
+}
+
+.edit-confirm-info .info-row {
+    display: flex;
+    align-items: baseline;
+    gap: 10px;
+}
+
+.edit-confirm-info .info-row + .info-row {
+    margin-top: 8px;
+}
+
+.edit-confirm-info .info-label {
+    width: 70px;
+    flex-shrink: 0;
+    font-size: 12px;
+    font-weight: 600;
+    color: #5F7385;
+    text-transform: uppercase;
+    letter-spacing: 0.03em;
+}
+
+.edit-confirm-info .info-value {
+    font-size: 14px;
+    font-weight: 600;
+    color: #16324A;
+}
+
+.edit-confirm-info .info-action {
+    font-size: 13px;
+    color: #5F7385;
+}
+
+.edit-confirm-footer {
+    display: flex;
+    justify-content: flex-end;
+    gap: 10px;
+    padding: 16px 24px 24px;
+    border-top: 1px solid #D6E2EA;
+}
+
+.btn-edit-cancel,
+.btn-edit-confirm {
+    padding: 10px 18px;
+    border-radius: 6px;
+    font-size: 14px;
+    font-weight: 600;
+    font-family: inherit;
+    cursor: pointer;
+}
+
+.btn-edit-cancel {
+    background: #FFFFFF;
+    border: 1px solid #D6E2EA;
+    color: #5F7385;
+}
+
+.btn-edit-cancel:hover {
+    background: #F4F8FB;
+}
+
+.btn-edit-confirm {
+    background: #0F6CBD;
+    border: 1px solid #0F6CBD;
+    color: #FFFFFF;
+}
+
+.btn-edit-confirm:hover {
+    background: #0B5697;
+    border-color: #0B5697;
+}
+
+@media (max-width: 640px) {
+    .modal-container {
+        width: 100%;
+        max-width: none;
+    }
+
+    .modal-actions,
+    .edit-confirm-footer {
+        flex-direction: column-reverse;
+    }
+
+    .btn-cancel-modal,
+    .btn-archive,
+    .btn-edit-cancel,
+    .btn-edit-confirm {
+        width: 100%;
+        justify-content: center;
     }
 }

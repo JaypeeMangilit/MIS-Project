@@ -405,6 +405,22 @@ switch($method) {
             break;
         }
 
+        // The UPDATE below cannot tell "no such resident" from "nothing changed":
+        // PDO_ODBC reports 0 affected rows when the submitted values are identical
+        // to the stored ones, which is a legitimate success. Confirm the record
+        // exists first so a missing resident gets an accurate error instead of a
+        // false "Resident updated successfully".
+        $existingResident = getRecord("SELECT id FROM residents WHERE id = ?", [$data['id']], 'i');
+        if (!$existingResident) {
+            echo json_encode([
+                'success' => false,
+                'affected' => 0,
+                'message' => 'Resident not found',
+                'data' => null
+            ]);
+            break;
+        }
+
         // Server-side validation of the phone fields. The frontend already
         // restricts these, but the API must not rely on that alone.
         $mobileNumber = isset($data['mobile_number']) ? preg_replace('/\D/', '', (string) $data['mobile_number']) : '';
@@ -495,7 +511,11 @@ switch($method) {
         break;
         
     case 'DELETE':
-        // Archive resident (soft delete - move to archived_residents table)
+        // Archive resident: copy the row into archived_residents, then remove it
+        // from residents. Both halves run in one transaction, and the row is only
+        // removed once the copy has actually landed — previously the insert's
+        // result was never checked and the resident was deleted even when the
+        // copy failed, which is how records went missing.
         $id = isset($_GET['id']) ? $_GET['id'] : null;
         
         if (!$id) {
@@ -506,25 +526,73 @@ switch($method) {
         // First, get the resident data
         $resident = getRecord("SELECT * FROM residents WHERE id = ?", [$id], 'i');
         
-        if($resident) {
-            // Insert into archived_residents
-            $insertSql = "INSERT INTO archived_residents SELECT * FROM residents WHERE id = ?";
-            $inserted = insertRecord($insertSql, [$id], 'i');
-            
-            // Delete from residents
-            $deleteSql = "DELETE FROM residents WHERE id = ?";
-            $deleted = executeStatement($deleteSql, [$id], 'i');
-            
-            echo json_encode([
-                'success' => $deleted !== false,
-                'message' => $deleted !== false ? 'Resident archived successfully' : 'Archive failed'
-            ]);
-        } else {
+        if (!$resident) {
             echo json_encode([
                 'success' => false,
                 'message' => 'Resident not found'
             ]);
+            break;
         }
+        
+        // "INSERT INTO archived_residents SELECT * FROM residents WHERE id = ?"
+        // cannot work against SQL Server: archived_residents.id is an IDENTITY
+        // column, so writing the original id needs an explicit column list plus
+        // IDENTITY_INSERT (otherwise error 8101), and with the bound parameter the
+        // ODBC driver fails even earlier with "Operand type clash: text is
+        // incompatible with int" (206/529). The column list is read from the
+        // residents table so it cannot drift out of sync with the schema, and the
+        // original id is preserved so an archived row still maps 1:1 to the record
+        // it came from.
+        $columns = [];
+        foreach (getRecords(
+            "SELECT c.name AS col FROM sys.columns c WHERE c.object_id = OBJECT_ID('residents') ORDER BY c.column_id"
+        ) as $column) {
+            $columns[] = $column['col'];
+        }
+        
+        if (!$columns) {
+            echo json_encode(['success' => false, 'message' => 'Unable to read the residents table columns']);
+            break;
+        }
+        
+        $columnList = implode(', ', $columns);
+        $conn = getConnection();
+        $archived = 0;
+        $error = null;
+        
+        try {
+            $conn->beginTransaction();
+            
+            $conn->exec("SET IDENTITY_INSERT archived_residents ON");
+            try {
+                $insert = $conn->prepare(
+                    "INSERT INTO archived_residents ($columnList) SELECT $columnList FROM residents WHERE id = ?"
+                );
+                $insert->execute([$id]);
+                
+                $delete = $conn->prepare("DELETE FROM residents WHERE id = ?");
+                $delete->execute([$id]);
+                $archived = $delete->rowCount();
+            } finally {
+                $conn->exec("SET IDENTITY_INSERT archived_residents OFF");
+            }
+            
+            $conn->commit();
+        } catch (PDOException $e) {
+            if ($conn->inTransaction()) {
+                $conn->rollBack();
+            }
+            error_log('Archive error: ' . $e->getMessage());
+            $error = $e->getMessage();
+        }
+        
+        echo json_encode([
+            'success' => $error === null && $archived > 0,
+            'affected' => $archived,
+            'message' => $error !== null
+                ? 'Archive failed: ' . $error
+                : ($archived > 0 ? 'Resident archived successfully' : 'Resident could not be archived')
+        ]);
         break;
         
     default:

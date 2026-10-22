@@ -540,6 +540,32 @@ function sanitizePhoneNumber(value) {
 }
 
 /**
+ * Required fields shared by Register New Resident and Edit Resident.
+ *
+ * Registration is the reference implementation, so the list is kept in one
+ * place: before this, an edit that blanked a required field was saved even
+ * though the same input is refused at registration.
+ *
+ * Declared as a function rather than a top-level const on purpose: sidebar.js
+ * re-appends this file every time the module is opened, and an extra
+ * top-level lexical binding only adds to the "already been declared" failure
+ * that already affects this file's top-level let/const declarations.
+ *
+ * @param {Object} formData
+ * @returns {string[]} Names of the required fields that are empty.
+ */
+function missingResidentRequiredFields(formData) {
+    var required = [
+        'first_name', 'last_name', 'birth_date', 'gender', 'civil_status',
+        'purok', 'street_name', 'house_no', 'mobile_number'
+    ];
+
+    return required.filter(function (field) {
+        return !formData[field];
+    });
+}
+
+/**
  * Read the chosen photo as a base64 data URL after validating type and size.
  * Returns null when the file is not a supported image or exceeds 2MB.
  */
@@ -601,9 +627,7 @@ async function saveNewResident() {
         photo_base64: newResidentPhotoBase64 || ''
     };
 
-    if (!formData.first_name || !formData.last_name || !formData.birth_date || !formData.gender ||
-        !formData.civil_status || !formData.purok || !formData.street_name ||
-        !formData.house_no || !formData.mobile_number) {
+    if (missingResidentRequiredFields(formData).length > 0) {
         showNotification('Please fill in all required fields marked with *', 'error');
         return;
     }
@@ -677,6 +701,13 @@ async function saveEditResident() {
         resident_status: document.getElementById('editResidentStatus')?.value || 'Active'
     };
 
+    // Same required-field rule as Register New Resident: an edit must not be
+    // able to blank a field that registration insists on.
+    if (missingResidentRequiredFields(formData).length > 0) {
+        showNotification('Please fill in all required fields marked with *', 'error');
+        return;
+    }
+
     // Phone numbers must be exactly 11 digits; the emergency number is optional.
     if (!/^\d{11}$/.test(mobileNumber)) {
         showNotification('Mobile Number must be exactly 11 digits (numbers only).', 'error');
@@ -702,7 +733,11 @@ async function saveEditResident() {
             await loadResidentStatistics();
             showResidentsListView();
         } else {
-            showNotification('Failed to update resident. Please try again.', 'error');
+            // Surface the API's own message (e.g. "Resident not found") instead
+            // of hiding every failure behind one generic sentence.
+            showNotification((result && typeof result.message === 'string' && result.message)
+                ? result.message
+                : 'Failed to update resident. Please try again.', 'error');
         }
     } catch (error) {
         console.error('Error updating resident:', error);
@@ -728,7 +763,11 @@ async function confirmArchive() {
                     await loadResidentsTable();
                     await loadResidentStatistics();
                 } else {
-                    showNotification('Failed to archive resident. Please try again.', 'error');
+                    // Surface the API's own message (e.g. the SQL error behind a
+                    // failed archive) instead of hiding every failure.
+                    showNotification((result && typeof result.message === 'string' && result.message)
+                        ? result.message
+                        : 'Failed to archive resident. Please try again.', 'error');
                 }
             } catch (error) {
                 console.error('Error archiving resident:', error);
@@ -1028,12 +1067,12 @@ function loadRecentExports() {
             <td>${exp.filters}</div>
             <td>${exp.records}</div>
             <td><span class="format-badge-small ${exp.format}">${exp.format.toUpperCase()}</span></div>
-            <td><button class="download-again-btn" onclick="window.downloadExportAgain(${exp.id})">Download Again</button></div>
+            <td><button class="download-again-btn" onclick="window.downloadExportAgain(${exp.id}, this)">Download Again</button></div>
         </tr>
     `).join('');
 }
 
-function saveExportRecord(fileName, filters, records, format) {
+function saveExportRecord(fileName, filters, records, format, params) {
     const exports = JSON.parse(localStorage.getItem('residentExports') || '[]');
     const now = new Date();
     const newExport = {
@@ -1043,12 +1082,85 @@ function saveExportRecord(fileName, filters, records, format) {
         fileName: fileName,
         filters: filters,
         records: records,
-        format: format
+        format: format,
+        // Filter values, so "Download Again" can rebuild the same record set.
+        params: params || parseExportFilters(filters)
     };
     exports.unshift(newExport);
     if (exports.length > 10) exports.pop();
     localStorage.setItem('residentExports', JSON.stringify(exports));
     loadRecentExports();
+}
+
+/**
+ * Read filter values back out of an export's display text.
+ *
+ * Records written before the filter values were stored only carry the text
+ * ("Purok: Purok 2 | Status: Active"), so "Download Again" parses it back into
+ * values. The format is fixed and produced by generateExport().
+ *
+ * @param {string} filterText
+ * @returns {{purok: string, status: string, voterStatus: string, ageRange: string}}
+ */
+function parseExportFilters(filterText) {
+    const filters = { purok: '', status: '', voterStatus: '', ageRange: '' };
+
+    if (!filterText || filterText === 'All Residents') {
+        return filters;
+    }
+
+    filterText.split('|').forEach((part) => {
+        const match = part.trim().match(/^(Purok|Status|Voter|Age):\s*(.+)$/);
+
+        if (!match) {
+            return;
+        }
+
+        const value = match[2].trim();
+
+        if (match[1] === 'Purok') filters.purok = value;
+        else if (match[1] === 'Status') filters.status = value;
+        else if (match[1] === 'Voter') filters.voterStatus = value;
+        else filters.ageRange = value;
+    });
+
+    return filters;
+}
+
+/**
+ * Fetch the residents an export covers: same query and same client-side age
+ * range rule as the original export, so a re-run returns the same records.
+ *
+ * @param {{purok?: string, status?: string, voterStatus?: string, ageRange?: string}} filters
+ * @returns {Promise<Array>}
+ */
+async function fetchExportResidents(filters) {
+    const params = new URLSearchParams({
+        limit: 10000,
+        purok: filters.purok || '',
+        status: filters.status || ''
+    });
+
+    if (filters.voterStatus) {
+        params.append('voterStatus', filters.voterStatus);
+    }
+
+    const result = await apiCall(`residents.php?${params.toString()}`);
+    let residents = (result && result.data) ? result.data : [];
+
+    // Apply age range filter client-side (since API doesn't support age ranges)
+    if (filters.ageRange) {
+        residents = residents.filter((r) => {
+            const age = r.age || calculateAgeFromBirthDate(r.birth_date);
+
+            if (filters.ageRange === '0-17') return age >= 0 && age <= 17;
+            if (filters.ageRange === '18-59') return age >= 18 && age <= 59;
+            if (filters.ageRange === '60+') return age >= 60;
+            return true;
+        });
+    }
+
+    return residents;
 }
 
 async function generateExport() {
@@ -1067,22 +1179,7 @@ async function generateExport() {
     
     try {
         // Fetch all matching residents from the database
-        const params = new URLSearchParams({ limit: 10000, purok, status });
-        if (voterStatus) params.append('voterStatus', voterStatus);
-        
-        const result = await apiCall(`residents.php?${params.toString()}`);
-        let residents = (result && result.data) ? result.data : [];
-        
-        // Apply age range filter client-side (since API doesn't support age ranges)
-        if (ageRange) {
-            residents = residents.filter(r => {
-                const age = r.age || calculateAgeFromBirthDate(r.birth_date);
-                if (ageRange === '0-17') return age >= 0 && age <= 17;
-                if (ageRange === '18-59') return age >= 18 && age <= 59;
-                if (ageRange === '60+') return age >= 60;
-                return true;
-            });
-        }
+        const residents = await fetchExportResidents({ purok, status, voterStatus, ageRange });
         
         if (residents.length === 0) {
             alert('No residents found matching the selected filters.');
@@ -1102,14 +1199,14 @@ async function generateExport() {
         const fileName = `Residents_Export_${timestamp}`;
         
         if (format === 'pdf') {
-            exportToPDF(residents, fileName);
+            exportToPDF(residents, fileName, filterText);
         } else if (format === 'excel') {
             exportToExcel(residents, fileName);
         } else if (format === 'csv') {
             exportToCSV(residents, fileName);
         }
         
-        saveExportRecord(fileName, filterText, residents.length, format);
+        saveExportRecord(fileName, filterText, residents.length, format, { purok, status, voterStatus, ageRange });
     } catch (error) {
         console.error('Error generating export:', error);
         alert('Failed to generate export. Please try again.');
@@ -1191,84 +1288,408 @@ function exportToExcel(residents, fileName) {
     alert(`Exported ${residents.length} residents to Excel successfully!`);
 }
 
-function exportToPDF(residents, fileName) {
+function exportToPDF(residents, fileName, filterText) {
     const printWindow = window.open('', '_blank');
-    
+
+    if (!printWindow) {
+        alert('Please allow pop-ups for this page so the masterlist can be printed.');
+        return;
+    }
+
     const now = new Date();
     const dateGenerated = now.toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' });
     const timeGenerated = now.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' });
-    
-    const purokFilter = document.getElementById('exportPurokFilter')?.value || 'All';
-    const statusFilter = document.getElementById('exportStatusFilter')?.value || 'All';
-    const purokDisplay = purokFilter === 'All' ? 'All' : purokFilter.split(' - ')[0];
-    const statusDisplay = statusFilter === 'All' ? 'All' : statusFilter;
-    
-    let html = `
-        <!DOCTYPE html>
-        <html>
-        <head><title>${fileName}</title><meta charset="UTF-8">
-        <style>
-            *{margin:0;padding:0;box-sizing:border-box;}
-            body{font-family:'Arial',sans-serif;padding:40px;background:white;font-size:12px;}
-            .header{text-align:center;margin-bottom:30px;border-bottom:2px solid #16324A;padding-bottom:20px;}
-            .header h1{color:#16324A;font-size:22px;margin-bottom:8px;text-transform:uppercase;}
-            .header h2{color:#5F7385;font-size:16px;font-weight:normal;}
-            .info-section{margin-bottom:25px;padding:15px;background:#F4F8FB;border-radius:5px;}
-            .info-row{margin-bottom:8px;}
-            .info-label{font-weight:bold;color:#16324A;width:120px;display:inline-block;}
-            .info-value{color:#333;}
-            .filters-applied{margin-top:10px;padding-top:10px;border-top:1px solid #D6E2EA;}
-            .filters-title{font-weight:bold;color:#16324A;margin-bottom:5px;}
-            table{width:100%;border-collapse:collapse;margin-top:20px;font-size:11px;}
-            th{background:#0F6CBD;color:white;padding:10px 8px;text-align:left;font-weight:bold;border:1px solid #0F6CBD;}
-            td{padding:8px;border:1px solid #D6E2EA;color:#16324A;}
-            .footer{margin-top:30px;padding-top:20px;border-top:1px solid #D6E2EA;font-size:11px;color:#666;}
-            .signatures{margin-top:40px;display:flex;justify-content:space-between;}
-            .signature-line{text-align:center;width:45%;}
-            .signature-name{font-weight:bold;margin-top:40px;padding-top:10px;border-top:1px solid #333;display:inline-block;width:200px;}
-            .signature-title{font-size:11px;color:#666;margin-top:5px;}
-            .page-number{text-align:center;font-size:10px;color:#999;margin-top:20px;}
-            @media print{body{padding:20px;}th{-webkit-print-color-adjust:exact;print-color-adjust:exact;}}
-        </style>
-        </head>
-        <body>
-            <div class="header"><h1>MASTERLIST OF RESIDENTS</h1><h2>Barangay 49 Akasya, Cavite City</h2></div>
-            <div class="info-section">
-                <div class="info-row"><span class="info-label">Date Generated:</span><span class="info-value">${dateGenerated}, ${timeGenerated}</span></div>
-                <div class="info-row"><span class="info-label">Generated By:</span><span class="info-value">System Administrator (Barangay Secretary)</span></div>
-                <div class="filters-applied"><div class="filters-title">Filters Applied:</div>
-                <div class="info-row"><span class="info-label">Purok:</span><span class="info-value">${purokDisplay}</span><span class="info-label" style="margin-left:20px;">Status:</span><span class="info-value">${statusDisplay}</span></div></div>
-            </div>
-            <table><thead><tr><th>NO.</th><th>FULL NAME</th><th>AGE</th><th>GENDER</th><th>PUROK / ADDRESS</th><th>CONTACT NO.</th><th>VOTER STATUS</th></tr></thead><tbody>
-    `;
-    
-    residents.forEach((r, index) => {
+
+    // Applied filters: reuse the text generateExport() already built so the printed
+    // report and the Recent Exports entry can never disagree.
+    let filtersDisplay = (typeof filterText === 'string' && filterText.trim()) ? filterText.trim() : '';
+
+    if (!filtersDisplay) {
+        const purokFilter = document.getElementById('exportPurokFilter')?.value || '';
+        const statusFilter = document.getElementById('exportStatusFilter')?.value || '';
+        const voterFilter = document.getElementById('exportVoterFilter')?.value || '';
+        const ageFilter = document.getElementById('exportAgeFilter')?.value || '';
+        const parts = [];
+
+        if (purokFilter) parts.push(`Purok: ${purokFilter.split(' - ')[0]}`);
+        if (statusFilter) parts.push(`Status: ${statusFilter}`);
+        if (voterFilter) parts.push(`Voter: ${voterFilter}`);
+        if (ageFilter) parts.push(`Age: ${ageFilter}`);
+
+        filtersDisplay = parts.length ? parts.join(' | ') : 'All Residents';
+    }
+
+    // Name of the signed-in user, from the existing session endpoint (js/session.js).
+    const sessionUser = (window.Session && window.Session.user) || null;
+    const generatedBy = sessionUser
+        ? `${sessionUser.name || sessionUser.username || 'User'}${sessionUser.role ? ` (${sessionUser.role})` : ''}`
+        : 'System Administrator (Barangay Secretary)';
+
+    // The barangay seal lives in the project's Images folder; resolve it absolutely
+    // because the print window is a blank document.
+    const logoUrl = new URL('Images/Brgy.png', window.location.href).href;
+
+    // Row values are built exactly as before (same fields, same fallbacks) so the
+    // printed records keep matching the database and the rest of the module.
+    const rows = residents.map((r, index) => {
         const fullName = `${r.last_name || ''}, ${r.first_name || ''} ${r.middle_name ? r.middle_name.charAt(0) + '.' : ''}`.trim();
         const address = `${r.purok || ''}, ${r.street_name || ''} ${r.house_no ? 'Blk ' + r.house_no : ''}`.trim();
-        const contactNo = r.mobile_number || '—';
-        const voterStatus = r.voter_status || 'Not Registered';
-        
-        html += `<tr>
-            <td>${index + 1}</div>
-            <td>${escapeHtml(fullName)}</div>
-            <td>${r.age || '—'}</div>
-            <td>${r.gender || '—'}</div>
-            <td>${escapeHtml(address)}</div>
-            <td>${escapeHtml(contactNo)}</div>
-            <td>${voterStatus}</div>
-        </tr>`;
+
+        return {
+            no: index + 1,
+            name: escapeHtml(fullName),
+            age: escapeHtml(String(r.age || '—')),
+            gender: escapeHtml(r.gender || '—'),
+            address: escapeHtml(address),
+            contact: escapeHtml(r.mobile_number || '—'),
+            voter: escapeHtml(r.voter_status || 'Not Registered')
+        };
     });
-    
-    html += `</tbody></table><div class="footer"><div class="signatures"><div class="signature-line"><div class="signature-name">JUAN DELA CRUZ</div><div class="signature-title">Barangay Secretary</div></div><div class="signature-line"><div class="signature-name">HON. ROBERTO SANTOS</div><div class="signature-title">Punong Barangay</div></div></div><div class="page-number">Page 1 of 1</div></div></body></html>`;
-    
-    printWindow.document.write(html);
+
+    const styles = `
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        @page { size: A4 portrait; margin: 12mm; }
+        body { font-family: Arial, Helvetica, sans-serif; color: #000; background: #fff; font-size: 11px; }
+        .page { width: 180mm; margin: 0 auto; page-break-after: always; break-after: page; }
+        .page:last-child { page-break-after: auto; break-after: auto; }
+
+        /* ---- Barangay letterhead ---- */
+        .letterhead { display: flex; align-items: center; gap: 5mm; }
+        .letterhead img.seal { width: 22mm; height: 22mm; object-fit: contain; flex: 0 0 22mm; }
+        .letterhead-text { flex: 1; text-align: center; line-height: 1.35; }
+        .letterhead-text .line { font-size: 11px; }
+        .letterhead-text .barangay { font-size: 15px; font-weight: bold; letter-spacing: 0.5px; margin: 1mm 0; }
+        .letterhead-rule { border-top: 2px solid #000; margin-top: 3mm; }
+
+        /* ---- Report title ---- */
+        .report-title { text-align: center; font-size: 14px; font-weight: bold; text-decoration: underline;
+                        text-transform: uppercase; letter-spacing: 1px; margin: 5mm 0 3mm 0; }
+
+        /* ---- Generated date / user / applied filters ---- */
+        .report-meta { display: flex; justify-content: space-between; align-items: flex-start; gap: 6mm;
+                       font-size: 10px; margin-bottom: 3mm; }
+        .report-meta .row { margin-bottom: 1mm; }
+        .report-meta .meta-right { text-align: right; max-width: 55%; }
+        .meta-label { font-weight: bold; }
+
+        /* ---- Residents table ---- */
+        table.masterlist { width: 100%; border-collapse: collapse; table-layout: fixed; }
+        table.masterlist th, table.masterlist td { border: 1px solid #000; padding: 3px 4px; font-size: 10px;
+                                                   vertical-align: middle; }
+        table.masterlist th { background: #E9EDF1; font-weight: bold; text-align: center;
+                              text-transform: uppercase; font-size: 9.5px; }
+        table.masterlist thead { display: table-header-group; }
+        table.masterlist tr { page-break-inside: avoid; break-inside: avoid; }
+        td.c-no { text-align: center; }
+        td.c-age { text-align: center; }
+        td.c-gender { text-align: center; }
+        td.c-voter { text-align: center; }
+        td.c-contact { white-space: nowrap; }
+        td.c-name, td.c-address { overflow-wrap: anywhere; word-wrap: break-word; }
+
+        /* ---- Signatures and page number ---- */
+        .signatures { display: flex; justify-content: space-between; gap: 10mm; margin-top: 10mm;
+                      page-break-inside: avoid; break-inside: avoid; }
+        .signature-block { width: 45%; text-align: center; }
+        .signature-space { height: 12mm; }
+        .signature-name { border-top: 1px solid #000; padding-top: 1mm; font-weight: bold;
+                          text-transform: uppercase; font-size: 11px; }
+        .signature-title { font-size: 10px; margin-top: 1mm; }
+        .page-number { text-align: right; font-size: 9.5px; margin-top: 5mm; }
+    `;
+
+    const letterhead = `
+        <div class="letterhead">
+            <img class="seal" src="${logoUrl}" alt="Barangay 49 Akasya seal">
+            <div class="letterhead-text">
+                <div class="line">Republic of the Philippines</div>
+                <div class="line">Province of Cavite</div>
+                <div class="line">City of Cavite</div>
+                <div class="barangay">BARANGAY 49 AKASYA</div>
+                <div class="line">Office of the Punong Barangay</div>
+            </div>
+        </div>
+        <div class="letterhead-rule"></div>
+    `;
+
+    const reportTitle = `<h1 class="report-title">Masterlist of Residents</h1>`;
+
+    const metaBlock = `
+        <div class="report-meta">
+            <div class="meta-left">
+                <div class="row"><span class="meta-label">Date Generated:</span> ${dateGenerated}, ${timeGenerated}</div>
+                <div class="row"><span class="meta-label">Generated By:</span> ${escapeHtml(generatedBy)}</div>
+            </div>
+            <div class="meta-right">
+                <div class="row"><span class="meta-label">Filters Applied:</span> ${escapeHtml(filtersDisplay)}</div>
+            </div>
+        </div>
+    `;
+
+    const columnGroup = `
+        <colgroup>
+            <col style="width: 6%">
+            <col style="width: 24%">
+            <col style="width: 6%">
+            <col style="width: 10%">
+            <col style="width: 28%">
+            <col style="width: 13%">
+            <col style="width: 13%">
+        </colgroup>
+    `;
+
+    const tableHead = `
+        <thead>
+            <tr>
+                <th>No.</th>
+                <th>Full Name</th>
+                <th>Age</th>
+                <th>Gender</th>
+                <th>Purok / Address</th>
+                <th>Contact No.</th>
+                <th>Voter Status</th>
+            </tr>
+        </thead>
+    `;
+
+    const rowHtml = (row) => `
+            <tr>
+                <td class="c-no">${row.no}</td>
+                <td class="c-name">${row.name}</td>
+                <td class="c-age">${row.age}</td>
+                <td class="c-gender">${row.gender}</td>
+                <td class="c-address">${row.address}</td>
+                <td class="c-contact">${row.contact}</td>
+                <td class="c-voter">${row.voter}</td>
+            </tr>`;
+
+    const signatures = `
+        <div class="signatures">
+            <div class="signature-block">
+                <div class="signature-space"></div>
+                <div class="signature-name">JUAN DELA CRUZ</div>
+                <div class="signature-title">Barangay Secretary</div>
+            </div>
+            <div class="signature-block">
+                <div class="signature-space"></div>
+                <div class="signature-name">HON. ROBERTO SANTOS</div>
+                <div class="signature-title">Punong Barangay</div>
+            </div>
+        </div>
+    `;
+
+    const pageFooter = (pageNumber, totalPages) => `<div class="page-number">Page ${pageNumber} of ${totalPages}</div>`;
+
+    const buildDocument = (bodyHtml) => `
+        <!DOCTYPE html>
+        <html>
+        <head><title>${escapeHtml(fileName)}</title><meta charset="UTF-8">
+        <style>${styles}</style>
+        </head>
+        <body>${bodyHtml}</body>
+        </html>
+    `;
+
+    const mmToPx = (mm) => mm * (96 / 25.4);
+    const PAGE_CAPACITY = mmToPx(268) * 0.97; // A4 height minus 2 x 12mm margins, with slack
+
+    const waitFor = (predicate, timeoutMs) => new Promise((resolve) => {
+        const started = Date.now();
+
+        const tick = () => {
+            let done = false;
+
+            try {
+                done = !!predicate();
+            } catch (error) {
+                done = false;
+            }
+
+            if (done || Date.now() - started > timeoutMs) {
+                resolve(done);
+                return;
+            }
+
+            setTimeout(tick, 50);
+        };
+
+        tick();
+    });
+
+    // Pass 2: the rows have been measured, so they can be packed into whole pages.
+    const renderPages = () => {
+        const doc = printWindow.document;
+
+        const heightOf = (selector) => {
+            const el = doc.querySelector(selector);
+            return el ? el.getBoundingClientRect().height : 0;
+        };
+
+        // Everything a page carries besides its data rows. Reserved on every page so
+        // all pages share one capacity and the signature block always has room.
+        const fixedHeight = heightOf('.letterhead')
+            + heightOf('.letterhead-rule')
+            + heightOf('.report-title')
+            + heightOf('.report-meta')
+            + heightOf('.masterlist thead tr')
+            + heightOf('.signatures')
+            + heightOf('.page-number');
+
+        const rowHeights = Array.prototype.map.call(
+            doc.querySelectorAll('.masterlist tbody tr'),
+            (tr) => tr.getBoundingClientRect().height
+        );
+
+        const pages = [];
+        let cursor = 0;
+
+        do {
+            let used = 0;
+            const pageRows = [];
+
+            while (cursor < rowHeights.length) {
+                const rowHeight = rowHeights[cursor];
+
+                // At least one row per page, and never overflow the capacity.
+                if (pageRows.length && used + rowHeight > PAGE_CAPACITY - fixedHeight) {
+                    break;
+                }
+
+                pageRows.push(rows[cursor]);
+                used += rowHeight;
+                cursor += 1;
+            }
+
+            pages.push(pageRows);
+        } while (cursor < rowHeights.length);
+
+        const totalPages = pages.length;
+
+        const body = pages.map((pageRows, index) => `
+            <div class="page">
+                ${letterhead}
+                ${reportTitle}
+                ${index === 0 ? metaBlock : ''}
+                <table class="masterlist">
+                    ${columnGroup}
+                    ${tableHead}
+                    <tbody>${pageRows.map(rowHtml).join('')}</tbody>
+                </table>
+                ${index === totalPages - 1 ? signatures : ''}
+                ${pageFooter(index + 1, totalPages)}
+            </div>
+        `).join('');
+
+        doc.open();
+        doc.write(buildDocument(body));
+        doc.close();
+
+        // Print only once the seal has been fetched, or it would be missing on paper.
+        const seal = doc.querySelector('.letterhead img.seal');
+        const sealReady = (!seal || seal.complete)
+            ? Promise.resolve()
+            : new Promise((resolve) => {
+                seal.addEventListener('load', resolve);
+                seal.addEventListener('error', resolve);
+            });
+
+        sealReady.then(() => {
+            printWindow.focus();
+            printWindow.print();
+            alert(`Exported ${residents.length} residents to PDF successfully!`);
+        });
+    };
+
+    // Pass 1: render every row once, at the printed width, so real row heights can be
+    // measured (a name or address that wraps to two lines takes two lines of the page).
+    printWindow.document.open();
+    printWindow.document.write(buildDocument(`
+        <div class="page">
+            ${letterhead}
+            ${reportTitle}
+            ${metaBlock}
+            <table class="masterlist" id="measureTable">
+                ${columnGroup}
+                ${tableHead}
+                <tbody>${rows.map(rowHtml).join('')}</tbody>
+            </table>
+            ${signatures}
+            ${pageFooter(1, 1)}
+        </div>
+    `));
     printWindow.document.close();
-    printWindow.print();
-    alert(`Exported ${residents.length} residents to PDF successfully!`);
+
+    waitFor(() => {
+        const doc = printWindow.document;
+        const table = doc.getElementById('measureTable');
+
+        return doc.readyState === 'complete'
+            && !!table
+            && table.tBodies[0].rows.length === rows.length;
+    }, 4000).then((measured) => {
+        if (!measured) {
+            console.error('Masterlist print: the measuring pass did not complete, printing a single page.');
+        }
+
+        renderPages();
+    });
 }
 
-window.downloadExportAgain = function(id) {
-    alert('Download functionality: The original export file would be downloaded again.');
+/**
+ * Rebuild an export that is already in the Recent Exports list.
+ *
+ * The generated file is not stored (a PDF is produced through the print window,
+ * CSV/Excel through a Blob), so the export is recreated from the filter values
+ * saved with the record and handed to the same export function that produced it.
+ *
+ * @param {number|string} id Record id (the timestamp shown in the list).
+ * @param {HTMLElement} [button] The button that was clicked, for a busy state.
+ */
+window.downloadExportAgain = async function(id, button) {
+    const exports = JSON.parse(localStorage.getItem('residentExports') || '[]');
+    const record = exports.find((exp) => String(exp.id) === String(id));
+
+    if (!record) {
+        showNotification('That export is no longer in the list. Generate a new export instead.', 'error');
+        return;
+    }
+
+    const originalText = button ? button.textContent : null;
+
+    if (button) {
+        button.textContent = 'Preparing...';
+        button.disabled = true;
+    }
+
+    try {
+        const filters = record.params || parseExportFilters(record.filters);
+        const residents = await fetchExportResidents(filters);
+
+        if (!residents.length) {
+            showNotification('No residents match that export\'s filters any more.', 'error');
+            return;
+        }
+
+        const format = record.format || 'pdf';
+        const fileName = record.fileName || 'Residents_Export';
+        const filterText = record.filters || 'All Residents';
+
+        if (format === 'csv') {
+            exportToCSV(residents, fileName);
+        } else if (format === 'excel') {
+            exportToExcel(residents, fileName);
+        } else {
+            exportToPDF(residents, fileName, filterText);
+        }
+    } catch (error) {
+        console.error('Error preparing export again:', error);
+        showNotification('Failed to prepare the export again. Please try again.', 'error');
+    } finally {
+        if (button) {
+            button.textContent = originalText;
+            button.disabled = false;
+        }
+    }
 };
 
 // ============================================
