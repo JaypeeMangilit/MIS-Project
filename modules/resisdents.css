@@ -3,6 +3,22 @@
    Font: Inter | Design tokens match Blotter Cases
    ============================================ */
 
+/* Reset and Base Styles - same block as blotter.css / inventory.css / archives.css.
+   Without it the shared header (index.php's .dashboard-header, outside this module's
+   container) falls back to the browser's default serif font, and the h1 page title
+   keeps its default 13.4px margins, which pushed the breadcrumb off the top. */
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+}
+
+body {
+    font-family: 'Inter', sans-serif;
+    background: #F4F8FB;
+    overflow-x: hidden;
+}
+
 /* Page View System */
 .page-view {
     display: none;

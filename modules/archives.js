@@ -1,5 +1,40 @@
 // Archives Module
 // ============================================
+//
+// Wrapped in an IIFE on purpose: sidebar.js removes and re-appends this script on
+// every visit to the module, and a second execution of a top-level const/let throws
+// ("Identifier 'archivesData' has already been declared"), leaving the PREVIOUS
+// load's state serving a freshly injected DOM (wrong tab title, stale rows).
+// Nothing outside this file references its internals - the entry point and the
+// onclick handlers are assigned to window below.
+
+(function () {
+
+// ============================================
+// API HELPER
+// ============================================
+// Like every other module here, this file carries its own helper rather than
+// relying on js/api.js (that file is only loaded by login.php, and a second
+// top-level API_BASE_URL declaration would collide with the other modules).
+// A failed request returns {success:false} so it can never look like a save.
+const ARCHIVES_API_BASE = 'api/';
+
+async function apiCall(endpoint, method, data) {
+    const options = {
+        method: method || 'GET',
+        headers: { 'Content-Type': 'application/json' }
+    };
+    if (data) {
+        options.body = JSON.stringify(data);
+    }
+    try {
+        const response = await fetch(ARCHIVES_API_BASE + endpoint, options);
+        return await response.json();
+    } catch (error) {
+        console.error('Archives API error:', error);
+        return { success: false, message: 'Unable to reach the server. Please check your connection and try again.' };
+    }
+}
 
 // Mock Archives Data
 const archivesData = {
@@ -52,11 +87,12 @@ const columnConfig = {
         { key: "actions", label: "Actions", type: "actions" }
     ],
     certificates: [
-        { key: "certificateNo", label: "Certificate No.", type: "text" },
-        { key: "residentName", label: "Resident Name", type: "text" },
-        { key: "type", label: "Certificate Type", type: "text" },
-        { key: "archivedDate", label: "Archived Date", type: "date" },
-        { key: "archivedBy", label: "Archived By", type: "text" },
+        { key: "control_number", label: "Control No." },
+        { key: "resident_name", label: "Resident Name" },
+        { key: "certificate_type", label: "Certificate Type" },
+        { key: "date_issued", label: "Issued Date" },
+        { key: "archived_date", label: "Archived Date" },
+        { key: "archived_by", label: "Archived By" },
         { key: "actions", label: "Actions", type: "actions" }
     ],
     inventory: [
@@ -103,6 +139,30 @@ let currentCategory = "residents";
 let currentPage = 1;
 let rowsPerPage = 4;
 let searchTerm = "";
+
+// Certificates archive: real rows from archived_certificate_issuances, loaded from
+// api/certificates.php?archived=1. Every other category above still renders the
+// mock archivesData.
+let certificateArchive = { rows: [], total: 0, totalPages: 1, page: 1 };
+
+/** Escape a value before it goes into the table markup. */
+function escapeHtml(value) {
+    return String(value === null || value === undefined ? '' : value)
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;')
+        .replace(/'/g, '&#39;');
+}
+
+/** "2026-10-20" (or a stored datetime) -> "Oct 20, 2026". */
+function formatArchiveDate(value) {
+    const raw = String(value === null || value === undefined ? '' : value).trim();
+    if (!raw) return '—';
+    const date = new Date(raw.indexOf('T') !== -1 ? raw.replace(' ', 'T') : raw);
+    if (isNaN(date.getTime())) return escapeHtml(raw);
+    return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
+}
 
 // Initialize the module - Called by sidebar.js
 window.initArchives = function() {
@@ -160,6 +220,13 @@ function handleSearch(e) {
 }
 
 function loadArchivesTable() {
+    // Certificates are read from archived_certificate_issuances through the API;
+    // the other categories still render the mock archivesData above.
+    if (currentCategory === "certificates") {
+        loadCertificateArchive();
+        return;
+    }
+
     // Get data for current category
     let data = archivesData[currentCategory] || [];
     
@@ -197,6 +264,112 @@ function renderTableHeaders() {
     
     const columns = columnConfig[currentCategory] || [];
     thead.innerHTML = columns.map(col => `<th>${col.label}</th>`).join('');
+}
+
+// ============================================
+// CERTIFICATES ARCHIVE (database-backed)
+// ============================================
+
+/** Load the archived certificates from api/certificates.php?archived=1. */
+async function loadCertificateArchive() {
+    renderTableHeaders();
+
+    const tbody = document.getElementById('archivesTableBody');
+    const columns = columnConfig.certificates.length;
+
+    tbody.innerHTML = `<tr><td colspan="${columns}" class="text-cell" style="text-align: center; padding: 60px 20px; color: #5F7385;">Loading archived certificates…</td></tr>`;
+
+    const endpoint = 'certificates.php?archived=1&page=' + currentPage
+        + '&limit=' + rowsPerPage
+        + (searchTerm ? '&search=' + encodeURIComponent(searchTerm) : '');
+
+    const result = await apiCall(endpoint);
+
+    if (!result || !result.success) {
+        tbody.innerHTML = `<tr><td colspan="${columns}" class="text-cell" style="text-align: center; padding: 60px 20px; color: #5F7385;">${
+            escapeHtml((result && result.message) || 'The archived certificates could not be loaded.')
+        }</td></tr>`;
+        updatePaginationInfo(0, 0, 0);
+        renderPaginationControls(0);
+        return;
+    }
+
+    certificateArchive = {
+        rows: result.data || [],
+        total: result.total || 0,
+        totalPages: result.totalPages || 1,
+        page: result.page || 1,
+    };
+    currentPage = certificateArchive.page;
+
+    renderCertificateArchiveRows(certificateArchive.rows);
+    updatePaginationInfo((certificateArchive.page - 1) * rowsPerPage, certificateArchive.rows.length, certificateArchive.total);
+    renderPaginationControls(certificateArchive.totalPages);
+}
+
+/** Draw the archived certificate rows. */
+function renderCertificateArchiveRows(rows) {
+    const tbody = document.getElementById('archivesTableBody');
+    const columns = columnConfig.certificates.length;
+
+    if (!rows || rows.length === 0) {
+        tbody.innerHTML = `
+            <tr>
+                <td colspan="${columns}" style="text-align: center; padding: 60px 20px;">
+                    <div class="empty-state">
+                        <svg width="80" height="80" viewBox="0 0 80 80" fill="none">
+                            <rect x="25" y="25" width="30" height="30" rx="4" stroke="#D6E2EA" stroke-width="2"/>
+                            <path d="M40 35V45M35 40H45" stroke="#D6E2EA" stroke-width="2" stroke-linecap="round"/>
+                        </svg>
+                        <h4>No archived certificates found</h4>
+                        <p>Try adjusting your search or filter criteria.</p>
+                    </div>
+                </td>
+            </tr>
+        `;
+        return;
+    }
+
+    tbody.innerHTML = rows.map(renderCertificateArchiveRow).join('');
+}
+
+/** One archived certificate row. */
+function renderCertificateArchiveRow(item) {
+    const issued = item.date_issued ? formatArchiveDate(item.date_issued) : '—';
+
+    return `
+        <tr>
+            <td class="text-cell">${escapeHtml(item.control_number || '—')}</td>
+            <td class="text-cell">${escapeHtml(item.resident_name || '—')}</td>
+            <td class="text-cell">${escapeHtml(item.certificate_type || '—')}</td>
+            <td class="date-cell">${escapeHtml(issued)}</td>
+            <td class="date-cell">${escapeHtml(item.archived_date || '—')}</td>
+            <td class="text-cell">${escapeHtml(item.archived_by || '—')}</td>
+            <td>${certificateArchiveActions(item)}</td>
+        </tr>
+    `;
+}
+
+/** Restore / delete icons for an archived certificate. */
+function certificateArchiveActions(item) {
+    return `
+        <div class="action-buttons-archive">
+            <div class="action-icon-archive restore" onclick="window.restoreCertificateArchiveItem(${item.id})" title="Restore to Certificates">
+                <svg width="18" height="18" viewBox="0 0 18 18" fill="none">
+                    <path d="M3 5H15M3 5V15C3 16.5 4 17 5 17H13C14 17 15 16.5 15 15V5" stroke="#0F6CBD" stroke-width="1.5" stroke-linecap="round"/>
+                    <path d="M6 2H12" stroke="#0F6CBD" stroke-width="1.5" stroke-linecap="round"/>
+                    <rect x="7" y="8" width="4" height="6" stroke="#0F6CBD" stroke-width="1.5" rx="0.5"/>
+                </svg>
+            </div>
+            <div class="action-icon-archive delete" onclick="window.requestCertificateArchiveDelete(${item.id})" title="Permanently Delete">
+                <svg width="18" height="18" viewBox="0 0 18 18" fill="none">
+                    <path d="M3 5H15M3 5V15C3 16.5 4 17 5 17H13C14 17 15 16.5 15 15V5" stroke="#C94A4A" stroke-width="1.5" stroke-linecap="round"/>
+                    <path d="M6 2H12" stroke="#C94A4A" stroke-width="1.5" stroke-linecap="round"/>
+                    <path d="M7 8V13M11 8V13" stroke="#C94A4A" stroke-width="1.5" stroke-linecap="round"/>
+                </svg>
+            </div>
+        </div>
+    `;
 }
 
 function renderTableBody(data) {
@@ -349,6 +522,33 @@ window.changePage = function(page) {
     loadArchivesTable();
 };
 
+/** Move an archived certificate back into the Certificates module. */
+window.restoreCertificateArchiveItem = async function(id) {
+    if (!confirm('Restore this certificate back to the Certificates module?')) {
+        return;
+    }
+
+    const result = await apiCall('certificates.php', 'POST', { action: 'restore', id: id });
+
+    if (!result || !result.success) {
+        alert((result && result.message) || 'The certificate could not be restored.');
+        return;
+    }
+
+    alert(result.message || 'Certificate restored.');
+    loadArchivesTable();
+};
+
+/**
+ * Permanent deletion of an archived certificate is deliberately not wired up
+ * yet: it needs an endpoint that deletes rows from archived_certificate_issuances,
+ * which is a destructive change and needs approval first. Say so here rather than
+ * pretending the row disappeared.
+ */
+window.requestCertificateArchiveDelete = function(id) {
+    alert('Permanent deletion for certificate archives is not enabled yet. Only Restore is available.');
+};
+
 window.restoreArchiveItem = function(category, id) {
     if (confirm('Are you sure you want to restore this item? It will be moved back to the main module.')) {
         const item = archivesData[category].find(i => i.id === id);
@@ -363,6 +563,12 @@ window.restoreArchiveItem = function(category, id) {
 };
 
 window.permanentlyDeleteArchiveItem = function(category, id) {
+    // Certificates are real database rows - never let the mock data path handle them.
+    if (category === 'certificates') {
+        window.requestCertificateArchiveDelete(id);
+        return;
+    }
+
     if (confirm('WARNING: This action cannot be undone. Are you sure you want to permanently delete this archived item?')) {
         const item = archivesData[category].find(i => i.id === id);
         if (item) {
@@ -382,3 +588,5 @@ window.permanentlyDeleteArchiveItem = function(category, id) {
 };
 
 console.log('Archives Module loaded. Use initArchives() to initialize.');
+
+})();

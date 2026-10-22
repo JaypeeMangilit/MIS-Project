@@ -4,14 +4,13 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Barangay 49 Akasya - Certificates Management</title>
-    <link rel="stylesheet" href="modules/certificates.css?v=3">
+    <link rel="stylesheet" href="modules/certificates.css?v=7">
     <link rel="stylesheet" href="sidebar.css">
 </head>
 <body>
     <div class="certificates-container">
-        <div class="content-area" id="dynamicContent">
-            <!-- Certificates Module -->
-            <div id="certificatesModule" class="certificates-module">
+        <!-- Certificates Module -->
+        <div id="certificatesModule" class="certificates-module">
                 <!-- Left Panel - Issue New Certificate -->
                 <div class="issue-panel">
                     <div class="panel-card">
@@ -96,7 +95,7 @@
                                     <circle cx="6.5" cy="6.5" r="4.67" stroke="#5F7385" stroke-width="1.17"/>
                                     <line x1="10" y1="10" x2="12.5" y2="12.5" stroke="#5F7385" stroke-width="1.17" stroke-linecap="round"/>
                                 </svg>
-                                <input type="text" id="searchIssuances" placeholder="Search by name or type..." class="search-input-small" title="Search issuances" aria-label="Search issuances">
+                                <input type="text" id="searchIssuances" placeholder="Search by name, type or purpose..." class="search-input-small" title="Search issuances" aria-label="Search issuances">
                             </div>
                         </div>
                         <div class="table-wrapper">
@@ -201,9 +200,9 @@
                                         <input type="date" id="editDateIssuedField" class="edit-input" title="Date Issued" aria-label="Date Issued">
                                     </div>
                                     <div class="edit-form-group half">
-                                        <label for="editValidUntilField">Valid Until <span class="required">*</span></label>
+                                        <label for="editValidUntilField">Valid Until</label>
                                         <div class="date-picker-wrapper">
-                                            <input type="date" id="editValidUntilField" class="edit-input" title="Valid Until" aria-label="Valid Until">
+                                            <input type="date" id="editValidUntilField" class="edit-input" title="Valid Until (automatic: date issued + 6 months)" aria-label="Valid Until" readonly>
                                             <svg class="calendar-icon-small" width="14" height="14" viewBox="0 0 14 14" fill="none">
                                                 <rect x="1.75" y="2.33" width="10.5" height="10.5" rx="1.17" stroke="#5F7385" stroke-width="1.17"/>
                                                 <path d="M4.67 1.17V3.5M9.33 1.17V3.5" stroke="#5F7385" stroke-width="1.17" stroke-linecap="round"/>
@@ -214,11 +213,11 @@
                                 </div>
                                 <div class="edit-form-row">
                                     <div class="edit-form-group half">
-                                        <label for="editOrNumberField">OR Number <span class="required">*</span></label>
+                                        <label for="editOrNumberField">OR Number <span class="optional">(Optional)</span></label>
                                         <input type="text" id="editOrNumberField" class="edit-input" placeholder="OR-2023-0891" title="OR Number" aria-label="OR Number">
                                     </div>
                                     <div class="edit-form-group half">
-                                        <label for="editAmountField">Amount Paid (₱) <span class="required">*</span></label>
+                                        <label for="editAmountField">Amount Paid (₱)</label>
                                         <input type="number" id="editAmountField" class="edit-input" step="0.01" placeholder="0.00" title="Amount Paid" aria-label="Amount Paid">
                                     </div>
                                 </div>
@@ -253,7 +252,6 @@
                 </div>
             </div>
         </div>
-    </div>
 
     <!-- Edit Confirmation Modal -->
     <div id="editConfirmModal" class="modal-overlay hidden">

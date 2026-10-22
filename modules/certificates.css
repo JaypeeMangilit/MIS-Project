@@ -1,14 +1,36 @@
 /* Certificates Module Styles */
-.certificates-container {
-    display: flex;
-    min-height: 100vh;
-    width: 100%;
+/* NOTE: this file must not restyle `.content-area` - that class belongs to the
+   shared layout (sidebar.css / index.php#dynamicContent). The module's own
+   padding and background live on the views below. */
+/* Reset and Base Styles - same block as blotter.css / inventory.css / archives.css.
+   Without it the shared header (index.php's .dashboard-header, outside this module's
+   container) falls back to the browser's default serif font, and the h1 page title
+   keeps its default 13.4px margins, which pushed the breadcrumb off the top. */
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
 }
 
-.content-area {
-    flex: 1;
-    padding: 24px;
+body {
+    font-family: 'Inter', sans-serif;
     background: #F4F8FB;
+    overflow-x: hidden;
+}
+/* The application has no global box-sizing reset, so `width: 100%` combined with
+   horizontal padding pushed the form controls past their panel (they were being
+   clipped by .panel-card's overflow) and made the module 48px wider than its
+   container. Scoped here to this module's own markup. */
+.certificates-container,
+.certificates-container *,
+.modal-overlay,
+.modal-overlay * {
+    box-sizing: border-box;
+}
+
+.certificates-container {
+    display: block;
+    width: 100%;
 }
 
 /* Main Module Layout */
@@ -16,6 +38,9 @@
     display: flex;
     gap: 24px;
     width: 100%;
+    padding: 24px;
+    background: #F4F8FB;
+    align-items: flex-start;
 }
 
 /* Left Panel - Issue New Certificate */
@@ -35,6 +60,11 @@
 .panel-header {
     padding: 16px 20px;
     border-bottom: 1px solid #D6E2EA;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 12px;
 }
 
 .panel-header h3 {
@@ -245,6 +275,10 @@
 /* Right Panel - Recent Issuances */
 .issuances-panel {
     flex: 1;
+    /* min-width:0 lets the panel shrink below the table's min-content width, so
+       the table wrapper's horizontal scrollbar handles wide content instead of
+       pushing the whole page sideways. */
+    min-width: 0;
     background: white;
     border-radius: 8px;
     border: 1px solid #D6E2EA;
@@ -257,6 +291,7 @@
     height: 100%;
     display: flex;
     flex-direction: column;
+    min-width: 0;
 }
 
 .panel-header {
@@ -294,6 +329,7 @@
 /* Table Styles */
 .table-wrapper {
     flex: 1;
+    min-width: 0;
     overflow-x: auto;
 }
 
@@ -304,22 +340,49 @@
 
 .issuances-table th {
     text-align: left;
-    padding: 16px 20px;
+    padding: 14px 14px;
     background: #EEF3F7;
     color: #5F7385;
     font-size: 12px;
     font-weight: 600;
     text-transform: uppercase;
-    letter-spacing: 0.5px;
+    /* Matches the Residents table header (modules/resisdents.css). */
+    letter-spacing: 0.6px;
     border-bottom: 1px solid #D6E2EA;
 }
 
 .issuances-table td {
-    padding: 16px 20px;
+    padding: 14px 14px;
     border-bottom: 1px solid #D6E2EA;
     color: #16324A;
     font-size: 14px;
     font-family: 'Inter', sans-serif;
+    word-break: break-word;
+    vertical-align: middle;
+}
+
+/* Loading / empty / error row inside the issuances table */
+.issuances-table td.table-message {
+    text-align: center;
+    padding: 40px 20px;
+    color: #5F7385;
+}
+
+/* Certificate view modal content */
+.certificate-view-details {
+    padding: 15px 20px;
+    line-height: 1.8;
+}
+
+.certificate-view-details .view-row {
+    margin-bottom: 8px;
+    color: #16324A;
+    font-size: 14px;
+}
+
+.certificate-view-details .view-row strong {
+    color: #5F7385;
+    font-weight: 600;
 }
 
 /* Certificate Type Badges */
@@ -364,13 +427,15 @@
 /* Action Buttons */
 .action-buttons {
     display: flex;
-    gap: 8px;
+    gap: 6px;
     justify-content: flex-end;
+    flex-wrap: nowrap;
 }
 
 .action-btn {
-    width: 32px;
-    height: 32px;
+    width: 30px;
+    height: 30px;
+    flex: 0 0 30px;
     background: #F4F8FB;
     border: 1px solid #D6E2EA;
     border-radius: 4px;
@@ -405,6 +470,8 @@
 .pagination-info {
     color: #5F7385;
     font-size: 13px;
+    /* Matches the Residents pagination info (modules/resisdents.css). */
+    font-weight: 500;
 }
 
 .pagination-controls {
@@ -874,6 +941,19 @@
     color: #C94A4A;
 }
 
+.edit-form-group .optional {
+    color: #5F7385;
+    font-weight: 400;
+    font-size: 12px;
+}
+
+/* Valid Until is derived from Date Issued, so it is shown read-only. */
+.edit-input[readonly] {
+    background: #EEF3F7;
+    color: #5F7385;
+    cursor: not-allowed;
+}
+
 .readonly-field {
     height: 40px;
     padding: 0 12px;
@@ -1292,9 +1372,16 @@
 @media (max-width: 1024px) {
     .certificates-module {
         flex-direction: column;
+        /* In the stacked layout the panels must fill the width, so undo the
+           flex-start used by the side-by-side layout. */
+        align-items: stretch;
     }
     
     .issue-panel {
+        width: 100%;
+    }
+
+    .issuances-panel {
         width: 100%;
     }
     
@@ -1313,7 +1400,7 @@
 }
 
 @media (max-width: 768px) {
-    .content-area {
+    .certificates-module {
         padding: 16px;
     }
     

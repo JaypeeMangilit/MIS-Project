@@ -139,12 +139,13 @@ body {
 .archives-table th {
     padding: 16px 24px;
     text-align: left;
-    font-size: 13px;
+    /* Header type matches the Residents table (modules/resisdents.css). */
+    font-size: 12px;
     font-weight: 600;
     font-family: 'Inter', sans-serif;
     color: #5F7385;
     text-transform: uppercase;
-    letter-spacing: 0.5px;
+    letter-spacing: 0.6px;
     border-bottom: 1px solid #D6E2EA;
 }
 
@@ -273,6 +274,8 @@ body {
     font-size: 13px;
     font-family: 'Inter', sans-serif;
     color: #5F7385;
+    /* Matches the Residents pagination info (modules/resisdents.css). */
+    font-weight: 500;
 }
 
 .pagination-controls {
