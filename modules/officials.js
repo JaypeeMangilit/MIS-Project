@@ -1,479 +1,1250 @@
-// officials.js - Updated with new Add Official view
+// officials.js - Barangay Officials, backed by brgy49_db (barangay_officials).
+//
+// The list, the search box, the term filter, the Add form and the Edit form all
+// read and write through api/officials.php. There is no in-memory sample data.
+// Archive moves a row to archived_barangay_officials; it never deletes it.
+//
+// Wrapped in an IIFE on purpose: the sidebar router re-injects this file on every
+// visit, and a second top-level const/let would throw "Identifier ... has already
+// been declared" so the whole script would never run (see sidebar.js).
 
-// Officials Data
-let officialsData = [
-    { id: 1, name: "Hon. Roberto Santos", position: "Punong Barangay", term: "2023 - 2026", contact: "0917-123-4567", email: "rsantos@brgy49.gov.ph", status: "Active", avatar: "RS" },
-    { id: 2, name: "Hon. Maria Cruz", position: "Barangay Kagawad", term: "2023 - 2026", contact: "0918-234-5678", email: "mcruz@brgy49.gov.ph", status: "Active", avatar: "MC" },
-    { id: 3, name: "Hon. Jose Reyes", position: "Barangay Kagawad", term: "2023 - 2026", contact: "0919-345-6789", email: "jreyes@brgy49.gov.ph", status: "Active", avatar: "JR" },
-    { id: 4, name: "Hon. Anna Bautista", position: "Barangay Kagawad", term: "2023 - 2026", contact: "0920-456-7890", email: "abautista@brgy49.gov.ph", status: "Active", avatar: "AB" },
-    { id: 5, name: "Hon. Mark Villanueva", position: "SK Chairman", term: "2023 - 2026", contact: "0921-567-8901", email: "mvillanueva@brgy49.gov.ph", status: "Active", avatar: "MV" },
-    { id: 6, name: "Elena Valdez", position: "Barangay Secretary", term: "Appointed: 2023", contact: "0922-678-9012", email: "sec.valdez@brgy49.gov.ph", status: "Active", avatar: "EV" },
-    { id: 7, name: "Ricardo Gomez", position: "Barangay Treasurer", term: "Appointed: 2023", contact: "0923-789-0123", email: "treas.gomez@brgy49.gov.ph", status: "Active", avatar: "RG" }
-];
+(function () {
+    'use strict';
 
-let currentFilters = {
-    search: '',
-    term: ''
-};
+    const API_URL = 'api/officials.php';
 
-let currentView = 'list'; // 'list' or 'add'
-let nextId = 8;
+    // State
+    let currentFilters = { search: '', termStart: '' };
+    let currentView = 'list';        // 'list' | 'form'
+    let editingId = null;            // null = Add, otherwise the id being edited
+    let officialsCache = [];         // last rows loaded, used to prefill the Edit form
+    let termOptions = [];
+    let newPhotoBase64 = null;       // only set when a new file is chosen
+    let searchTimer = null;
+    let pendingEditId = null;        // id waiting behind the Confirm Edit dialog
 
-// Main initialization function
-function initOfficialsModule() {
-    console.log('Initializing Officials Module...');
-    
-    currentView = 'list';
-    currentFilters = {
-        search: '',
-        term: ''
-    };
-    
-    loadOfficialsGrid();
-    setupEventListeners();
-    setupFormEventListeners();
-}
-
-function setupEventListeners() {
-    // Search input
-    const searchInput = document.getElementById('searchInput');
-    if (searchInput) {
-        const newSearchInput = searchInput.cloneNode(true);
-        searchInput.parentNode.replaceChild(newSearchInput, searchInput);
-        newSearchInput.addEventListener('input', (e) => {
-            currentFilters.search = e.target.value.toLowerCase();
-            loadOfficialsGrid();
-        });
-    }
-    
-    // Filter button
-    const filterBtn = document.getElementById('filterBtn');
-    if (filterBtn) {
-        const newFilterBtn = filterBtn.cloneNode(true);
-        filterBtn.parentNode.replaceChild(newFilterBtn, filterBtn);
-        newFilterBtn.addEventListener('click', () => {
-            showNotification('Filter functionality will be implemented', 'info');
-        });
-    }
-    
-    // Add official button - shows the add official view
-    const addBtn = document.getElementById('addOfficialBtn');
-    if (addBtn) {
-        const newAddBtn = addBtn.cloneNode(true);
-        addBtn.parentNode.replaceChild(newAddBtn, addBtn);
-        newAddBtn.addEventListener('click', () => showAddOfficialView());
-    }
-}
-
-function setupFormEventListeners() {
-    // Back button
-    const backBtn = document.getElementById('backToListBtn');
-    if (backBtn) {
-        const newBackBtn = backBtn.cloneNode(true);
-        backBtn.parentNode.replaceChild(newBackBtn, backBtn);
-        newBackBtn.addEventListener('click', () => showListView());
-    }
-    
-    // Cancel button
-    const cancelBtn = document.getElementById('cancelAddBtn');
-    if (cancelBtn) {
-        const newCancelBtn = cancelBtn.cloneNode(true);
-        cancelBtn.parentNode.replaceChild(newCancelBtn, cancelBtn);
-        newCancelBtn.addEventListener('click', () => showListView());
-    }
-    
-    // Save button
-    const saveBtn = document.getElementById('saveOfficialBtn');
-    if (saveBtn) {
-        const newSaveBtn = saveBtn.cloneNode(true);
-        saveBtn.parentNode.replaceChild(newSaveBtn, saveBtn);
-        newSaveBtn.addEventListener('click', () => saveOfficial());
-    }
-    
-    // Status option buttons (new design uses .status-option-new)
-    const statusOptions = document.querySelectorAll('.status-option-new');
-    if (statusOptions.length > 0) {
-        statusOptions.forEach(btn => {
-            const newBtn = btn.cloneNode(true);
-            btn.parentNode.replaceChild(newBtn, btn);
-            newBtn.addEventListener('click', () => {
-                statusOptions.forEach(b => b.classList.remove('active'));
-                newBtn.classList.add('active');
-                const status = newBtn.getAttribute('data-status');
-                document.getElementById('officialStatus').value = status;
-            });
-        });
-    } else {
-        // Fallback to old class
-        const oldStatusOptions = document.querySelectorAll('.status-option');
-        oldStatusOptions.forEach(btn => {
-            const newBtn = btn.cloneNode(true);
-            btn.parentNode.replaceChild(newBtn, btn);
-            newBtn.addEventListener('click', () => {
-                oldStatusOptions.forEach(b => b.classList.remove('active'));
-                newBtn.classList.add('active');
-                const status = newBtn.getAttribute('data-status');
-                document.getElementById('officialStatus').value = status;
-            });
-        });
-    }
-    
-    // Photo upload
-    const uploadBtn = document.getElementById('uploadPhotoBtn');
-    const photoUpload = document.getElementById('photoUpload');
-    const photoPlaceholder = document.getElementById('photoPlaceholder');
-    
-    if (uploadBtn && photoUpload) {
-        const newUploadBtn = uploadBtn.cloneNode(true);
-        uploadBtn.parentNode.replaceChild(newUploadBtn, uploadBtn);
-        
-        newUploadBtn.addEventListener('click', () => {
-            const uploadInput = document.getElementById('photoUpload');
-            if (uploadInput) uploadInput.click();
-        });
-        
-        const newPhotoUpload = photoUpload.cloneNode(true);
-        photoUpload.parentNode.replaceChild(newPhotoUpload, photoUpload);
-        
-        newPhotoUpload.addEventListener('change', function(e) {
-            const photoPlaceholderDiv = document.getElementById('photoPlaceholder');
-            if (this.files && this.files[0]) {
-                const reader = new FileReader();
-                reader.onload = function(event) {
-                    if (photoPlaceholderDiv) {
-                        photoPlaceholderDiv.innerHTML = `<img src="${event.target.result}" style="width: 100%; height: 100%; object-fit: cover; border-radius: 50%;">`;
-                    }
-                };
-                reader.readAsDataURL(this.files[0]);
-            } else {
-                if (photoPlaceholderDiv) {
-                    photoPlaceholderDiv.innerHTML = `
-                        <svg width="32" height="32" viewBox="0 0 32 32" fill="none">
-                            <circle cx="16" cy="16" r="12" stroke="#5F7385" stroke-width="2"/>
-                            <path d="M16 12V20M12 16H20" stroke="#5F7385" stroke-width="2" stroke-linecap="round"/>
-                        </svg>
-                    `;
-                }
-            }
-        });
-    }
-}
-
-function showListView() {
-    currentView = 'list';
-    const listView = document.getElementById('officialsListView');
-    const addView = document.getElementById('addOfficialView');
-    const breadcrumb = document.getElementById('breadcrumb');
-    const pageTitle = document.getElementById('pageTitle');
-    
-    if (listView) listView.classList.add('active');
-    if (addView) addView.classList.remove('active');
-    if (breadcrumb) breadcrumb.textContent = 'Barangay Officials';
-    if (pageTitle) pageTitle.textContent = 'Barangay Officials';
-    
-    loadOfficialsGrid();
-}
-
-function showAddOfficialView() {
-    currentView = 'add';
-    const listView = document.getElementById('officialsListView');
-    const addView = document.getElementById('addOfficialView');
-    const breadcrumb = document.getElementById('breadcrumb');
-    const pageTitle = document.getElementById('pageTitle');
-    
-    if (listView) listView.classList.remove('active');
-    if (addView) addView.classList.add('active');
-    if (breadcrumb) breadcrumb.innerHTML = 'Barangay Officials / Add New Official';
-    if (pageTitle) pageTitle.textContent = 'Add New Official';
-    
-    resetForm();
-}
-
-function resetForm() {
-    // Clear all form inputs
-    const formInputs = document.querySelectorAll('#addOfficialView input, #addOfficialView select');
-    formInputs.forEach(input => {
-        if (input.type !== 'file') {
-            input.value = '';
+    // ------------------------------------------------------------------
+    // API
+    // ------------------------------------------------------------------
+    async function apiCall(query, options) {
+        const config = Object.assign({ headers: { 'Content-Type': 'application/json' } }, options || {});
+        let response;
+        try {
+            response = await fetch(API_URL + (query || ''), config);
+        } catch (networkError) {
+            throw new Error('Could not reach the server. Check that it is running and try again.');
         }
-    });
-    
-    // Reset status to Active
-    const statusOptions = document.querySelectorAll('.status-option-new');
-    if (statusOptions.length > 0) {
-        statusOptions.forEach(btn => {
-            btn.classList.remove('active');
-            if (btn.getAttribute('data-status') === 'Active') {
-                btn.classList.add('active');
-            }
-        });
-    } else {
-        const oldStatusOptions = document.querySelectorAll('.status-option');
-        oldStatusOptions.forEach(btn => {
-            btn.classList.remove('active');
-            if (btn.getAttribute('data-status') === 'Active') {
-                btn.classList.add('active');
-            }
-        });
-    }
-    document.getElementById('officialStatus').value = 'Active';
-    
-    // Reset photo placeholder
-    const photoPlaceholder = document.getElementById('photoPlaceholder');
-    if (photoPlaceholder) {
-        photoPlaceholder.innerHTML = `
-            <svg width="32" height="32" viewBox="0 0 32 32" fill="none">
-                <circle cx="16" cy="16" r="12" stroke="#5F7385" stroke-width="2"/>
-                <path d="M16 12V20M12 16H20" stroke="#5F7385" stroke-width="2" stroke-linecap="round"/>
-            </svg>
-        `;
-    }
-    
-    // Reset file input
-    const photoUpload = document.getElementById('photoUpload');
-    if (photoUpload) photoUpload.value = '';
-    
-    // Remove any error states
-    document.querySelectorAll('.form-group-new, .form-group').forEach(group => {
-        group.classList.remove('error');
-        const errorMsg = group.querySelector('.error-message');
-        if (errorMsg) errorMsg.remove();
-    });
-}
 
-function saveOfficial() {
-    // Collect form data
-    const firstName = document.getElementById('firstName')?.value || '';
-    const middleName = document.getElementById('middleName')?.value || '';
-    const lastName = document.getElementById('lastName')?.value || '';
-    const suffix = document.getElementById('suffix')?.value || '';
-    const gender = document.getElementById('gender')?.value || '';
-    const birthdate = document.getElementById('birthdate')?.value || '';
-    const position = document.getElementById('position')?.value || '';
-    const committee = document.getElementById('committee')?.value || '';
-    const termStart = document.getElementById('termStart')?.value || '';
-    const termEnd = document.getElementById('termEnd')?.value || '';
-    const mobile = document.getElementById('mobile')?.value || '';
-    const email = document.getElementById('email')?.value || '';
-    const address = document.getElementById('address')?.value || '';
-    const status = document.getElementById('officialStatus')?.value || 'Active';
-    
-    // Validate required fields
-    if (!firstName || !lastName || !position || !termStart || !termEnd || !mobile) {
-        alert('Please fill in all required fields marked with *');
-        return;
+        const text = await response.text();
+        let payload;
+        try {
+            payload = text ? JSON.parse(text) : {};
+        } catch (parseError) {
+            throw new Error('The server returned an unexpected response (' + response.status + ').');
+        }
+
+        if (payload.success === false) {
+            throw new Error(payload.message || 'The request could not be completed.');
+        }
+        if (!response.ok) {
+            throw new Error('The request failed (' + response.status + ').');
+        }
+        return payload;
     }
-    
-    // Validate mobile number format
-    const mobileRegex = /^(09|\+639)\d{9}$/;
-    if (!mobileRegex.test(mobile.replace(/\s/g, ''))) {
-        alert('Please enter a valid mobile number (e.g., 09171234567)');
-        return;
+
+    // ------------------------------------------------------------------
+    // Init
+    // ------------------------------------------------------------------
+    function initOfficialsModule() {
+        currentView = 'list';
+        currentFilters = { search: '', termStart: '' };
+        editingId = null;
+        newPhotoBase64 = null;
+
+        showListView();
+        setupEventListeners();
+        setupFormEventListeners();
+        setupModalClose();
+        updateFilterButtonLabel();
+        loadTermOptions();
     }
-    
-    // Validate email if provided
-    if (email && email !== '') {
-        const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-        if (!emailRegex.test(email)) {
+
+    function setupEventListeners() {
+        // Search - debounced, so typing does not fire a request per keystroke.
+        const searchInput = document.getElementById('searchInput');
+        if (searchInput) {
+            const freshSearch = searchInput.cloneNode(true);
+            searchInput.parentNode.replaceChild(freshSearch, searchInput);
+            freshSearch.value = currentFilters.search;
+            freshSearch.addEventListener('input', function (e) {
+                const typed = e.target.value;
+                clearTimeout(searchTimer);
+                searchTimer = setTimeout(function () {
+                    currentFilters.search = typed.trim();
+                    loadOfficialsGrid();
+                }, 300);
+            });
+        }
+
+        // Filter by term
+        const filterBtn = document.getElementById('filterBtn');
+        if (filterBtn) {
+            const freshFilterBtn = filterBtn.cloneNode(true);
+            filterBtn.parentNode.replaceChild(freshFilterBtn, filterBtn);
+            freshFilterBtn.addEventListener('click', function (e) {
+                e.stopPropagation();
+                toggleTermDropdown();
+            });
+        }
+
+        // Clicking anywhere else closes whichever toolbar dropdown is open
+        document.addEventListener('click', function (e) {
+            [['termDropdown', '#filterBtn'], ['exportDropdown', '#exportBtn']].forEach(function (pair) {
+                const dropdown = document.getElementById(pair[0]);
+                if (!dropdown || !dropdown.classList.contains('open')) return;
+                if (dropdown.contains(e.target)) return;
+                if (e.target.closest && e.target.closest(pair[1])) return;
+                dropdown.classList.remove('open');
+            });
+        });
+
+        // Add official
+        const addBtn = document.getElementById('addOfficialBtn');
+        if (addBtn) {
+            const freshAddBtn = addBtn.cloneNode(true);
+            addBtn.parentNode.replaceChild(freshAddBtn, addBtn);
+            freshAddBtn.addEventListener('click', function () {
+                showOfficialForm(null);
+            });
+        }
+
+        // Export List
+        const exportBtn = document.getElementById('exportBtn');
+        if (exportBtn) {
+            const freshExportBtn = exportBtn.cloneNode(true);
+            exportBtn.parentNode.replaceChild(freshExportBtn, exportBtn);
+            freshExportBtn.addEventListener('click', function (e) {
+                e.stopPropagation();
+                toggleExportDropdown();
+            });
+        }
+    }
+
+    function setupFormEventListeners() {
+        ['backToListBtn', 'cancelAddBtn'].forEach(function (id) {
+            const btn = document.getElementById(id);
+            if (!btn) return;
+            const fresh = btn.cloneNode(true);
+            btn.parentNode.replaceChild(fresh, btn);
+            fresh.addEventListener('click', function () {
+                showListView();
+            });
+        });
+
+        const saveBtn = document.getElementById('saveOfficialBtn');
+        if (saveBtn) {
+            const freshSave = saveBtn.cloneNode(true);
+            saveBtn.parentNode.replaceChild(freshSave, saveBtn);
+            freshSave.addEventListener('click', function () {
+                saveOfficial();
+            });
+        }
+
+        // Status option buttons (Active / Inactive)
+        document.querySelectorAll('.status-option-new, .status-option').forEach(function (btn) {
+            const fresh = btn.cloneNode(true);
+            btn.parentNode.replaceChild(fresh, btn);
+            fresh.addEventListener('click', function () {
+                document.querySelectorAll('.status-option-new, .status-option').forEach(function (b) {
+                    b.classList.remove('active');
+                });
+                fresh.classList.add('active');
+                const statusField = document.getElementById('officialStatus');
+                if (statusField) statusField.value = fresh.getAttribute('data-status');
+            });
+        });
+
+        // Photo upload
+        const uploadBtn = document.getElementById('uploadPhotoBtn');
+        if (uploadBtn) {
+            const freshUploadBtn = uploadBtn.cloneNode(true);
+            uploadBtn.parentNode.replaceChild(freshUploadBtn, uploadBtn);
+            freshUploadBtn.addEventListener('click', function () {
+                const input = document.getElementById('photoUpload');
+                if (input) input.click();
+            });
+        }
+
+        const photoUpload = document.getElementById('photoUpload');
+        if (photoUpload) {
+            const freshPhotoUpload = photoUpload.cloneNode(true);
+            photoUpload.parentNode.replaceChild(freshPhotoUpload, photoUpload);
+            freshPhotoUpload.addEventListener('change', function () {
+                const file = this.files && this.files[0];
+                if (!file) {
+                    newPhotoBase64 = null;
+                    renderPhotoPlaceholder(null);
+                    return;
+                }
+                if (file.size > 2 * 1024 * 1024) {
+                    this.value = '';
+                    alert('The photo must be 2MB or smaller.');
+                    return;
+                }
+                const reader = new FileReader();
+                reader.onload = function (event) {
+                    newPhotoBase64 = event.target.result;
+                    renderPhotoPlaceholder(newPhotoBase64);
+                };
+                reader.readAsDataURL(file);
+            });
+        }
+    }
+
+    function setupModalClose() {
+        document.querySelectorAll('.modal-close').forEach(function (btn) {
+            const fresh = btn.cloneNode(true);
+            btn.parentNode.replaceChild(fresh, btn);
+            fresh.addEventListener('click', function () {
+                document.querySelectorAll('.modal').forEach(function (modal) {
+                    modal.classList.remove('active');
+                });
+            });
+        });
+
+        // Confirm Edit dialog: Yes, Edit / Cancel / clicking the backdrop
+        const confirmEditBtn = document.getElementById('confirmEditBtn');
+        if (confirmEditBtn) {
+            const freshConfirm = confirmEditBtn.cloneNode(true);
+            confirmEditBtn.parentNode.replaceChild(freshConfirm, confirmEditBtn);
+            freshConfirm.addEventListener('click', function () {
+                proceedWithEdit();
+            });
+        }
+
+        const cancelEditConfirmBtn = document.getElementById('cancelEditConfirmBtn');
+        if (cancelEditConfirmBtn) {
+            const freshCancel = cancelEditConfirmBtn.cloneNode(true);
+            cancelEditConfirmBtn.parentNode.replaceChild(freshCancel, cancelEditConfirmBtn);
+            freshCancel.addEventListener('click', function () {
+                closeEditConfirmModal();
+            });
+        }
+
+        const editConfirmModal = document.getElementById('editConfirmModal');
+        if (editConfirmModal && !editConfirmModal.dataset.bound) {
+            // Bound once: initOfficialsModule runs again on every visit.
+            editConfirmModal.dataset.bound = '1';
+            editConfirmModal.addEventListener('click', function (e) {
+                if (e.target === editConfirmModal) closeEditConfirmModal();
+            });
+        }
+    }
+
+    // ------------------------------------------------------------------
+    // Views
+    // ------------------------------------------------------------------
+    function showListView() {
+        currentView = 'list';
+        editingId = null;
+
+        const listView = document.getElementById('officialsListView');
+        const formView = document.getElementById('addOfficialView');
+        const breadcrumb = document.getElementById('breadcrumb');
+        const pageTitle = document.getElementById('pageTitle');
+
+        if (listView) listView.classList.add('active');
+        if (formView) formView.classList.remove('active');
+        if (breadcrumb) breadcrumb.textContent = 'Barangay Officials';
+        if (pageTitle) pageTitle.textContent = 'Barangay Officials';
+
+        loadOfficialsGrid();
+    }
+
+    /** official = null opens the Add form, a row opens the Edit form prefilled. */
+    function showOfficialForm(official) {
+        currentView = 'form';
+        editingId = official ? String(official.id) : null;
+
+        const listView = document.getElementById('officialsListView');
+        const formView = document.getElementById('addOfficialView');
+        const breadcrumb = document.getElementById('breadcrumb');
+        const pageTitle = document.getElementById('pageTitle');
+        const saveLabel = document.getElementById('saveOfficialBtnLabel');
+        const bannerTitle = document.getElementById('formBannerTitle');
+        const bannerText = document.getElementById('formBannerText');
+
+        if (listView) listView.classList.remove('active');
+        if (formView) formView.classList.add('active');
+
+        if (official) {
+            if (breadcrumb) breadcrumb.textContent = 'Barangay Officials / Edit Official';
+            if (pageTitle) pageTitle.textContent = 'Edit Official';
+            if (saveLabel) saveLabel.textContent = 'Update Official Record';
+            if (bannerTitle) bannerTitle.textContent = 'Edit Official Record';
+            if (bannerText) bannerText.textContent = 'Update the details for ' + displayName(official) +
+                ' — designation, contact details and committee chairmanship.';
+            fillForm(official);
+        } else {
+            if (breadcrumb) breadcrumb.textContent = 'Barangay Officials / Add New Official';
+            if (pageTitle) pageTitle.textContent = 'Add New Official';
+            if (saveLabel) saveLabel.textContent = 'Save Official Record';
+            if (bannerTitle) bannerTitle.textContent = 'Register Elected or Appointed Official';
+            if (bannerText) bannerText.textContent = 'Add a new official to the barangay directory, including their designation, contact details, and committee chairmanship.';
+            resetForm();
+        }
+    }
+
+    function fillForm(official) {
+        resetForm();
+
+        setValue('firstName', official.first_name);
+        setValue('middleName', official.middle_name);
+        setValue('lastName', official.last_name);
+        setValue('suffix', official.suffix);
+        setValue('gender', official.gender);
+        setValue('birthdate', toDateInput(official.birth_date));
+        setValue('position', official.position);
+        setValue('committee', official.committee);
+        setValue('termStart', toDateInput(official.term_start));
+        setValue('termEnd', toDateInput(official.term_end));
+        setValue('mobile', official.mobile_number);
+        setValue('email', official.email);
+        setValue('address', official.address);
+        setValue('officialType', official.official_type || 'Elected');
+
+        const status = official.status || 'Active';
+        const statusField = document.getElementById('officialStatus');
+        if (statusField) statusField.value = status;
+        document.querySelectorAll('.status-option-new, .status-option').forEach(function (btn) {
+            btn.classList.toggle('active', btn.getAttribute('data-status') === status);
+        });
+
+        if (official.profile_image) {
+            renderPhotoPlaceholder(official.profile_image);
+        }
+    }
+
+    function setValue(id, value) {
+        const field = document.getElementById(id);
+        if (field) field.value = value === null || value === undefined ? '' : value;
+    }
+
+    /** SQL Server returns dates as "2023-07-01 00:00:00.0000000". */
+    function toDateInput(value) {
+        if (!value) return '';
+        return String(value).substring(0, 10);
+    }
+
+    function resetForm() {
+        document.querySelectorAll('#addOfficialView input, #addOfficialView select').forEach(function (input) {
+            if (input.type !== 'file') input.value = '';
+        });
+
+        document.querySelectorAll('.status-option-new, .status-option').forEach(function (btn) {
+            btn.classList.remove('active');
+            if (btn.getAttribute('data-status') === 'Active') btn.classList.add('active');
+        });
+        const statusField = document.getElementById('officialStatus');
+        if (statusField) statusField.value = 'Active';
+
+        const typeField = document.getElementById('officialType');
+        if (typeField) typeField.value = 'Elected';
+
+        const photoUpload = document.getElementById('photoUpload');
+        if (photoUpload) photoUpload.value = '';
+        newPhotoBase64 = null;
+        renderPhotoPlaceholder(null);
+
+        document.querySelectorAll('#addOfficialView .form-group-new, #addOfficialView .form-group').forEach(function (group) {
+            group.classList.remove('error');
+            const errorMsg = group.querySelector('.error-message');
+            if (errorMsg) errorMsg.remove();
+        });
+    }
+
+    function renderPhotoPlaceholder(source) {
+        const placeholder = document.getElementById('photoPlaceholder');
+        if (!placeholder) return;
+
+        if (source) {
+            placeholder.innerHTML = '<img src="' + escapeHtml(source) + '" alt="Official photo preview">';
+            return;
+        }
+
+        placeholder.innerHTML =
+            '<svg width="32" height="32" viewBox="0 0 32 32" fill="none">' +
+            '<circle cx="16" cy="16" r="12" stroke="#5F7385" stroke-width="2"/>' +
+            '<path d="M16 12V20M12 16H20" stroke="#5F7385" stroke-width="2" stroke-linecap="round"/>' +
+            '</svg>';
+    }
+
+    // ------------------------------------------------------------------
+    // Grid
+    // ------------------------------------------------------------------
+    async function loadOfficialsGrid() {
+        const grid = document.getElementById('officialsGrid');
+        if (grid) {
+            grid.innerHTML = '<div class="no-results">Loading officials...</div>';
+        }
+
+        const params = new URLSearchParams();
+        if (currentFilters.search) params.set('search', currentFilters.search);
+        if (currentFilters.termStart) params.set('term_start', currentFilters.termStart);
+
+        try {
+            const query = params.toString();
+            const result = await apiCall(query ? '?' + query : '');
+            officialsCache = Array.isArray(result.data) ? result.data : [];
+            renderOfficialsGrid(officialsCache);
+        } catch (error) {
+            officialsCache = [];
+            if (grid) {
+                grid.innerHTML = '<div class="no-results">' + escapeHtml(error.message) + '</div>';
+            }
+        }
+    }
+
+    function renderOfficialsGrid(officials) {
+        const grid = document.getElementById('officialsGrid');
+        if (!grid) return;
+
+        if (!officials || officials.length === 0) {
+            grid.innerHTML = '<div class="no-results">No officials found</div>';
+            return;
+        }
+
+        grid.innerHTML = officials.map(function (official) {
+            const name = displayName(official);
+            const avatar = official.profile_image
+                ? '<img src="' + escapeHtml(official.profile_image) + '" alt="' + escapeHtml(name) + '">'
+                : escapeHtml(initials(official));
+            const status = official.status || 'Active';
+
+            return '' +
+                '<div class="official-card">' +
+                    '<div class="status-badge ' + status.toLowerCase() + '">' + escapeHtml(status) + '</div>' +
+                    '<div class="avatar-container">' +
+                        '<div class="official-avatar">' + avatar + '</div>' +
+                    '</div>' +
+                    '<div class="official-name">' + escapeHtml(name) + '</div>' +
+                    '<div class="official-position">' + escapeHtml(official.position || '') + '</div>' +
+                    '<div class="official-term">' +
+                        '<img src="Images/Term_Icon.svg" alt="Calendar" class="term-icon-img">' +
+                        '<span class="term-label">Term:</span>' +
+                        '<span class="term-text">' + escapeHtml(termLabel(official)) + '</span>' +
+                    '</div>' +
+                    '<div class="official-contact">' +
+                        '<div class="contact-item">' +
+                            '<img src="Images/Contact_Icon.svg" alt="Phone" class="contact-icon-img">' +
+                            '<span class="contact-text">' + escapeHtml(official.mobile_number || '—') + '</span>' +
+                        '</div>' +
+                        '<div class="contact-item">' +
+                            '<img src="Images/Email_Icon.svg" alt="Email" class="contact-icon-img">' +
+                            '<span class="contact-text">' + escapeHtml(official.email || '—') + '</span>' +
+                        '</div>' +
+                    '</div>' +
+                    '<div class="card-actions">' +
+                        '<button class="action-btn edit" onclick="window.editOfficial(' + official.id + ')">Edit</button>' +
+                        '<button class="action-btn archive" onclick="window.archiveOfficial(' + official.id + ')">Archive</button>' +
+                    '</div>' +
+                '</div>';
+        }).join('');
+    }
+
+    /** "Hon. Roberto Santos" for elected officials, "Elena Valdez" for appointed ones. */
+    function displayName(official) {
+        let name = [official.first_name, official.last_name].filter(Boolean).join(' ');
+        if (official.suffix) name += ' ' + official.suffix;
+        if ((official.official_type || 'Elected') === 'Elected') {
+            name = 'Hon. ' + name;
+        }
+        return name.trim();
+    }
+
+    /** "2023 - 2026" for elected officials, "Appointed: 2023" for appointed ones. */
+    function termLabel(official) {
+        const start = toDateInput(official.term_start);
+        const end = toDateInput(official.term_end);
+        const startYear = start ? start.substring(0, 4) : '';
+        const endYear = end ? end.substring(0, 4) : '';
+
+        if ((official.official_type || 'Elected') === 'Appointed') {
+            return startYear ? 'Appointed: ' + startYear : 'Appointed';
+        }
+        if (startYear && endYear) return startYear + ' - ' + endYear;
+        return startYear || endYear || '—';
+    }
+
+    function initials(official) {
+        const combined = ((official.first_name || '').charAt(0) + (official.last_name || '').charAt(0)).toUpperCase();
+        return combined || 'NA';
+    }
+
+    // ------------------------------------------------------------------
+    // Term filter
+    // ------------------------------------------------------------------
+    async function loadTermOptions() {
+        try {
+            const result = await apiCall('?terms=1');
+            termOptions = Array.isArray(result.data) ? result.data : [];
+        } catch (error) {
+            termOptions = [];
+        }
+        renderTermDropdown();
+    }
+
+    function renderTermDropdown() {
+        const dropdown = document.getElementById('termDropdown');
+        if (!dropdown) return;
+
+        let html = '<button type="button" class="term-option' + (currentFilters.termStart ? '' : ' active') +
+                   '" data-term="">All Terms</button>';
+
+        if (termOptions.length === 0) {
+            html += '<div class="term-empty">No terms recorded yet</div>';
+        } else {
+            html += termOptions.map(function (term) {
+                const active = String(term.term_start) === String(currentFilters.termStart) ? ' active' : '';
+                return '<button type="button" class="term-option' + active + '" data-term="' +
+                       escapeHtml(term.term_start) + '">' + escapeHtml(term.label) + '</button>';
+            }).join('');
+        }
+
+        dropdown.innerHTML = html;
+
+        dropdown.querySelectorAll('.term-option').forEach(function (option) {
+            option.addEventListener('click', function () {
+                currentFilters.termStart = option.getAttribute('data-term') || '';
+                updateFilterButtonLabel();
+                dropdown.classList.remove('open');
+                loadOfficialsGrid();
+            });
+        });
+    }
+
+    function updateFilterButtonLabel() {
+        const label = document.querySelector('#filterBtn span');
+        if (!label) return;
+
+        if (!currentFilters.termStart) {
+            label.textContent = 'Filter by Term';
+            return;
+        }
+
+        const match = termOptions.filter(function (term) {
+            return String(term.term_start) === String(currentFilters.termStart);
+        })[0];
+
+        label.textContent = match ? match.label : 'Filter by Term';
+    }
+
+    function toggleTermDropdown() {
+        const dropdown = document.getElementById('termDropdown');
+        if (!dropdown) return;
+        renderTermDropdown();
+        dropdown.classList.toggle('open');
+    }
+
+    // ------------------------------------------------------------------
+    // Save (Add and Edit)
+    // ------------------------------------------------------------------
+    async function saveOfficial() {
+        const payload = {
+            first_name: value('firstName'),
+            middle_name: value('middleName'),
+            last_name: value('lastName'),
+            suffix: value('suffix'),
+            gender: value('gender'),
+            birth_date: value('birthdate'),
+            position: value('position'),
+            committee: value('committee'),
+            term_start: value('termStart'),
+            term_end: value('termEnd'),
+            mobile_number: value('mobile'),
+            email: value('email'),
+            address: value('address'),
+            status: value('officialStatus') || 'Active',
+            official_type: value('officialType') || 'Elected'
+        };
+
+        if (newPhotoBase64) {
+            payload.photo_base64 = newPhotoBase64;
+        }
+
+        // The same rules the API enforces, checked here so the form can name the
+        // fields that are missing instead of only showing a message.
+        const missing = [];
+        if (!payload.first_name) missing.push('First Name');
+        if (!payload.last_name) missing.push('Last Name');
+        if (!payload.gender) missing.push('Gender');
+        if (!payload.position) missing.push('Position / Role');
+        if (!payload.term_start) missing.push('Term Start Date');
+        if (!payload.term_end) missing.push('Term End Date');
+        if (!payload.mobile_number) missing.push('Mobile Number');
+
+        if (missing.length) {
+            alert('Please fill in all required fields marked with *\n\nMissing: ' + missing.join(', '));
+            return;
+        }
+
+        const digits = payload.mobile_number.replace(/\D/g, '');
+        if (!/^(09\d{9}|639\d{9})$/.test(digits)) {
+            alert('Please enter a valid mobile number (e.g., 09171234567)');
+            return;
+        }
+
+        if (payload.email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(payload.email)) {
             alert('Please enter a valid email address');
             return;
         }
-    }
-    
-    // Format full name
-    let fullName = `Hon. ${firstName} ${lastName}`;
-    if (suffix) fullName += ` ${suffix}`;
-    
-    // Format term
-    const startYear = new Date(termStart).getFullYear();
-    const endYear = new Date(termEnd).getFullYear();
-    const termDisplay = `${startYear} - ${endYear}`;
-    
-    // Create new official object
-    const newOfficial = {
-        id: nextId++,
-        name: fullName,
-        position: position,
-        term: termDisplay,
-        contact: mobile,
-        email: email || 'N/A',
-        status: status,
-        avatar: getInitials(firstName, lastName)
-    };
-    
-    // Add to officials data
-    officialsData.unshift(newOfficial);
-    
-    // Show success message
-    alert('Official added successfully!');
-    
-    // Go back to officials list
-    showListView();
-}
 
-function getInitials(firstName, lastName) {
-    return (firstName.charAt(0) + lastName.charAt(0)).toUpperCase();
-}
+        if (payload.term_end < payload.term_start) {
+            alert('Term End Date cannot be earlier than Term Start Date.');
+            return;
+        }
 
-function loadOfficialsGrid() {
-    let filteredOfficials = officialsData.filter(official => {
-        const matchesSearch = official.name.toLowerCase().includes(currentFilters.search) ||
-                              official.position.toLowerCase().includes(currentFilters.search);
-        return matchesSearch;
-    });
-    
-    renderOfficialsGrid(filteredOfficials);
-}
+        const saveBtn = document.getElementById('saveOfficialBtn');
+        if (saveBtn) saveBtn.disabled = true;
 
-function renderOfficialsGrid(officials) {
-    const grid = document.getElementById('officialsGrid');
-    if (!grid) return;
-    
-    if (officials.length === 0) {
-        grid.innerHTML = '<div class="no-results">No officials found</div>';
-        return;
-    }
-    
-    grid.innerHTML = officials.map(official => `
-        <div class="official-card">
-            <div class="status-badge ${official.status.toLowerCase()}">${official.status}</div>
-            <div class="avatar-container">
-                <div class="official-avatar">${getOfficialInitials(official.name)}</div>
-            </div>
-            <div class="official-name">${official.name}</div>
-            <div class="official-position">${official.position}</div>
-            <div class="official-term">
-                <img src="Images/Term_Icon.svg" alt="Calendar" class="term-icon-img">
-                <span class="term-label">Term:</span>
-                <span class="term-text">${official.term}</span>
-            </div>
-            <div class="official-contact">
-                <div class="contact-item">
-                    <img src="Images/Contact_Icon.svg" alt="Phone" class="contact-icon-img">
-                    <span class="contact-text">${official.contact}</span>
-                </div>
-                <div class="contact-item">
-                    <img src="Images/Email_Icon.svg" alt="Email" class="contact-icon-img">
-                    <span class="contact-text">${official.email}</span>
-                </div>
-            </div>
-            <div class="card-actions">
-                <button class="action-btn view" onclick="window.viewOfficial(${official.id})">View</button>
-                <button class="action-btn edit" onclick="window.editOfficial(${official.id})">Edit</button>
-                <button class="action-btn delete" onclick="window.deleteOfficial(${official.id})">Delete</button>
-            </div>
-        </div>
-    `).join('');
-}
+        try {
+            let result;
+            if (editingId) {
+                payload.id = editingId;
+                result = await apiCall('', { method: 'PUT', body: JSON.stringify(payload) });
+            } else {
+                result = await apiCall('', { method: 'POST', body: JSON.stringify(payload) });
+            }
 
-function getOfficialInitials(name) {
-    const parts = name.replace('Hon. ', '').split(' ');
-    if (parts.length >= 2) {
-        return (parts[0].charAt(0) + parts[1].charAt(0)).toUpperCase();
-    }
-    return name.substring(0, 2).toUpperCase();
-}
-
-// Global functions for onclick handlers
-window.viewOfficial = function(id) {
-    const official = officialsData.find(o => o.id === id);
-    if (official) {
-        const modal = document.getElementById('viewOfficialModal');
-        const content = document.getElementById('viewOfficialContent');
-        
-        content.innerHTML = `
-            <div class="detail-avatar">
-                <div class="official-avatar" style="width: 100px; height: 100px; font-size: 48px;">${getOfficialInitials(official.name)}</div>
-            </div>
-            <div class="official-detail-section">
-                <h4>Personal Information</h4>
-                <div class="detail-row">
-                    <div class="detail-label">Full Name:</div>
-                    <div class="detail-value">${escapeHtml(official.name)}</div>
-                </div>
-                <div class="detail-row">
-                    <div class="detail-label">Position:</div>
-                    <div class="detail-value">${escapeHtml(official.position)}</div>
-                </div>
-                <div class="detail-row">
-                    <div class="detail-label">Term:</div>
-                    <div class="detail-value">${escapeHtml(official.term)}</div>
-                </div>
-                <div class="detail-row">
-                    <div class="detail-label">Status:</div>
-                    <div class="detail-value">
-                        <span class="status-badge ${official.status.toLowerCase()}" style="position: relative; top: 0; right: 0; display: inline-block;">${official.status}</span>
-                    </div>
-                </div>
-            </div>
-            <div class="official-detail-section">
-                <h4>Contact Information</h4>
-                <div class="detail-row">
-                    <div class="detail-label">Contact Number:</div>
-                    <div class="detail-value">${escapeHtml(official.contact)}</div>
-                </div>
-                <div class="detail-row">
-                    <div class="detail-label">Email Address:</div>
-                    <div class="detail-value">${escapeHtml(official.email)}</div>
-                </div>
-            </div>
-        `;
-        
-        modal.classList.add('active');
-    }
-};
-
-window.editOfficial = function(id) {
-    const official = officialsData.find(o => o.id === id);
-    if (official) {
-        showNotification(`Editing ${official.name}`, 'info');
-    }
-};
-
-window.deleteOfficial = function(id) {
-    if (confirm('Are you sure you want to delete this official?')) {
-        const index = officialsData.findIndex(o => o.id === id);
-        if (index !== -1) {
-            officialsData.splice(index, 1);
-            loadOfficialsGrid();
-            showNotification('Official deleted successfully!', 'success');
+            alert(result.message || (editingId ? 'Official has been updated successfully!' : 'Official has been added successfully!'));
+            showListView();
+            loadTermOptions();
+        } catch (error) {
+            alert(error.message);
+        } finally {
+            if (saveBtn) saveBtn.disabled = false;
         }
     }
-};
 
-function escapeHtml(str) {
-    if (!str) return '';
-    return str
-        .replace(/&/g, '&amp;')
-        .replace(/</g, '&lt;')
-        .replace(/>/g, '&gt;')
-        .replace(/"/g, '&quot;')
-        .replace(/'/g, '&#39;');
-}
+    function value(id) {
+        const field = document.getElementById(id);
+        return field ? String(field.value || '').trim() : '';
+    }
 
-function showNotification(message, type) {
-    alert(message);
-}
+    // ------------------------------------------------------------------
+    // Export List: CSV, Excel and the printable Directory of Barangay Officials
+    // ------------------------------------------------------------------
+    function renderExportDropdown() {
+        const dropdown = document.getElementById('exportDropdown');
+        if (!dropdown) return;
 
-// Modal close functionality
-function setupModalClose() {
-    const modalCloses = document.querySelectorAll('.modal-close');
-    modalCloses.forEach(btn => {
-        const newBtn = btn.cloneNode(true);
-        btn.parentNode.replaceChild(newBtn, btn);
-        newBtn.addEventListener('click', () => {
-            document.querySelectorAll('.modal').forEach(modal => modal.classList.remove('active'));
+        dropdown.innerHTML =
+            '<button type="button" class="export-option" data-format="print">Print / Save as PDF (Directory)</button>' +
+            '<button type="button" class="export-option" data-format="excel">Export to Excel (.xls)</button>' +
+            '<button type="button" class="export-option" data-format="csv">Export to CSV (.csv)</button>';
+
+        dropdown.querySelectorAll('.export-option').forEach(function (option) {
+            option.addEventListener('click', function () {
+                dropdown.classList.remove('open');
+                runExport(option.getAttribute('data-format'));
+            });
         });
-    });
-}
+    }
 
-// Auto-initialize when script loads (for dynamic loading)
-if (document.readyState === 'loading') {
-    document.addEventListener('DOMContentLoaded', function() {
+    function toggleExportDropdown() {
+        const dropdown = document.getElementById('exportDropdown');
+        if (!dropdown) return;
+        if (!dropdown.classList.contains('open')) renderExportDropdown();
+        dropdown.classList.toggle('open');
+    }
+
+    /** Rows for export: the same search + term filter the grid is using, from the API. */
+    function exportQuery() {
+        const params = new URLSearchParams();
+        if (currentFilters.search) params.set('search', currentFilters.search);
+        if (currentFilters.termStart) params.set('term_start', currentFilters.termStart);
+        params.set('limit', '1000');
+        return params.toString();
+    }
+
+    async function fetchOfficialsForExport() {
+        const result = await apiCall('?' + exportQuery());
+        return Array.isArray(result.data) ? result.data : [];
+    }
+
+    async function runExport(format) {
+        const exportBtn = document.getElementById('exportBtn');
+        if (exportBtn) exportBtn.disabled = true;
+
+        try {
+            const officials = await fetchOfficialsForExport();
+
+            if (!officials.length) {
+                alert('No officials found matching the selected filters.');
+                return;
+            }
+
+            if (format === 'csv') {
+                exportOfficialsToCsv(officials);
+            } else if (format === 'excel') {
+                exportOfficialsToExcel(officials);
+            } else {
+                await printOfficialsDirectory(officials);
+            }
+        } catch (error) {
+            alert('Failed to export the officials list. ' + error.message);
+        } finally {
+            if (exportBtn) exportBtn.disabled = false;
+        }
+    }
+
+    function exportFileName() {
+        const now = new Date();
+        const pad = function (value) { return String(value).padStart(2, '0'); };
+        return 'Barangay_Officials_Directory_' + now.getFullYear() + '-' + pad(now.getMonth() + 1) + '-' + pad(now.getDate());
+    }
+
+    function downloadFile(content, fileName, mimeType) {
+        const blob = new Blob([content], { type: mimeType });
+        const link = document.createElement('a');
+        const url = URL.createObjectURL(blob);
+        link.href = url;
+        link.setAttribute('download', fileName);
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+        URL.revokeObjectURL(url);
+    }
+
+    function exportOfficialsToCsv(officials) {
+        const headers = ['Position / Role', 'Full Name', 'Term Start Date', 'Term End Date', 'Contact No.', 'Status'];
+        const rows = officials.map(function (official) {
+            return [
+                official.position || '',
+                fullName(official),
+                toDateInput(official.term_start),
+                toDateInput(official.term_end),
+                official.mobile_number || '',
+                official.status || ''
+            ];
+        });
+
+        const csvContent = [headers].concat(rows).map(function (row) {
+            return row.map(function (cell) { return '"' + String(cell).replace(/"/g, '""') + '"'; }).join(',');
+        }).join('\n');
+
+        downloadFile('\uFEFF' + csvContent, exportFileName() + '.csv', 'text/csv;charset=utf-8;');
+        alert('Exported ' + officials.length + ' officials to CSV successfully!');
+    }
+
+    function exportOfficialsToExcel(officials) {
+        let html = '<html><head><meta charset="UTF-8"><title>Barangay Officials Directory</title>' +
+            '<style>th{background:#0F6CBD;color:#fff;padding:8px;}td{padding:6px;border:1px solid #ccc;}' +
+            'table{border-collapse:collapse;width:100%;}</style></head><body>' +
+            '<h2>Barangay 49 Akasya - Directory of Barangay Officials</h2>' +
+            '<p>Generated on: ' + escapeHtml(new Date().toLocaleString()) + '</p>' +
+            '<p>Term Year: ' + escapeHtml(termFilterLabel()) + ' | Status: ' + escapeHtml(statusFilterLabel()) + '</p>' +
+            '<p>Total Records: ' + officials.length + '</p>' +
+            '<table border="1"><thead><tr>' +
+            '<th>Position / Role</th><th>Full Name</th><th>Term Start Date</th><th>Term End Date</th>' +
+            '<th>Contact No.</th><th>Status</th></tr></thead><tbody>';
+
+        officials.forEach(function (official) {
+            html += '<tr>' +
+                '<td>' + escapeHtml(official.position || '') + '</td>' +
+                '<td>' + escapeHtml(fullName(official)) + '</td>' +
+                '<td>' + escapeHtml(toDateInput(official.term_start)) + '</td>' +
+                '<td>' + escapeHtml(toDateInput(official.term_end)) + '</td>' +
+                '<td>' + escapeHtml(official.mobile_number || '') + '</td>' +
+                '<td>' + escapeHtml(official.status || '') + '</td>' +
+                '</tr>';
+        });
+
+        html += '</tbody></table></body></html>';
+
+        downloadFile(html, exportFileName() + '.xls', 'application/vnd.ms-excel');
+        alert('Exported ' + officials.length + ' officials to Excel successfully!');
+    }
+
+    /** "Hon. Roberto Santos" for elected officials, "Elena Valdez" for appointed ones. */
+    function fullName(official) {
+        let name = [official.first_name, official.last_name].filter(Boolean).join(' ');
+        if (official.suffix) name += ' ' + official.suffix;
+        if ((official.official_type || 'Elected') === 'Elected') name = 'Hon. ' + name;
+        return name.trim();
+    }
+
+    function termFilterLabel() {
+        if (!currentFilters.termStart) return 'All Terms';
+
+        const match = termOptions.filter(function (term) {
+            return String(term.term_start) === String(currentFilters.termStart);
+        })[0];
+
+        return match ? match.label : currentFilters.termStart;
+    }
+
+    /** The module has no status filter yet, so the directory says so instead of guessing. */
+    function statusFilterLabel() {
+        return 'All Statuses';
+    }
+
+    function termRange(official) {
+        const start = toDateInput(official.term_start);
+        const end = toDateInput(official.term_end);
+        if (start && end) return start + ' - ' + end;
+        return start || end || '—';
+    }
+
+    /**
+     * Signature names come from barangay_officials: the Barangay Secretary prepares
+     * the directory, the Punong Barangay certifies and approves it. Nothing is
+     * hardcoded — a position that is not on the roster prints an empty line.
+     */
+    async function loadSignatories() {
+        try {
+            const result = await apiCall('?limit=1000');
+            const rows = Array.isArray(result.data) ? result.data : [];
+            const pick = function (position) {
+                return rows.filter(function (row) { return row.position === position; })[0] || null;
+            };
+            return { prepared: pick('Barangay Secretary'), approved: pick('Punong Barangay') };
+        } catch (error) {
+            return { prepared: null, approved: null };
+        }
+    }
+
+    /** Builds the Directory of Barangay Officials print document (A4 portrait). */
+    async function printOfficialsDirectory(officials) {
+        const printWindow = window.open('', '_blank');
+
+        if (!printWindow) {
+            alert('Please allow pop-ups for this page so the directory can be printed.');
+            return;
+        }
+
+        const signatories = await loadSignatories();
+        const now = new Date();
+        const dateGenerated = now.toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' });
+        const timeGenerated = now.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' });
+
+        const sessionUser = (window.Session && window.Session.user) || null;
+        const generatedBy = sessionUser
+            ? (sessionUser.name || sessionUser.username || 'User') + (sessionUser.role ? ' (' + sessionUser.role + ')' : '')
+            : 'System Administrator';
+
+        // The seal is resolved absolutely: the print window is a blank document.
+        const logoUrl = new URL('Images/Brgy.png', window.location.href).href;
+
+        const rows = officials.map(function (official, index) {
+            return {
+                no: index + 1,
+                position: escapeHtml(official.position || '—'),
+                name: escapeHtml(fullName(official)),
+                term: escapeHtml(termRange(official)),
+                contact: escapeHtml(official.mobile_number || '—'),
+                status: escapeHtml(official.status || '—')
+            };
+        });
+
+        const styles = `
+            * { margin: 0; padding: 0; box-sizing: border-box; }
+            @page { size: A4 portrait; margin: 12mm; }
+            body { font-family: Arial, Helvetica, sans-serif; color: #000; background: #fff; font-size: 11px; }
+            .page { width: 180mm; margin: 0 auto; page-break-after: always; break-after: page; }
+            .page:last-child { page-break-after: auto; break-after: auto; }
+
+            /* ---- Barangay letterhead ---- */
+            .letterhead { display: flex; align-items: center; gap: 5mm; }
+            .letterhead img.seal { width: 22mm; height: 22mm; object-fit: contain; flex: 0 0 22mm; }
+            .letterhead-text { flex: 1; text-align: center; line-height: 1.35; }
+            .letterhead-text .line { font-size: 11px; }
+            .letterhead-text .barangay { font-size: 15px; font-weight: bold; letter-spacing: 0.5px; margin: 1mm 0; }
+            .letterhead-rule { border-top: 2px solid #000; margin-top: 3mm; }
+
+            /* ---- Report title, term year and status ---- */
+            .report-title { text-align: center; font-size: 14px; font-weight: bold; text-decoration: underline;
+                            text-transform: uppercase; letter-spacing: 1px; margin: 5mm 0 2mm 0; }
+            .term-status { display: flex; justify-content: center; gap: 12mm; font-size: 11px; margin-bottom: 2mm; }
+            .report-meta { text-align: right; font-size: 9.5px; line-height: 1.4; margin-bottom: 3mm; }
+            .meta-label { font-weight: bold; }
+
+            /* ---- Officials table ---- */
+            table.directory { width: 100%; border-collapse: collapse; table-layout: fixed; }
+            table.directory th, table.directory td { border: 1px solid #000; padding: 3px 4px; font-size: 10px;
+                                                     vertical-align: middle; }
+            table.directory th { background: #E9EDF1; font-weight: bold; text-align: center;
+                                 text-transform: uppercase; font-size: 9.5px; }
+            table.directory thead { display: table-header-group; }
+            table.directory tr { page-break-inside: avoid; break-inside: avoid; }
+            td.c-no { text-align: center; }
+            td.c-status { text-align: center; }
+            td.c-contact { white-space: nowrap; }
+            td.c-position, td.c-name { overflow-wrap: anywhere; word-wrap: break-word; }
+
+            /* ---- Signatures and page number ---- */
+            .signatures { display: flex; justify-content: space-between; gap: 10mm; margin-top: 10mm;
+                          page-break-inside: avoid; break-inside: avoid; }
+            .signature-block { width: 45%; text-align: center; }
+            .signature-label { text-align: left; font-size: 10px; font-weight: bold; margin-bottom: 1mm; }
+            .signature-space { height: 12mm; }
+            .signature-name { border-top: 1px solid #000; padding-top: 1mm; font-weight: bold;
+                              text-transform: uppercase; font-size: 11px; }
+            .signature-title { font-size: 10px; margin-top: 1mm; }
+            .page-number { text-align: right; font-size: 9.5px; margin-top: 5mm; }
+        `;
+
+        const letterhead = `
+            <div class="letterhead">
+                <img class="seal" src="${logoUrl}" alt="Barangay 49 Akasya seal">
+                <div class="letterhead-text">
+                    <div class="line">Republic of the Philippines</div>
+                    <div class="line">Province of Cavite</div>
+                    <div class="line">City of Cavite</div>
+                    <div class="barangay">BARANGAY 49 AKASYA</div>
+                </div>
+            </div>
+            <div class="letterhead-rule"></div>
+        `;
+
+        const reportTitle = `<h1 class="report-title">Directory of Barangay Officials</h1>`;
+
+        const termStatus = `
+            <div class="term-status">
+                <span><span class="meta-label">Term Year:</span> ${escapeHtml(termFilterLabel())}</span>
+                <span><span class="meta-label">Status:</span> ${escapeHtml(statusFilterLabel())}</span>
+            </div>
+        `;
+
+        const metaBlock = `
+            <div class="report-meta">
+                <div><span class="meta-label">Date Generated:</span> ${dateGenerated}, ${timeGenerated}</div>
+                <div><span class="meta-label">Generated By:</span> ${escapeHtml(generatedBy)}</div>
+            </div>
+        `;
+
+        const columnGroup = `
+            <colgroup>
+                <col style="width: 6%">
+                <col style="width: 20%">
+                <col style="width: 26%">
+                <col style="width: 22%">
+                <col style="width: 15%">
+                <col style="width: 11%">
+            </colgroup>
+        `;
+
+        const tableHead = `
+            <thead>
+                <tr>
+                    <th>No.</th>
+                    <th>Position / Role</th>
+                    <th>Full Name</th>
+                    <th>Term Start Date - End Date</th>
+                    <th>Contact No.</th>
+                    <th>Status</th>
+                </tr>
+            </thead>
+        `;
+
+        const rowHtml = (row) => `
+            <tr>
+                <td class="c-no">${row.no}</td>
+                <td class="c-position">${row.position}</td>
+                <td class="c-name">${row.name}</td>
+                <td class="c-term">${row.term}</td>
+                <td class="c-contact">${row.contact}</td>
+                <td class="c-status">${row.status}</td>
+            </tr>`;
+
+        const signatureBlock = (label, official, fallbackTitle) => `
+            <div class="signature-block">
+                <div class="signature-label">${escapeHtml(label)}</div>
+                <div class="signature-space"></div>
+                <div class="signature-name">${official ? escapeHtml(displayName(official)) : '&nbsp;'}</div>
+                <div class="signature-title">${escapeHtml(official && official.position ? official.position : fallbackTitle)}</div>
+            </div>`;
+
+        const signatures = `
+            <div class="signatures">
+                ${signatureBlock('Prepared By:', signatories.prepared, 'Barangay Secretary')}
+                ${signatureBlock('Certified and Approved By:', signatories.approved, 'Punong Barangay')}
+            </div>
+        `;
+
+        const pageFooter = (pageNumber, totalPages) => `<div class="page-number">Page ${pageNumber} of ${totalPages}</div>`;
+
+        const buildDocument = (bodyHtml) => `
+            <!DOCTYPE html>
+            <html>
+            <head><title>${escapeHtml(exportFileName())}</title><meta charset="UTF-8">
+            <style>${styles}</style>
+            </head>
+            <body>${bodyHtml}</body>
+            </html>
+        `;
+
+        const mmToPx = (mm) => mm * (96 / 25.4);
+        const PAGE_CAPACITY = mmToPx(268) * 0.97; // A4 height minus 2 x 12mm margins, with slack
+
+        const waitFor = (predicate, timeoutMs) => new Promise((resolve) => {
+            const started = Date.now();
+
+            const tick = () => {
+                let done = false;
+
+                try {
+                    done = !!predicate();
+                } catch (error) {
+                    done = false;
+                }
+
+                if (done || Date.now() - started > timeoutMs) {
+                    resolve(done);
+                    return;
+                }
+
+                setTimeout(tick, 50);
+            };
+
+            tick();
+        });
+
+        // Pass 2: the rows have been measured, so they can be packed into whole pages.
+        const renderPages = () => {
+            const doc = printWindow.document;
+
+            const heightOf = (selector) => {
+                const el = doc.querySelector(selector);
+                return el ? el.getBoundingClientRect().height : 0;
+            };
+
+            // Everything a page carries besides its data rows, so every page shares
+            // one capacity and the signature block always has room.
+            const fixedHeight = heightOf('.letterhead')
+                + heightOf('.letterhead-rule')
+                + heightOf('.report-title')
+                + heightOf('.term-status')
+                + heightOf('.report-meta')
+                + heightOf('.directory thead tr')
+                + heightOf('.signatures')
+                + heightOf('.page-number');
+
+            const rowHeights = Array.prototype.map.call(
+                doc.querySelectorAll('.directory tbody tr'),
+                (tr) => tr.getBoundingClientRect().height
+            );
+
+            const pages = [];
+            let cursor = 0;
+
+            do {
+                let used = 0;
+                const pageRows = [];
+
+                while (cursor < rowHeights.length) {
+                    const rowHeight = rowHeights[cursor];
+
+                    // At least one row per page, and never overflow the capacity.
+                    if (pageRows.length && used + rowHeight > PAGE_CAPACITY - fixedHeight) {
+                        break;
+                    }
+
+                    pageRows.push(rows[cursor]);
+                    used += rowHeight;
+                    cursor += 1;
+                }
+
+                pages.push(pageRows);
+            } while (cursor < rowHeights.length);
+
+            const totalPages = pages.length;
+
+            const body = pages.map((pageRows, index) => `
+                <div class="page">
+                    ${letterhead}
+                    ${reportTitle}
+                    ${termStatus}
+                    ${metaBlock}
+                    <table class="directory">
+                        ${columnGroup}
+                        ${tableHead}
+                        <tbody>${pageRows.map(rowHtml).join('')}</tbody>
+                    </table>
+                    ${index === totalPages - 1 ? signatures : ''}
+                    ${pageFooter(index + 1, totalPages)}
+                </div>
+            `).join('');
+
+            doc.open();
+            doc.write(buildDocument(body));
+            doc.close();
+
+            // Print only once the seal has been fetched, or it would be missing on paper.
+            const seal = doc.querySelector('.letterhead img.seal');
+            const sealReady = (!seal || seal.complete)
+                ? Promise.resolve()
+                : new Promise((resolve) => {
+                    seal.addEventListener('load', resolve);
+                    seal.addEventListener('error', resolve);
+                });
+
+            sealReady.then(() => {
+                printWindow.focus();
+                printWindow.print();
+                alert('Exported ' + officials.length + ' officials to PDF successfully!');
+            });
+        };
+
+        // Pass 1: render every row once, at the printed width, so real row heights can
+        // be measured (a long position or name that wraps takes two lines of the page).
+        printWindow.document.open();
+        printWindow.document.write(buildDocument(`
+            <div class="page">
+                ${letterhead}
+                ${reportTitle}
+                ${termStatus}
+                ${metaBlock}
+                <table class="directory" id="measureTable">
+                    ${columnGroup}
+                    ${tableHead}
+                    <tbody>${rows.map(rowHtml).join('')}</tbody>
+                </table>
+                ${signatures}
+                ${pageFooter(1, 1)}
+            </div>
+        `));
+        printWindow.document.close();
+
+        const measured = await waitFor(() => {
+            const doc = printWindow.document;
+            const table = doc.getElementById('measureTable');
+
+            return doc.readyState === 'complete'
+                && !!table
+                && !!table.tBodies[0]
+                && table.tBodies[0].rows.length === rows.length;
+        }, 4000);
+
+        if (!measured) {
+            console.error('Directory print: the measuring pass did not complete, printing a single page.');
+        }
+
+        renderPages();
+    }
+
+    // ------------------------------------------------------------------
+    // Global handlers used by the generated card markup
+    // ------------------------------------------------------------------
+    window.editOfficial = function (id) {
+        const official = officialsCache.filter(function (row) {
+            return String(row.id) === String(id);
+        })[0];
+
+        if (official) {
+            showEditConfirmModal(official);
+            return;
+        }
+
+        // Not in the cache (a stale card): fetch it, then ask.
+        apiCall('?id=' + encodeURIComponent(id))
+            .then(function (result) {
+                if (result.data) showEditConfirmModal(result.data);
+            })
+            .catch(function (error) {
+                alert(error.message);
+            });
+    };
+
+    /** Asks before opening the edit form, the same way the Residents module does. */
+    function showEditConfirmModal(official) {
+        pendingEditId = String(official.id);
+
+        const nameField = document.getElementById('editConfirmOfficialName');
+        if (nameField) nameField.textContent = displayName(official);
+
+        const positionField = document.getElementById('editConfirmOfficialPosition');
+        if (positionField) positionField.textContent = official.position || '—';
+
+        const modal = document.getElementById('editConfirmModal');
+        if (modal) modal.classList.add('active');
+    }
+
+    function closeEditConfirmModal() {
+        const modal = document.getElementById('editConfirmModal');
+        if (modal) modal.classList.remove('active');
+        pendingEditId = null;
+    }
+
+    function proceedWithEdit() {
+        // Capture the id first: closeEditConfirmModal() clears pendingEditId, so
+        // reading it afterwards would open nothing.
+        const id = pendingEditId;
+
+        if (!id) return;
+
+        closeEditConfirmModal();
+
+        const official = officialsCache.filter(function (row) {
+            return String(row.id) === String(id);
+        })[0];
+
+        if (official) {
+            showOfficialForm(official);
+            return;
+        }
+
+        apiCall('?id=' + encodeURIComponent(id))
+            .then(function (result) {
+                if (result.data) showOfficialForm(result.data);
+            })
+            .catch(function (error) {
+                alert(error.message);
+            });
+    }
+
+    window.archiveOfficial = function (id) {
+        const official = officialsCache.filter(function (row) {
+            return String(row.id) === String(id);
+        })[0];
+        const who = official ? displayName(official) : 'this official';
+
+        if (!confirm('Archive ' + who + '?\n\nThe record is moved to the archive and can be restored from there.')) {
+            return;
+        }
+
+        apiCall('?id=' + encodeURIComponent(id), { method: 'DELETE' })
+            .then(function (result) {
+                alert(result.message || 'Official has been archived successfully!');
+                loadOfficialsGrid();
+                loadTermOptions();
+            })
+            .catch(function (error) {
+                alert(error.message);
+            });
+    };
+
+    // ------------------------------------------------------------------
+    // Helpers
+    // ------------------------------------------------------------------
+    function escapeHtml(str) {
+        if (str === null || str === undefined) return '';
+        return String(str)
+            .replace(/&/g, '&amp;')
+            .replace(/</g, '&lt;')
+            .replace(/>/g, '&gt;')
+            .replace(/"/g, '&quot;')
+            .replace(/'/g, '&#39;');
+    }
+
+    // Exposed for the sidebar router (and for a direct script load).
+    window.initOfficialsModule = initOfficialsModule;
+
+    if (document.readyState === 'loading') {
+        document.addEventListener('DOMContentLoaded', function () {
+            initOfficialsModule();
+        });
+    } else {
         initOfficialsModule();
-        setupModalClose();
-    });
-} else {
-    initOfficialsModule();
-    setupModalClose();
-}
+    }
+})();

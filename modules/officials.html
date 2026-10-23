@@ -4,7 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Barangay 49 Akasya - Barangay Officials</title>
-    <link rel="stylesheet" href="modules/officials.css">
+    <link rel="stylesheet" href="modules/officials.css?v=4">
     <link rel="stylesheet" href="sidebar.css">
 </head>
 <body>
@@ -20,10 +20,20 @@
                         <input type="text" placeholder="Search official name..." id="searchInput">
                     </div>
                     <div class="action-buttons">
-                        <button class="btn-filter" id="filterBtn">
-                            <img src="Images/Filter_Icon.svg" alt="Filter">
-                            <span>Filter by Term</span>
-                        </button>
+                        <div class="dropdown-anchor">
+                            <button class="btn-filter" id="filterBtn">
+                                <img src="Images/Filter_Icon.svg" alt="Filter">
+                                <span>Filter by Term</span>
+                            </button>
+                            <div class="term-dropdown" id="termDropdown"></div>
+                        </div>
+                        <div class="dropdown-anchor">
+                            <button class="btn-secondary" id="exportBtn">
+                                <img src="Images/Download_Icon.svg" alt="Export Icon">
+                                <span>Export List</span>
+                            </button>
+                            <div class="export-dropdown" id="exportDropdown"></div>
+                        </div>
                         <button class="btn-primary" id="addOfficialBtn">
                             <img src="Images/Add_Icon.svg" alt="Add Icon">
                             <span>Add Official</span>
@@ -55,8 +65,8 @@
                     <!-- Info Banner -->
                     <div class="info-banner-new">
                         <div>
-                            <h3>Register Elected or Appointed Official</h3>
-                            <p>Add a new official to the barangay directory, including their designation, contact details, and committee chairmanship.</p>
+                            <h3 id="formBannerTitle">Register Elected or Appointed Official</h3>
+                            <p id="formBannerText">Add a new official to the barangay directory, including their designation, contact details, and committee chairmanship.</p>
                         </div>
                     </div>
 
@@ -137,6 +147,13 @@
                                     </select>
                                 </div>
                                 <div class="form-group-new">
+                                    <label for="officialType">Official Type <span class="required">*</span></label>
+                                    <select id="officialType" title="Official type" aria-label="Official type">
+                                        <option value="Elected">Elected (serves the full term)</option>
+                                        <option value="Appointed">Appointed</option>
+                                    </select>
+                                </div>
+                                <div class="form-group-new">
                                     <label for="committee">Committee Chairmanship (If applicable)</label>
                                     <select id="committee" title="Committee" aria-label="Committee">
                                         <option value="">Select Committee</option>
@@ -196,11 +213,49 @@
                                 <svg width="14" height="14" viewBox="0 0 14 14" fill="none">
                                     <path d="M2.33 7H11.67M7 2.33V11.67" stroke="white" stroke-width="1.17" stroke-linecap="round"/>
                                 </svg>
-                                Save Official Record
+                                <span id="saveOfficialBtnLabel">Save Official Record</span>
                             </button>
                         </div>
                     </div>
                 </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Edit Confirmation Modal - shown before the edit form opens -->
+    <div class="modal" id="editConfirmModal">
+        <div class="modal-content edit-confirm-modal">
+            <div class="edit-confirm-content">
+                <div class="edit-confirm-header">
+                    <div class="edit-confirm-icon">
+                        <svg width="24" height="24" viewBox="0 0 24 24" fill="none">
+                            <path d="M4 20H8.5L19 9.5C19.83 8.67 19.83 7.33 19 6.5L17.5 5C16.67 4.17 15.33 4.17 14.5 5L4 15.5V20Z" stroke="#0F6CBD" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                            <path d="M13 6.5L17.5 11" stroke="#0F6CBD" stroke-width="2" stroke-linecap="round"/>
+                        </svg>
+                    </div>
+                    <div class="edit-confirm-title-section">
+                        <h3 class="edit-confirm-title">Confirm Edit</h3>
+                        <p class="edit-confirm-message">Are you sure you want to edit this official's information?</p>
+                    </div>
+                </div>
+                <div class="edit-confirm-info">
+                    <div class="info-row">
+                        <span class="info-label">Official</span>
+                        <span class="info-value" id="editConfirmOfficialName">&mdash;</span>
+                    </div>
+                    <div class="info-row">
+                        <span class="info-label">Position</span>
+                        <span class="info-value" id="editConfirmOfficialPosition">&mdash;</span>
+                    </div>
+                    <div class="info-row">
+                        <span class="info-label">Action</span>
+                        <span class="info-action">The current information will be updated once you continue.</span>
+                    </div>
+                </div>
+            </div>
+            <div class="edit-confirm-footer">
+                <button class="btn-edit-cancel" id="cancelEditConfirmBtn">Cancel</button>
+                <button class="btn-edit-confirm" id="confirmEditBtn">Yes, Edit</button>
             </div>
         </div>
     </div>
