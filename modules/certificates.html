@@ -4,7 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Barangay 49 Akasya - Certificates Management</title>
-    <link rel="stylesheet" href="modules/certificates.css?v=7">
+    <link rel="stylesheet" href="modules/certificates.css?v=9">
     <link rel="stylesheet" href="sidebar.css">
 </head>
 <body>
@@ -36,12 +36,9 @@
                                 <label for="certificateType">Certificate Type</label>
                                 <div class="select-wrapper">
                                     <select id="certificateType" class="form-select" title="Certificate type" aria-label="Certificate type">
+                                        <option value="Barangay Indigency">Barangay Indigency</option>
                                         <option value="Barangay Clearance">Barangay Clearance</option>
-                                        <option value="Certificate of Indigency">Certificate of Indigency</option>
-                                        <option value="Certificate of Residency">Certificate of Residency</option>
-                                        <option value="Business Permit">Business Permit</option>
-                                        <option value="Cedula (Community Tax Certificate)">Cedula (Community Tax Certificate)</option>
-                                        <option value="Good Moral Character">Good Moral Character</option>
+                                        <option value="Barangay Certification">Barangay Certification</option>
                                     </select>
                                     <span class="select-arrow">▼</span>
                                 </div>
@@ -58,7 +55,7 @@
                                     <input type="text" id="orNumber" placeholder="OR-2023-0892" class="form-input" title="OR Number" aria-label="OR Number">
                                 </div>
                                 <div class="form-group">
-                                    <label for="amount">Amount Paid</label>
+                                    <label for="amount">Amount Paid <span class="optional">(optional)</span></label>
                                     <input type="text" id="amount" placeholder="₱ 00.00" class="form-input" title="Amount Paid" aria-label="Amount Paid">
                                 </div>
                             </div>
@@ -136,10 +133,20 @@
                             </div>
                             <h1 class="details-main-title">Certificate Details</h1>
                         </div>
-                        <button class="btn-edit-certificate" id="editFromDetailsBtn">
-                            <img src="Images/Edits_Icon.svg" alt="Mapping Icon">
-                            <span>Edit</span>
-                        </button>
+                        <div class="details-actions">
+                            <button class="btn-print-certificate" id="printFromDetailsBtn">
+                                <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
+                                    <path d="M4 6V2H12V6" stroke="#0F6CBD" stroke-width="1.33" stroke-linejoin="round"/>
+                                    <path d="M3 6H13V11H11V14H5V11H3V6Z" stroke="#0F6CBD" stroke-width="1.33" stroke-linejoin="round"/>
+                                    <path d="M5 12.5H11" stroke="#0F6CBD" stroke-width="1.33" stroke-linecap="round"/>
+                                </svg>
+                                <span>Print</span>
+                            </button>
+                            <button class="btn-edit-certificate" id="editFromDetailsBtn">
+                                <img src="Images/Edits_Icon.svg" alt="Mapping Icon">
+                                <span>Edit</span>
+                            </button>
+                        </div>
                     </div>
 
                     <div class="details-card-wrapper">

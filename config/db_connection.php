@@ -100,6 +100,7 @@ function ensureSqliteDatabase() {
             mobile_number TEXT,
             role TEXT,
             status TEXT,
+            address TEXT,
             last_login DATETIME,
             created_at DATETIME DEFAULT CURRENT_TIMESTAMP
         );

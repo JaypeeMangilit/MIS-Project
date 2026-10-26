@@ -237,6 +237,271 @@ function officialsTableColumns(string $table): array
     return $columns;
 }
 
+/**
+ * Move one official row into the archive table and remove it from the active list.
+ *
+ * Shared by the manual Archive button and the term-expiry sweep, so both use the same
+ * copy-then-delete order: the row is only deleted once the copy has actually landed,
+ * inside a transaction that rolls back if either half fails.
+ *
+ * @return array{success: bool, archived: int, error: ?string}
+ */
+function archiveOfficialRecord($id, $archivedBy)
+{
+    $columns = officialsTableColumns('barangay_officials');
+    if (!$columns) {
+        return ['success' => false, 'archived' => 0, 'error' => 'Unable to read the officials table columns.'];
+    }
+
+    $columnList = implode(', ', $columns);
+
+    $conn = getConnection();
+    $archived = 0;
+
+    try {
+        $conn->beginTransaction();
+
+        $conn->exec("SET IDENTITY_INSERT archived_barangay_officials ON");
+        try {
+            $insert = $conn->prepare(
+                "INSERT INTO archived_barangay_officials ($columnList, archived_at, archived_by)
+                 SELECT $columnList, " . db_now_sql() . ", ? FROM barangay_officials WHERE id = ?"
+            );
+            $insert->execute([$archivedBy !== '' ? $archivedBy : null, $id]);
+
+            $delete = $conn->prepare("DELETE FROM barangay_officials WHERE id = ?");
+            $delete->execute([$id]);
+            $archived = $delete->rowCount();
+        } finally {
+            $conn->exec("SET IDENTITY_INSERT archived_barangay_officials OFF");
+        }
+
+        $conn->commit();
+    } catch (PDOException $e) {
+        if ($conn->inTransaction()) {
+            $conn->rollBack();
+        }
+        error_log('Official archive error: ' . $e->getMessage());
+        return ['success' => false, 'archived' => 0, 'error' => $e->getMessage()];
+    }
+
+    return ['success' => $archived > 0, 'archived' => $archived, 'error' => null];
+}
+
+/**
+ * Archive every official whose term has officially ended.
+ *
+ * Runs whenever the officials list is read, so the active list only ever shows serving
+ * officials. The rule is narrow on purpose: a non-null term_end in the past and status
+ * 'Active'. It applies regardless of how long the term was — a full four-year term and
+ * a shorter one expire the same way, which is what the owner asked for.
+ *
+ * Idempotent: an archived row is gone from barangay_officials, so a second read finds
+ * nothing to do and nothing is ever archived twice. Each archive is written to the
+ * activity trail as a system action, worded so it cannot be mistaken for somebody
+ * clicking Archive.
+ *
+ * A failure on one official is logged and skipped rather than aborting the sweep, so a
+ * single bad row cannot freeze the whole list.
+ *
+ * @return array The officials that were archived: [{id, official_id, name}]
+ */
+function autoArchiveExpiredOfficials()
+{
+    // Connect first. db_now_sql() needs a live PDO to tell SQL Server from MySQL, and
+    // without one it falls through to the MySQL NOW(), which SQL Server rejects --
+    // the sweep would then silently match nothing instead of erroring.
+    getConnection();
+
+    $expired = getRecords(
+        "SELECT id, official_id, first_name, middle_name, last_name, suffix, term_end
+         FROM barangay_officials
+         WHERE term_end IS NOT NULL
+           AND term_end < " . db_now_sql() . "
+           AND status = 'Active'
+         ORDER BY term_end ASC"
+    );
+
+    $archived = [];
+
+    foreach ($expired ?: [] as $official) {
+        $result = archiveOfficialRecord($official['id'], 'System (term ended)');
+
+        if (!$result['success']) {
+            error_log('Auto-archive failed for official #' . $official['id'] . ': ' . $result['error']);
+            continue;
+        }
+
+        $name = officialDisplayName($official['id'], $official);
+
+        logUserActivity(
+            'Official',
+            'Term ended - auto-archived ' . $name . ' (' . $official['official_id'] . ')'
+        );
+
+        $archived[] = [
+            'id'          => $official['id'],
+            'official_id' => $official['official_id'],
+            'name'        => $name,
+        ];
+    }
+
+    return $archived;
+}
+
+/**
+ * An official's name for the activity trail. Pass $official when the row is already
+ * in hand (the archive path reads it before deleting it); otherwise it is looked up.
+ * Falls back to the id when the record is gone.
+ */
+function officialDisplayName($id, $official = null)
+{
+    if (!is_array($official)) {
+        $official = getRecord("SELECT first_name, middle_name, last_name, suffix FROM barangay_officials WHERE id = ?", [$id], 'i');
+    }
+
+    if (!$official) {
+        return 'official record #' . $id;
+    }
+
+    $parts = array_filter([
+        $official['first_name'] ?? '',
+        $official['middle_name'] ?? '',
+        $official['last_name'] ?? '',
+        $official['suffix'] ?? '',
+    ], function ($part) {
+        return trim((string) $part) !== '';
+    });
+
+    return $parts ? implode(' ', $parts) : 'official record #' . $id;
+}
+
+/**
+ * Move an archived official row back into barangay_officials, preserving its id.
+ *
+ * Same copy-then-delete order as the other modules: the row is only removed from the
+ * archive once the copy into the live table has landed, inside one transaction. The
+ * original id is kept so the record still maps 1:1 to what it was.
+ */
+function restoreOfficial($id)
+{
+    $archived = getRecord("SELECT * FROM archived_barangay_officials WHERE id = ?", [$id], 'i');
+
+    if (!$archived) {
+        return ['success' => false, 'affected' => 0, 'message' => 'Archived official not found'];
+    }
+
+    // A live row already holding this id would collide on the primary key.
+    $live = getRecord("SELECT id FROM barangay_officials WHERE id = ?", [$id], 'i');
+    if ($live) {
+        return ['success' => false, 'affected' => 0, 'message' => 'An official with this ID already exists'];
+    }
+
+    // barangay_officials.official_id is UNIQUE, so a duplicate would fail on the
+    // constraint. Refuse with a readable message rather than a raw SQL error.
+    $idTaken = getRecord(
+        "SELECT id FROM barangay_officials WHERE official_id = ?",
+        [$archived['official_id']],
+        's'
+    );
+    if ($idTaken) {
+        return [
+            'success' => false,
+            'affected' => 0,
+            'message' => "The official ID '{$archived['official_id']}' is already in use",
+        ];
+    }
+
+    $columns = officialsTableColumns('barangay_officials');
+    if (!$columns) {
+        return ['success' => false, 'affected' => 0, 'message' => 'Unable to read the officials table columns'];
+    }
+
+    $columnList = implode(', ', $columns);
+
+    $conn = getConnection();
+    $restored = 0;
+    $error = null;
+
+    try {
+        $conn->beginTransaction();
+
+        $conn->exec("SET IDENTITY_INSERT barangay_officials ON");
+        try {
+            $insert = $conn->prepare(
+                "INSERT INTO barangay_officials ($columnList)
+                 SELECT $columnList FROM archived_barangay_officials WHERE id = ?"
+            );
+            $insert->execute([$id]);
+
+            $delete = $conn->prepare("DELETE FROM archived_barangay_officials WHERE id = ?");
+            $delete->execute([$id]);
+            $restored = $delete->rowCount();
+        } finally {
+            $conn->exec("SET IDENTITY_INSERT barangay_officials OFF");
+        }
+
+        $conn->commit();
+    } catch (PDOException $e) {
+        if ($conn->inTransaction()) {
+            $conn->rollBack();
+        }
+        error_log('Restore official error: ' . $e->getMessage());
+        $error = $e->getMessage();
+    }
+
+    return [
+        'success'  => $error === null && $restored > 0,
+        'affected' => $restored,
+        'message'  => $error !== null
+            ? 'Restore failed: ' . $error
+            : ($restored > 0 ? 'Official restored successfully' : 'Official could not be restored'),
+    ];
+}
+
+/**
+ * Permanently remove an archived official row.
+ *
+ * Deliberately one-directional: this deletes from the archive table only and never
+ * touches barangay_officials. The row is gone afterwards, so there is no undo.
+ */
+function permanentlyDeleteOfficial($id)
+{
+    $archived = getRecord("SELECT * FROM archived_barangay_officials WHERE id = ?", [$id], 'i');
+
+    if (!$archived) {
+        return ['success' => false, 'affected' => 0, 'message' => 'Archived official not found'];
+    }
+
+    $conn = getConnection();
+    $deleted = 0;
+    $error = null;
+
+    try {
+        $conn->beginTransaction();
+
+        $delete = $conn->prepare("DELETE FROM archived_barangay_officials WHERE id = ?");
+        $delete->execute([$id]);
+        $deleted = $delete->rowCount();
+
+        $conn->commit();
+    } catch (PDOException $e) {
+        if ($conn->inTransaction()) {
+            $conn->rollBack();
+        }
+        error_log('Delete archived official error: ' . $e->getMessage());
+        $error = $e->getMessage();
+    }
+
+    return [
+        'success'  => $error === null && $deleted > 0,
+        'affected' => $deleted,
+        'message'  => $error !== null
+            ? 'Delete failed: ' . $error
+            : ($deleted > 0 ? 'Archived official permanently deleted' : 'Archived official could not be deleted'),
+    ];
+}
+
 switch ($_SERVER['REQUEST_METHOD']) {
     // -----------------------------------------------------------------------
     case 'GET':
@@ -264,6 +529,22 @@ switch ($_SERVER['REQUEST_METHOD']) {
             break;
         }
 
+        // Archived officials, read from the real archive table so the Archive
+        // navigation can list them. Same envelope as the live list.
+        if (isset($_GET['archived'])) {
+            $archivedOfficials = getRecords(
+                "SELECT * FROM archived_barangay_officials
+                 ORDER BY archived_at DESC, last_name ASC, first_name ASC"
+            );
+
+            echo json_encode([
+                'success' => true,
+                'data'    => $archivedOfficials ?: [],
+                'total'   => count($archivedOfficials ?: []),
+            ]);
+            break;
+        }
+
         if (isset($_GET['id'])) {
             $official = getRecord("SELECT * FROM barangay_officials WHERE id = ?", [$_GET['id']], 'i');
             if ($official) {
@@ -282,6 +563,10 @@ switch ($_SERVER['REQUEST_METHOD']) {
         $page = isset($_GET['page']) ? max(1, (int) $_GET['page']) : 1;
         $limit = isset($_GET['limit']) ? max(1, (int) $_GET['limit']) : 100;
         $offset = ($page - 1) * $limit;
+
+        // Terms that have officially ended leave the active list on their own, so the
+        // list below only ever shows serving officials. See autoArchiveExpiredOfficials().
+        $autoArchived = autoArchiveExpiredOfficials();
 
         $where = " WHERE 1=1";
         $params = [];
@@ -346,6 +631,8 @@ switch ($_SERVER['REQUEST_METHOD']) {
             'page' => $page,
             'limit' => $limit,
             'totalPages' => $total > 0 ? (int) ceil($total / $limit) : 1,
+            // Extra key, additive: the list is unchanged when the sweep archived nothing.
+            'auto_archived' => $autoArchived,
         ]);
         break;
 
@@ -354,6 +641,55 @@ switch ($_SERVER['REQUEST_METHOD']) {
         $data = json_decode(file_get_contents('php://input'), true);
         if (!is_array($data)) {
             $data = [];
+        }
+
+        // Permanently delete an archived official. Kept ahead of the payload validation
+        // below, which would reject a delete request for not being a new official.
+        if (isset($data['action']) && $data['action'] === 'delete') {
+            $deleteId = isset($data['id']) ? (int) $data['id'] : 0;
+
+            if ($deleteId <= 0) {
+                officialsFail('An archived official id is required.');
+                break;
+            }
+
+            $result = permanentlyDeleteOfficial($deleteId);
+
+            if ($result['success']) {
+                logUserActivity('Official', 'Permanently deleted archived official ' . $deleteId);
+            }
+
+            echo json_encode([
+                'success'  => $result['success'],
+                'affected' => $result['affected'],
+                'message'  => $result['message'],
+            ]);
+            break;
+        }
+
+        // Restore an archived official. Kept ahead of the payload validation below,
+        // which would reject a restore request for not being a new official.
+        if (isset($data['action']) && $data['action'] === 'restore') {
+            $restoreId = isset($data['id']) ? (int) $data['id'] : 0;
+
+            if ($restoreId <= 0) {
+                officialsFail('An archived official id is required.');
+                break;
+            }
+
+            $result = restoreOfficial($restoreId);
+
+            // Only a restore that actually moved a row belongs in the trail.
+            if ($result['success']) {
+                logUserActivity('Official', 'Restored ' . officialDisplayName($restoreId));
+            }
+
+            echo json_encode([
+                'success'  => $result['success'],
+                'affected' => $result['affected'],
+                'message'  => $result['message'],
+            ]);
+            break;
         }
 
         $error = validateOfficialPayload($data);
@@ -419,6 +755,8 @@ switch ($_SERVER['REQUEST_METHOD']) {
                 );
             }
         }
+
+        logUserActivity('Official', 'Added ' . officialDisplayName($newId) . ' (' . $officialId . ')');
 
         echo json_encode([
             'success' => true,
@@ -500,6 +838,8 @@ switch ($_SERVER['REQUEST_METHOD']) {
             }
         }
 
+        logUserActivity('Official', 'Updated ' . officialDisplayName($id) . ' (' . ($existing['official_id'] ?? ('#' . $id)) . ')');
+
         echo json_encode([
             'success' => true,
             'id' => $id,
@@ -520,57 +860,29 @@ switch ($_SERVER['REQUEST_METHOD']) {
             break;
         }
 
-        if (!getRecord("SELECT id FROM barangay_officials WHERE id = ?", [$id], 'i')) {
+        // Read the row first: the archive log line needs the name, and after the
+        // delete it is gone from barangay_officials.
+        $official = getRecord("SELECT * FROM barangay_officials WHERE id = ?", [$id], 'i');
+        if (!$official) {
             officialsFail('Official not found.', 404);
             break;
         }
 
-        $columns = officialsTableColumns('barangay_officials');
-        if (!$columns) {
-            officialsFail('Unable to read the officials table columns.', 500);
-            break;
-        }
-
-        $columnList = implode(', ', $columns);
         $archivedBy = trim((string) ($_SESSION['name'] ?? ''));
         if ($archivedBy === '') {
             $archivedBy = trim((string) ($_SESSION['username'] ?? ''));
         }
 
-        $conn = getConnection();
-        $archived = 0;
-        $error = null;
+        $result = archiveOfficialRecord($id, $archivedBy);
+        $archived = $result['archived'];
 
-        try {
-            $conn->beginTransaction();
-
-            $conn->exec("SET IDENTITY_INSERT archived_barangay_officials ON");
-            try {
-                $insert = $conn->prepare(
-                    "INSERT INTO archived_barangay_officials ($columnList, archived_at, archived_by)
-                     SELECT $columnList, " . db_now_sql() . ", ? FROM barangay_officials WHERE id = ?"
-                );
-                $insert->execute([$archivedBy !== '' ? $archivedBy : null, $id]);
-
-                $delete = $conn->prepare("DELETE FROM barangay_officials WHERE id = ?");
-                $delete->execute([$id]);
-                $archived = $delete->rowCount();
-            } finally {
-                $conn->exec("SET IDENTITY_INSERT archived_barangay_officials OFF");
-            }
-
-            $conn->commit();
-        } catch (PDOException $e) {
-            if ($conn->inTransaction()) {
-                $conn->rollBack();
-            }
-            error_log('Official archive error: ' . $e->getMessage());
-            $error = $e->getMessage();
-        }
-
-        if ($error !== null) {
+        if ($result['error'] !== null) {
             officialsFail('The official record could not be archived.', 500);
             break;
+        }
+
+        if ($archived > 0) {
+            logUserActivity('Official', 'Archived ' . officialDisplayName($id, $official) . ' (' . $official['official_id'] . ')');
         }
 
         echo json_encode([

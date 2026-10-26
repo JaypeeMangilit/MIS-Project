@@ -1030,6 +1030,16 @@ body {
 }
 
 /* Form Group New */
+/* Small note under a field, e.g. the auto-calculated term end. */
+.field-hint {
+    display: block;
+    margin-top: 6px;
+    font-size: 12px;
+    font-weight: 400;
+    color: #5F7385;
+    line-height: 1.4;
+}
+
 .form-group-new {
     display: flex;
     flex-direction: column;

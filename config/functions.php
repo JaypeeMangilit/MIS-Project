@@ -196,8 +196,57 @@ function valid_role_prefixes(): array {
 /**
  * Get the list of valid roles.
  *
+ * 'Secretary' was added when User Management was wired to system_users: it is
+ * the role the barangay uses for the account that runs the system day to day.
+ * Additive only - the USR-prefix branch of validate_user_role() already
+ * accepted 'Secretary', so no existing account's ability to log in changes.
+ *
  * @return string[]
  */
 function valid_roles(): array {
-    return ['Admin', 'Councilor', 'Captain', 'Kagawad'];
+    return ['Admin', 'Councilor', 'Captain', 'Kagawad', 'Secretary'];
+}
+
+// ============================================
+// Activity logging
+// ============================================
+
+/**
+ * Record an activity for the signed-in user.
+ *
+ * Shared by every module's endpoint: call it AFTER the write has succeeded, never
+ * before, so a failed operation is never recorded as a completed action. Put the
+ * module in $type (e.g. 'Resident', 'Certificate') and the record reference in
+ * $description - user_activity_log has no separate module/record column.
+ *
+ * Attribution comes from $_SESSION['user_id'] (the system_users PK that
+ * api/login.php sets), never from the request body: a client-supplied id is how
+ * one user's actions end up on another user's history. A no-op when nobody is
+ * signed in, and it must stay that way for logout, which has to capture the id
+ * before the session is cleared.
+ *
+ * Never put a password, a password hash, a session id or a token in $description.
+ *
+ * @param string $type         Short machine-readable label, e.g. 'Resident'
+ * @param string $description  What happened, safe for any system user to read
+ */
+function logUserActivity(string $type, string $description): void
+{
+    if (!function_exists('isLoggedIn') || !isLoggedIn()) {
+        return;
+    }
+
+    $userId = $_SESSION['user_id'] ?? null;
+    if ($userId === null || $userId === '') {
+        return;
+    }
+
+    $ip = $_SERVER['REMOTE_ADDR'] ?? 'unknown';
+
+    insertRecord(
+        "INSERT INTO user_activity_log (user_id, activity_type, activity_description, ip_address)
+         VALUES (?, ?, ?, ?)",
+        [(int) $userId, $type, $description, $ip],
+        'isss'
+    );
 }

@@ -4,6 +4,11 @@ header('Access-Control-Allow-Origin: *');
 header('Access-Control-Allow-Methods: GET, POST, PUT, DELETE');
 header('Access-Control-Allow-Headers: Content-Type');
 
+// functions.php supplies logUserActivity() (and the role helpers); without it the
+// archive/create/update paths fatal with "Call to undefined function" AFTER the
+// write has committed, so the endpoint returns no JSON and the UI reports a
+// failure for an operation that actually succeeded.
+require_once __DIR__ . '/../config/functions.php';
 require_once __DIR__ . '/../config/db_connection.php';
 require_once __DIR__ . '/../config/app_session.php';
 
@@ -23,10 +28,19 @@ requireLogin();
 function generateResidentId(int $offset = 0) {
     $year = date('Y');
 
+    // The sequence must count BOTH tables. residents.resident_id is UNIQUE, so reading
+    // only the live table lets an archived number be handed out again - the next insert
+    // then collides with the archived row, and restoring that archived row fails on the
+    // same constraint. Taking the higher of the two maxima keeps every issued number
+    // unique across live and archived records.
     $row = getRecord(
-        "SELECT MAX(resident_id) AS max_id FROM residents WHERE resident_id LIKE ?",
-        ["RES-$year-%"],
-        's'
+        "SELECT MAX(rid) AS max_id FROM (
+             SELECT resident_id AS rid FROM residents WHERE resident_id LIKE ?
+             UNION ALL
+             SELECT resident_id AS rid FROM archived_residents WHERE resident_id LIKE ?
+         ) AS both_tables",
+        ["RES-$year-%", "RES-$year-%"],
+        'ss'
     );
 
     $max = $row['max_id'] ?? null;
@@ -158,8 +172,221 @@ if (!isDatabaseConnected()) {
     exit;
 }
 
+/**
+ * A resident's name for the activity trail, so the log line cannot drift from how
+ * the module itself names a record.
+ */
+function residentDisplayName($resident)
+{
+    if (!is_array($resident)) {
+        return 'record';
+    }
+
+    $parts = array_filter([
+        $resident['first_name'] ?? '',
+        $resident['middle_name'] ?? '',
+        $resident['last_name'] ?? '',
+        $resident['suffix'] ?? '',
+    ], function ($part) {
+        return trim((string) $part) !== '';
+    });
+
+    return $parts ? implode(' ', $parts) : 'record';
+}
+
+/**
+ * Move an archived resident row back into residents, preserving its id.
+ *
+ * Same copy-then-delete order as the archive path: the row is only removed from the
+ * archive once the copy into the live table has landed, inside one transaction. The
+ * original id is kept so the record still maps 1:1 to what it was.
+ */
+function restoreResident($id)
+{
+    $archived = getRecord("SELECT * FROM archived_residents WHERE id = ?", [$id], 'i');
+
+    if (!$archived) {
+        return ['success' => false, 'affected' => 0, 'message' => 'Archived resident not found'];
+    }
+
+    // A live row already holding this id would collide on the primary key.
+    $live = getRecord("SELECT id FROM residents WHERE id = ?", [$id], 'i');
+    if ($live) {
+        return ['success' => false, 'affected' => 0, 'message' => 'A resident with this ID already exists'];
+    }
+
+    // residents.resident_id is UNIQUE, so a restore whose number is already live would
+    // fail on the constraint. Say so instead of surfacing the raw SQL error.
+    $numberTaken = getRecord(
+        "SELECT id, last_name, first_name FROM residents WHERE resident_id = ?",
+        [$archived['resident_id']],
+        's'
+    );
+    if ($numberTaken) {
+        // The archived row keeps its own id, so the restored copy is renumbered rather
+        // than dropped - otherwise the record would be unrecoverable from the archive
+        // and the only way back would be re-adding it by hand. generateResidentId()
+        // already counts both tables, so the new number cannot collide.
+        $renumberedId = generateResidentId();
+    } else {
+        $renumberedId = null;
+    }
+
+    $columns = [];
+    foreach (getRecords(
+        "SELECT c.name AS col FROM sys.columns c WHERE c.object_id = OBJECT_ID('residents') ORDER BY c.column_id"
+    ) as $column) {
+        $columns[] = $column['col'];
+    }
+
+    if (!$columns) {
+        return ['success' => false, 'affected' => 0, 'message' => 'Unable to read the residents table columns'];
+    }
+
+    // resident_id is bound explicitly rather than copied from the archive row, so a
+    // restore whose number is already live can be written under a fresh one.
+    $residentIdIndex = array_search('resident_id', $columns, true);
+    if ($residentIdIndex !== false) {
+        unset($columns[$residentIdIndex]);
+        $columns = array_values($columns);
+    }
+
+    $columnList = implode(', ', $columns);
+    $effectiveResidentId = $renumberedId ?? $archived['resident_id'];
+
+    $conn = getConnection();
+    $restored = 0;
+    $error = null;
+
+    try {
+        $conn->beginTransaction();
+
+        $conn->exec("SET IDENTITY_INSERT residents ON");
+        try {
+            $insert = $conn->prepare(
+                "INSERT INTO residents (resident_id, $columnList)
+                 SELECT ?, $columnList FROM archived_residents WHERE id = ?"
+            );
+            $insert->execute([$effectiveResidentId, $id]);
+
+            $delete = $conn->prepare("DELETE FROM archived_residents WHERE id = ?");
+            $delete->execute([$id]);
+            $restored = $delete->rowCount();
+        } finally {
+            $conn->exec("SET IDENTITY_INSERT residents OFF");
+        }
+
+        $conn->commit();
+    } catch (PDOException $e) {
+        if ($conn->inTransaction()) {
+            $conn->rollBack();
+        }
+        error_log('Restore resident error: ' . $e->getMessage());
+        $error = $e->getMessage();
+    }
+
+    return [
+        'success'  => $error === null && $restored > 0,
+        'affected' => $restored,
+        'message'  => $error !== null
+            ? 'Restore failed: ' . $error
+            : ($restored > 0
+                ? ($renumberedId !== null
+                    ? "Resident restored successfully under a new ID ({$renumberedId})"
+                    : 'Resident restored successfully')
+                : 'Resident could not be restored'),
+    ];
+}
+
+/**
+ * Permanently remove an archived resident row.
+ *
+ * One-directional: deletes from archived_residents only and never touches residents.
+ * The row is gone afterwards, so there is no undo.
+ */
+function permanentlyDeleteResident($id)
+{
+    $archived = getRecord("SELECT id FROM archived_residents WHERE id = ?", [$id], 'i');
+
+    if (!$archived) {
+        return ['success' => false, 'affected' => 0, 'message' => 'Archived resident not found'];
+    }
+
+    $conn = getConnection();
+    $deleted = 0;
+    $error = null;
+
+    try {
+        $conn->beginTransaction();
+
+        $delete = $conn->prepare("DELETE FROM archived_residents WHERE id = ?");
+        $delete->execute([$id]);
+        $deleted = $delete->rowCount();
+
+        $conn->commit();
+    } catch (PDOException $e) {
+        if ($conn->inTransaction()) {
+            $conn->rollBack();
+        }
+        error_log('Delete archived resident error: ' . $e->getMessage());
+        $error = $e->getMessage();
+    }
+
+    return [
+        'success'  => $error === null && $deleted > 0,
+        'affected' => $deleted,
+        'message'  => $error !== null
+            ? 'Delete failed: ' . $error
+            : ($deleted > 0 ? 'Archived resident permanently deleted' : 'Archived resident could not be deleted'),
+    ];
+}
+
 switch($method) {
     case 'GET':
+        // Archived residents, read from the real archive table so the Archive
+        // navigation can list them. Same envelope as the live list.
+        if (isset($_GET['archived'])) {
+            $search = trim((string) ($_GET['search'] ?? ''));
+            $page = isset($_GET['page']) ? max(1, (int) $_GET['page']) : 1;
+            $limit = isset($_GET['limit']) ? max(1, (int) $_GET['limit']) : 4;
+            $offset = ($page - 1) * $limit;
+
+            $where = '';
+            $params = [];
+            $types = '';
+            if ($search !== '') {
+                $where = " WHERE (last_name LIKE ? OR first_name LIKE ? OR resident_id LIKE ? OR purok LIKE ?)";
+                for ($i = 0; $i < 4; $i++) {
+                    $params[] = "%$search%";
+                }
+                $types = 'ssss';
+            }
+
+            $total = 0;
+            $countRow = getRecord("SELECT COUNT(*) AS n FROM archived_residents" . $where, $params, $types);
+            if ($countRow) {
+                $total = (int) $countRow['n'];
+            }
+
+            $rows = getRecords(
+                "SELECT * FROM archived_residents" . $where . "
+                 ORDER BY last_name ASC, first_name ASC
+                 OFFSET $offset ROWS FETCH NEXT $limit ROWS ONLY",
+                $params,
+                $types
+            );
+
+            echo json_encode([
+                'success'     => true,
+                'data'        => $rows ?: [],
+                'total'       => $total,
+                'page'        => $page,
+                'limit'       => $limit,
+                'totalPages'  => $total > 0 ? (int) ceil($total / $limit) : 1,
+            ]);
+            break;
+        }
+
         if(isset($_GET['action']) && $_GET['action'] === 'stats') {
             $votersResult = executeQuery("SELECT COUNT(*) as count FROM residents WHERE voter_status = 'Registered'");
             $voters = 0;
@@ -274,6 +501,55 @@ switch($method) {
         break;
         
     case 'POST':
+        // { action: 'delete', id: N } permanently removes an archived resident row.
+        $deletePayload = json_decode(file_get_contents('php://input'), true);
+        if (is_array($deletePayload) && ($deletePayload['action'] ?? '') === 'delete') {
+            $deleteId = isset($deletePayload['id']) ? (int) $deletePayload['id'] : 0;
+
+            if ($deleteId <= 0) {
+                echo json_encode(['success' => false, 'message' => 'A resident record id is required']);
+                break;
+            }
+
+            $result = permanentlyDeleteResident($deleteId);
+
+            if ($result['success']) {
+                logUserActivity('Resident', 'Permanently deleted archived resident #' . $deleteId);
+            }
+
+            echo json_encode([
+                'success'  => $result['success'],
+                'affected' => $result['affected'],
+                'message'  => $result['message'],
+            ]);
+            break;
+        }
+
+        // { action: 'restore', id: N } moves an archived resident back into residents
+        // (the reverse of DELETE, same transaction shape).
+        $restorePayload = json_decode(file_get_contents('php://input'), true);
+        if (is_array($restorePayload) && ($restorePayload['action'] ?? '') === 'restore') {
+            $restoreId = isset($restorePayload['id']) ? (int) $restorePayload['id'] : 0;
+
+            if ($restoreId <= 0) {
+                echo json_encode(['success' => false, 'message' => 'A resident record id is required']);
+                break;
+            }
+
+            $result = restoreResident($restoreId);
+
+            if ($result['success']) {
+                logUserActivity('Resident', 'Restored resident record #' . $restoreId);
+            }
+
+            echo json_encode([
+                'success'  => $result['success'],
+                'affected' => $result['affected'],
+                'message'  => $result['message'],
+            ]);
+            break;
+        }
+
         // Create new resident
         $data = json_decode(file_get_contents('php://input'), true);
         if (!is_array($data)) {
@@ -384,7 +660,11 @@ switch($method) {
 
         // Get the created resident
         $newResident = getRecord("SELECT * FROM residents WHERE id = ?", [$id], 'i');
-        
+
+        // Logged only once the row exists, so a failed insert is never recorded as
+        // a completed action.
+        logUserActivity('Resident', 'Added resident ' . residentDisplayName($newResident) . ' (' . $resident_id . ')');
+
         echo json_encode([
             'success' => true,
             'id' => $id,
@@ -503,6 +783,10 @@ switch($method) {
             }
         }
 
+        if ($affected !== false) {
+            logUserActivity('Resident', 'Updated resident record #' . $data['id']);
+        }
+
         echo json_encode([
             'success' => $affected !== false,
             'affected' => $affected,
@@ -559,16 +843,50 @@ switch($method) {
         $conn = getConnection();
         $archived = 0;
         $error = null;
-        
+
+        // Who is archiving this record, for the archive row's archived_by column.
+        $archivedBy = trim((string) ($_SESSION['name'] ?? ''));
+        if ($archivedBy === '') {
+            $archivedBy = trim((string) ($_SESSION['username'] ?? ''));
+        }
+
+        // certificate_issuances.resident_id has a foreign key to residents.id, so the
+        // DELETE below would fail on the constraint for a resident who still has
+        // certificates. Name them instead of surfacing the raw SQL error - archiving the
+        // certificates first clears the way.
+        $blockingCerts = getRecords(
+            "SELECT id, certificate_type, date_issued FROM certificate_issuances WHERE resident_id = ? ORDER BY id",
+            [$id],
+            'i'
+        );
+
+        if (!empty($blockingCerts)) {
+            $names = [];
+            foreach ($blockingCerts as $cert) {
+                $names[] = trim(($cert['certificate_type'] ?? '') . ' #' . $cert['id']);
+            }
+
+            echo json_encode([
+                'success' => false,
+                'affected' => 0,
+                'message' => 'This resident still has ' . count($blockingCerts) .
+                    ' certificate record' . (count($blockingCerts) === 1 ? '' : 's') .
+                    ' (' . implode(', ', $names) .
+                    '). Archive those certificates first, then archive the resident.',
+            ]);
+            break;
+        }
+
         try {
             $conn->beginTransaction();
             
             $conn->exec("SET IDENTITY_INSERT archived_residents ON");
             try {
                 $insert = $conn->prepare(
-                    "INSERT INTO archived_residents ($columnList) SELECT $columnList FROM residents WHERE id = ?"
+                    "INSERT INTO archived_residents ($columnList, archived_at, archived_by)
+                     SELECT $columnList, " . db_now_sql() . ", ? FROM residents WHERE id = ?"
                 );
-                $insert->execute([$id]);
+                $insert->execute([$archivedBy !== '' ? $archivedBy : null, $id]);
                 
                 $delete = $conn->prepare("DELETE FROM residents WHERE id = ?");
                 $delete->execute([$id]);
@@ -586,6 +904,10 @@ switch($method) {
             $error = $e->getMessage();
         }
         
+        if ($error === null && $archived > 0) {
+            logUserActivity('Resident', 'Archived resident record #' . $id);
+        }
+
         echo json_encode([
             'success' => $error === null && $archived > 0,
             'affected' => $archived,

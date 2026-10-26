@@ -4,7 +4,23 @@
  */
 
 require_once __DIR__ . '/config/functions.php';
+// db_connection.php supplies insertRecord(), which logUserActivity() uses.
+require_once __DIR__ . '/config/db_connection.php';
 require_once __DIR__ . '/config/app_session.php';
+
+// Record the sign-out while the session still holds the user. This must run before
+// $_SESSION is cleared below, which is why the teardown sits underneath it.
+if (isLoggedIn()) {
+    $actorName = trim((string) ($_SESSION['name'] ?? ''));
+    if ($actorName === '') {
+        $actorName = (string) ($_SESSION['username'] ?? '');
+    }
+
+    logUserActivity(
+        'Logout',
+        $actorName !== '' ? $actorName . ' signed out of the system' : 'User signed out of the system'
+    );
+}
 
 // Clear every session variable, then destroy the session.
 $_SESSION = [];

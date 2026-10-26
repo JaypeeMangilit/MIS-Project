@@ -404,6 +404,11 @@ body {
     color: #D97706;
 }
 
+.cert-badge.certificate {
+    background: #EDE9FE;
+    color: #6D28D9;
+}
+
 .cert-badge.residency {
     background: #F3E8FF;
     color: #7E22CE;
@@ -808,6 +813,11 @@ body {
     color: #0369A1;
 }
 
+.badge.certificate {
+    background: #EDE9FE;
+    color: #6D28D9;
+}
+
 .badge.indigency {
     background: #FEF3C7;
     color: #D97706;
@@ -939,6 +949,46 @@ body {
 
 .edit-form-group .required {
     color: #C94A4A;
+}
+
+/* Action buttons in the certificate details header. */
+.details-actions {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    flex-shrink: 0;
+}
+
+.btn-print-certificate {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 9px 16px;
+    background: white;
+    border: 1px solid #0F6CBD;
+    border-radius: 6px;
+    color: #0F6CBD;
+    font-size: 14px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.2s ease;
+}
+
+.btn-print-certificate:hover {
+    background: #F0F7FD;
+}
+
+.btn-print-certificate svg {
+    width: 16px;
+    height: 16px;
+}
+
+/* Marks a field the form offers but does not require. */
+.optional {
+    font-weight: 400;
+    font-size: 11px;
+    color: #5F7385;
+    margin-left: 6px;
 }
 
 .edit-form-group .optional {

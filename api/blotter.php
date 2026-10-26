@@ -14,6 +14,8 @@ if (!file_exists('../config/db_connection.php')) {
     exit;
 }
 
+// functions.php supplies logUserActivity(); same reason as api/residents.php.
+require_once __DIR__ . '/../config/functions.php';
 require_once __DIR__ . '/../config/db_connection.php';
 require_once __DIR__ . '/../config/app_session.php';
 
@@ -24,6 +26,26 @@ $method = $_SERVER['REQUEST_METHOD'];
 // For debugging - log the request
 error_log("Blotter API - Method: " . $method);
 error_log("Blotter API - GET params: " . print_r($_GET, true));
+
+/**
+ * A blotter case's short label for the activity trail: its case number when one is
+ * present, otherwise the complainant it belongs to.
+ */
+function blotterShortLabel($case)
+{
+    if (!is_array($case)) {
+        return 'case';
+    }
+
+    $number = trim((string) ($case['case_number'] ?? ''));
+    if ($number !== '') {
+        return 'case ' . $number;
+    }
+
+    $complainant = trim((string) ($case['complainant_name'] ?? ''));
+
+    return $complainant !== '' ? 'case against ' . $complainant : 'case';
+}
 
 switch($method) {
     case 'GET':
@@ -160,7 +182,9 @@ switch($method) {
         if ($id) {
             // Get the created case
             $newCase = getRecord("SELECT * FROM blotter_cases WHERE id = ?", [$id], 'i');
-            
+
+            logUserActivity('Blotter', 'Filed ' . blotterShortLabel($newCase) . ' (case #' . $id . ')');
+
             echo json_encode([
                 'success' => true, 
                 'id' => $id, 
@@ -210,6 +234,8 @@ switch($method) {
         
         $affected = executeStatement($sql, $params, 'sssssssssssssssi');
         
+        logUserActivity('Blotter', 'Updated blotter case #' . $id);
+
         echo json_encode([
             'success' => true, 
             'affected' => $affected,
@@ -228,7 +254,9 @@ switch($method) {
         
         $sql = "UPDATE blotter_cases SET archived = 1 WHERE id = ?";
         executeStatement($sql, [$id], 'i');
-        
+
+        logUserActivity('Blotter', 'Archived blotter case #' . $id);
+
         echo json_encode([
             'success' => true,
             'message' => 'Case archived successfully'

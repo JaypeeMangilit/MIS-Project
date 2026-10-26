@@ -220,10 +220,10 @@ function handleSearch(e) {
 }
 
 function loadArchivesTable() {
-    // Certificates are read from archived_certificate_issuances through the API;
-    // the other categories still render the mock archivesData above.
-    if (currentCategory === "certificates") {
-        loadCertificateArchive();
+    // Real archive tables are read through the API; categories without one (blotter,
+    // inventory) still render the mock archivesData above.
+    if (isDbBacked(currentCategory)) {
+        loadDbArchive(currentCategory);
         return;
     }
 
@@ -261,14 +261,230 @@ function loadArchivesTable() {
 function renderTableHeaders() {
     const thead = document.querySelector('#archivesTableBody')?.closest('table')?.querySelector('thead tr');
     if (!thead) return;
+
+    // Database-backed tabs own their own column list.
+    if (isDbBacked(currentCategory)) {
+        thead.innerHTML = dbArchiveConfig[currentCategory].columns
+            .map(col => `<th>${col}</th>`).join('');
+        return;
+    }
     
     const columns = columnConfig[currentCategory] || [];
     thead.innerHTML = columns.map(col => `<th>${col.label}</th>`).join('');
 }
 
 // ============================================
-// CERTIFICATES ARCHIVE (database-backed)
+// DATABASE-BACKED ARCHIVE TABS
 // ============================================
+// Certificates, Residents, Officials and User Management read their archived rows
+// from their real archive tables and restore through their own endpoint. Blotter and
+// Inventory still render the mock archivesData above - they have no archive table yet,
+// so they must keep the mock path.
+
+const dbArchiveConfig = {
+    certificates: {
+        label: 'certificates',
+        endpoint: 'certificates.php?archived=1',
+        restoreFile: 'certificates.php',
+        deleteFile: 'certificates.php',
+        restoreTitle: 'Restore this certificate back to the Certificates module?',
+        columns: ['Control No.', 'Resident Name', 'Certificate Type', 'Issued Date', 'Archived Date', 'Archived By', 'Actions'],
+        cells: (item) => [
+            item.control_number,
+            item.resident_name,
+            item.certificate_type,
+            formatArchiveDate(item.date_issued),
+            formatArchiveDate(item.archived_date),
+            item.archived_by,
+        ],
+        name: (item) => item.resident_name,
+        emptyText: 'No archived certificates found',
+    },
+    residents: {
+        label: 'residents',
+        endpoint: 'residents.php?archived=1',
+        restoreFile: 'residents.php',
+        deleteFile: 'residents.php',
+        restoreTitle: 'Restore this resident back to the Residents module?',
+        columns: ['Name', 'Resident ID', 'Purok', 'Status', 'Archived Date', 'Archived By', 'Actions'],
+        cells: (item) => [
+            archiveResidentName(item),
+            item.resident_id,
+            item.purok,
+            item.resident_status,
+            formatArchiveDate(item.archived_at),
+            item.archived_by,
+        ],
+        name: (item) => archiveResidentName(item),
+        emptyText: 'No archived residents found',
+    },
+    officials: {
+        label: 'officials',
+        endpoint: 'officials.php?archived=1',
+        restoreFile: 'officials.php',
+        deleteFile: 'officials.php',
+        restoreTitle: 'Restore this official back to the Officials module?',
+        columns: ['Name', 'Position', 'Term', 'Archived Date', 'Archived By', 'Actions'],
+        cells: (item) => [
+            archiveOfficialName(item),
+            item.position,
+            officialArchiveTerm(item),
+            formatArchiveDate(item.archived_at),
+            item.archived_by,
+        ],
+        name: (item) => archiveOfficialName(item),
+        emptyText: 'No archived officials found',
+    },
+    users: {
+        label: 'users',
+        // Archived accounts are flagged in place (status = 'Archived'), not moved to the
+        // archive table, so the activity trail stays attached to a real account.
+        endpoint: 'users.php?archived=1',
+        restoreFile: 'users.php',
+        deleteFile: 'users.php',
+        restoreTitle: 'Restore this account back to User Management?',
+        columns: ['Name', 'Username', 'Role', 'Archived Date', 'Archived By', 'Actions'],
+        cells: (item) => [
+            archiveUserName(item),
+            item.username,
+            item.role,
+            formatArchiveDate(item.archived_at),
+            item.archived_by,
+        ],
+        name: (item) => archiveUserName(item),
+        emptyText: 'No archived users found',
+    },
+};
+
+/** Whether the current tab reads real rows. */
+function isDbBacked(category) {
+    return Object.prototype.hasOwnProperty.call(dbArchiveConfig, category);
+}
+
+/** "Last, First Suffix" for an archived resident. */
+function archiveResidentName(item) {
+    const parts = [item.last_name, item.first_name, item.suffix].filter(function (part) {
+        return String(part || '').trim() !== '';
+    });
+    return parts.length ? parts.join(', ').replace(',  ', ', ') : '—';
+}
+
+/** "First Middle Last Suffix" for an archived official. */
+function archiveOfficialName(item) {
+    const parts = [item.first_name, item.middle_name, item.last_name, item.suffix].filter(function (part) {
+        return String(part || '').trim() !== '';
+    });
+    return parts.length ? parts.join(' ') : '—';
+}
+
+/** "First Middle Last Suffix" for an archived user. */
+function archiveUserName(item) {
+    const parts = [item.first_name, item.middle_name, item.last_name, item.suffix].filter(function (part) {
+        return String(part || '').trim() !== '';
+    });
+    return parts.length ? parts.join(' ') : (item.username || '—');
+}
+
+/** Term label for an archived official. */
+function officialArchiveTerm(item) {
+    const start = item.term_start ? String(item.term_start).slice(0, 10) : '';
+    const end = item.term_end ? String(item.term_end).slice(0, 10) : '';
+    return start && end ? start + ' - ' + end : (end || start || '—');
+}
+
+/** The shared empty-state markup. */
+function archiveEmptyState(colspan, text) {
+    return `
+        <tr>
+            <td colspan="${colspan}" style="text-align: center; padding: 60px 20px;">
+                <div class="empty-state">
+                    <svg width="80" height="80" viewBox="0 0 80 80" fill="none">
+                        <rect x="25" y="25" width="30" height="30" rx="4" stroke="#D6E2EA" stroke-width="2"/>
+                        <path d="M40 35V45M35 40H45" stroke="#D6E2EA" stroke-width="2" stroke-linecap="round"/>
+                    </svg>
+                    <h4>${escapeHtml(text)}</h4>
+                    <p>Try adjusting your search or filter criteria.</p>
+                </div>
+            </td>
+        </tr>
+    `;
+}
+
+/** One archived row: the config's cells plus a Restore action. */
+function renderDbArchiveRow(item, config) {
+    const cells = config.cells(item);
+
+    return `
+        <tr>
+            ${cells.map(function (cell) {
+                return `<td class="text-cell">${escapeHtml(cell === null || cell === undefined ? '—' : cell)}</td>`;
+            }).join('')}
+            <td>${dbArchiveActions(item, config)}</td>
+        </tr>
+    `;
+}
+
+/** Restore icon for a database-backed archive row. */
+function dbArchiveActions(item, config) {
+    return `
+        <div class="action-buttons-archive">
+            <div class="action-icon-archive restore" onclick="window.restoreArchiveItem('${escapeHtml(config.category)}', ${item.id})" title="Restore to ${escapeHtml(config.restoreTitle)}">
+                <svg width="18" height="18" viewBox="0 0 18 18" fill="none">
+                    <path d="M3 5H15M3 5V15C3 16.5 4 17 5 17H13C14 17 15 16.5 15 15V5" stroke="#0F6CBD" stroke-width="1.5" stroke-linecap="round"/>
+                    <path d="M6 2H12" stroke="#0F6CBD" stroke-width="1.5" stroke-linecap="round"/>
+                    <rect x="7" y="8" width="4" height="6" stroke="#0F6CBD" stroke-width="1.5" rx="0.5"/>
+                </svg>
+            </div>
+            <div class="action-icon-archive delete" onclick="window.permanentlyDeleteArchiveItem('${escapeHtml(config.category)}', ${item.id})" title="Permanently Delete">
+                <svg width="18" height="18" viewBox="0 0 18 18" fill="none">
+                    <path d="M3 5H15M3 5V15C3 16.5 4 17 5 17H13C14 17 15 16.5 15 15V5" stroke="#C94A4A" stroke-width="1.5" stroke-linecap="round"/>
+                    <path d="M6 2H12" stroke="#C94A4A" stroke-width="1.5" stroke-linecap="round"/>
+                    <path d="M7 8V13M11 8V13" stroke="#C94A4A" stroke-width="1.5" stroke-linecap="round"/>
+                </svg>
+            </div>
+        </div>
+    `;
+}
+
+/** Load a database-backed archive tab. */
+async function loadDbArchive(category) {
+    const config = dbArchiveConfig[category];
+    config.category = category;
+    const tbody = document.getElementById('archivesTableBody');
+
+    renderTableHeaders();
+
+    tbody.innerHTML = `<tr><td colspan="${config.columns.length}" class="text-cell" style="text-align: center; padding: 60px 20px; color: #5F7385;">Loading…</td></tr>`;
+
+    const result = await apiCall(config.endpoint + '&page=' + currentPage
+        + '&limit=' + rowsPerPage
+        + (searchTerm ? '&search=' + encodeURIComponent(searchTerm) : ''));
+
+    if (!result || !result.success) {
+        tbody.innerHTML = `<tr><td colspan="${config.columns.length}" class="text-cell" style="text-align: center; padding: 60px 20px; color: #5F7385;">${
+            escapeHtml((result && result.message) || 'The archived records could not be loaded.')
+        }</td></tr>`;
+        updatePaginationInfo(0, 0, 0);
+        renderPaginationControls(0);
+        return;
+    }
+
+    const rows = result.data || [];
+
+    if (rows.length === 0) {
+        tbody.innerHTML = archiveEmptyState(config.columns.length, config.emptyText);
+        updatePaginationInfo(0, 0, 0);
+        renderPaginationControls(0);
+        return;
+    }
+
+    tbody.innerHTML = rows.map(function (item) {
+        return renderDbArchiveRow(item, config);
+    }).join('');
+
+    updatePaginationInfo((currentPage - 1) * rowsPerPage, rows.length, result.total || rows.length);
+    renderPaginationControls(result.totalPages || 1);
+}
 
 /** Load the archived certificates from api/certificates.php?archived=1. */
 async function loadCertificateArchive() {
@@ -307,8 +523,22 @@ async function loadCertificateArchive() {
     renderPaginationControls(certificateArchive.totalPages);
 }
 
-/** Draw the archived certificate rows. */
+/** Kept for the certificates tab; the generic renderer above replaced its body. */
 function renderCertificateArchiveRows(rows) {
+    const tbody = document.getElementById('archivesTableBody');
+    const config = dbArchiveConfig.certificates;
+
+    if (!rows || rows.length === 0) {
+        tbody.innerHTML = archiveEmptyState(config.columns.length, config.emptyText);
+        return;
+    }
+
+    tbody.innerHTML = rows.map(function (item) {
+        return renderDbArchiveRow(item, config);
+    }).join('');
+}
+
+function renderCertificateArchiveRowsLegacy(rows) {
     const tbody = document.getElementById('archivesTableBody');
     const columns = columnConfig.certificates.length;
 
@@ -545,11 +775,48 @@ window.restoreCertificateArchiveItem = async function(id) {
  * which is a destructive change and needs approval first. Say so here rather than
  * pretending the row disappeared.
  */
-window.requestCertificateArchiveDelete = function(id) {
-    alert('Permanent deletion for certificate archives is not enabled yet. Only Restore is available.');
+/**
+ * Permanent deletion of an archived row is deliberately not wired up: it needs an
+ * endpoint that deletes rows from the archive table, which is a destructive change
+ * and needs approval first. Say so here rather than pretending the row disappeared.
+ */
+window.requestArchiveDelete = function(category, id) {
+    const label = dbArchiveConfig[category]
+        ? dbArchiveConfig[category].label
+        : 'this archive';
+    alert('Permanent deletion for ' + label + ' is not enabled yet. Only Restore is available.');
 };
 
-window.restoreArchiveItem = function(category, id) {
+// Kept for backward compatibility with the certificates-only wiring.
+window.requestCertificateArchiveDelete = function(id) {
+    window.requestArchiveDelete('certificates', id);
+};
+
+/**
+ * Restore an archived row. Database-backed tabs call their own module endpoint; the
+ * mock tabs keep the in-memory behaviour they have always had.
+ */
+window.restoreArchiveItem = async function(category, id) {
+    if (isDbBacked(category)) {
+        const config = dbArchiveConfig[category];
+        const label = config.name ? config.name : 'this record';
+
+        if (!confirm(config.restoreTitle)) {
+            return;
+        }
+
+        const result = await apiCall(config.restoreFile, 'POST', { action: 'restore', id: id });
+
+        if (!result || !result.success) {
+            alert((result && result.message) || 'The record could not be restored.');
+            return;
+        }
+
+        alert(result.message || 'Restored.');
+        loadArchivesTable();
+        return;
+    }
+
     if (confirm('Are you sure you want to restore this item? It will be moved back to the main module.')) {
         const item = archivesData[category].find(i => i.id === id);
         if (item) {
@@ -562,10 +829,30 @@ window.restoreArchiveItem = function(category, id) {
     }
 };
 
-window.permanentlyDeleteArchiveItem = function(category, id) {
-    // Certificates are real database rows - never let the mock data path handle them.
-    if (category === 'certificates') {
-        window.requestCertificateArchiveDelete(id);
+window.permanentlyDeleteArchiveItem = async function(category, id) {
+    // Database-backed rows are real records - never let the mock path remove one.
+    if (isDbBacked(category)) {
+        const config = dbArchiveConfig[category];
+
+        // Only tabs with a configured delete endpoint can really delete; the rest say so.
+        if (!config.deleteFile) {
+            window.requestArchiveDelete(category, id);
+            return;
+        }
+
+        if (!confirm('WARNING: this archived record will be permanently deleted and cannot be recovered. Continue?')) {
+            return;
+        }
+
+        const result = await apiCall(config.deleteFile, 'POST', { action: 'delete', id: id });
+
+        if (!result || !result.success) {
+            alert((result && result.message) || 'The record could not be deleted.');
+            return;
+        }
+
+        alert(result.message || 'Permanently deleted.');
+        loadArchivesTable();
         return;
     }
 

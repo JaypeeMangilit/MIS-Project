@@ -137,6 +137,7 @@
         else if (type.indexOf('Business') !== -1) typeCode = 'BUS';
         else if (type.indexOf('Cedula') !== -1) typeCode = 'CED';
         else if (type.indexOf('Good Moral') !== -1) typeCode = 'GMC';
+        else if (type.indexOf('Barangay Certification') !== -1) typeCode = 'CERT';
 
         const year = certificate.date_issued
             ? String(certificate.date_issued).slice(0, 4)
@@ -154,6 +155,7 @@
         if (type.indexOf('Business') !== -1) return 'business';
         if (type.indexOf('Cedula') !== -1) return 'cedula';
         if (type.indexOf('Good Moral') !== -1) return 'moral';
+        if (type.indexOf('Barangay Certification') !== -1) return 'certificate';
         return 'clearance';
     }
 
@@ -530,35 +532,245 @@
         setVisible($('viewCertificateModal'), false, 'flex');
     }
 
-    function printCertificate() {
-        const contentContainer = $('viewCertificateContent');
-        const content = contentContainer ? contentContainer.innerHTML : '';
+    /**
+     * Build the printable certificate in the Barangay's official format.
+     *
+     * Each certificate type has its own body text, matching the issued templates. The
+     * header, seal and signatory are common to all three.
+     */
+    async function printCertificate() {
+        const certificate = state.viewingId ? await fetchCertificate(state.viewingId) : null;
+        if (!certificate) {
+            notify('Open a certificate first, then print it.');
+            return;
+        }
+
+        // The signatory comes from the API response, not the row.
+        let signatory = null;
+        try {
+            const result = await apiCall(CERT_ENDPOINT + '?id=' + encodeURIComponent(certificate.id));
+            if (result && result.signatory) signatory = result.signatory;
+        } catch (error) {
+            // A missing signatory must not block printing; fall through to the default.
+        }
+        const signatoryName = signatory && signatory.name ? signatory.name : 'PUNONG BARANGAY';
+        const signatoryTitle = signatory && signatory.position ? signatory.position : 'Punong Barangay';
+
+        const seal = await readImageAsDataUrl('Images/brgy-seal.png');
+        const brgyLogo = await readImageAsDataUrl('Images/Brgy.png');
+
+        const html = buildCertificateDocument(certificate, signatoryName, signatoryTitle, seal, brgyLogo);
+
         const printWindow = window.open('', '_blank');
         if (!printWindow) {
             notify('Please allow pop-ups for this page so the certificate can be printed.');
             return;
         }
 
-        printWindow.document.write(''
-            + '<html><head><title>Certificate Preview</title><style>'
-            + 'body { font-family: Arial, sans-serif; padding: 40px; }'
-            + '.certificate { border: 2px solid #16324A; padding: 30px; max-width: 650px; margin: 0 auto; }'
-            + '.header { text-align: center; margin-bottom: 30px; border-bottom: 2px solid #16324A; padding-bottom: 15px; }'
-            + '.title { font-size: 24px; font-weight: bold; color: #16324A; text-transform: uppercase; }'
-            + '.view-row { margin-bottom: 12px; font-size: 16px; }'
-            + '.signatures { margin-top: 60px; display: flex; justify-content: space-between; }'
-            + '</style></head><body>'
-            + '<div class="certificate">'
-            + '<div class="header"><div class="title">Republic of the Philippines</div>'
-            + '<div>Barangay 49 Akasya, Cavite City</div>'
-            + '<h3 style="margin-top: 15px;">OFFICIAL CERTIFICATION</h3></div>'
-            + content
-            + '<div class="signatures"><div>____________________<br><strong>Barangay Secretary</strong></div>'
-            + '<div>____________________<br><strong>Punong Barangay</strong></div></div>'
-            + '</div></body></html>');
-
+        printWindow.document.open();
+        printWindow.document.write(html);
         printWindow.document.close();
-        printWindow.print();
+
+        // Wait for the seal image before printing, otherwise the first print can be blank.
+        if (seal) {
+            printWindow.document.images[0].onload = function () { printWindow.print(); };
+        } else {
+            printWindow.print();
+        }
+    }
+
+    /** Read an image so the print window does not depend on this page's relative path. */
+    async function readImageAsDataUrl(path) {
+        const response = await fetch(path);
+        if (!response.ok) return '';
+        const blob = await response.blob();
+        return await new Promise(function (resolve) {
+            const reader = new FileReader();
+            reader.onload = function () { resolve(reader.result); };
+            reader.onerror = function () { resolve(''); };
+            reader.readAsDataURL(blob);
+        });
+    }
+
+    /**
+     * An underlined blank with the value written onto it.
+     *
+     * The issued templates print the data ON the underline with no caption label, so the
+     * label is deliberately absent here.
+     */
+    /** Longhand date as the templates use it, e.g. "October 25, 2026". */
+    function longDate(value) {
+        if (!value) return '';
+        const date = new Date(String(value).replace(' ', 'T'));
+        if (isNaN(date.getTime())) return String(value);
+        return date.toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' });
+    }
+
+    /** The resident's age, taken from the birth date on the record. */
+    function residentAge(certificate) {
+        if (!certificate.birth_date) return '';
+        const birth = new Date(String(certificate.birth_date).replace(' ', 'T'));
+        if (isNaN(birth.getTime())) return '';
+        const now = new Date();
+        let age = now.getFullYear() - birth.getFullYear();
+        const month = now.getMonth() - birth.getMonth();
+        if (month < 0 || (month === 0 && now.getDate() < birth.getDate())) age--;
+        return String(age);
+    }
+
+    /** Full residential address as it appears on the certificate. */
+    function residentFullAddress(certificate) {
+        const parts = [
+            certificate.street_name,
+            certificate.house_no,
+            certificate.subdivision,
+            certificate.purok
+        ].map(function (part) { return String(part || '').trim(); }).filter(function (part) { return part !== ''; });
+
+        if (parts.length) return parts.join(', ');
+
+        return certificate.resident_address || '';
+    }
+
+    function certBlank(value, width) {
+        return '<span class="cert-blank"' + (width ? ' style="min-width:' + width + 'px"' : '') + '>'
+            + (value ? escapeHtml(String(value)) : '')
+            + '</span>';
+    }
+
+    /**
+     * The body of the certificate, in the field order the Barangay uses:
+     * Name, then age, then sex/gender, then residential address, then purpose and date.
+     *
+     * Each value is written onto an underlined blank - there is no caption label, the data
+     * simply fills the blank in the sentence.
+     */
+    function certificateBody(certificate) {
+        const name = String(certificate.resident_name || '').replace(/^,\s*/, '');
+        const age = residentAge(certificate);
+        const gender = String(certificate.gender || '').trim() || 'male/female';
+        const address = residentFullAddress(certificate) || 'San Antonio, Cavite City';
+        const issued = longDate(certificate.date_issued);
+        const purpose = String(certificate.purpose || '').trim();
+        const type = String(certificate.certificate_type || '');
+
+        const nameBlank = certBlank(name, 220);
+        const ageBlank = certBlank(age, 70);
+        const genderBlank = certBlank(gender, 100);
+        const addressBlank = certBlank(address, 320);
+        const dateBlank = certBlank(issued, 180);
+
+        if (type.indexOf('Indigency') !== -1) {
+            return '<p class="cert-paragraph">This is to certify that '
+                + nameBlank + ' ' + ageBlank + ' years old, ' + genderBlank
+                + ', Filipino, whose name and signature appear below is bona fide and a resident of, '
+                + addressBlank + ', San Antonio, Cavite City and a registered/accredited member of this Barangay.</p>'
+                + '<p class="cert-paragraph">That this person is known to me to be a law-abiding citizen, with good moral character and not connected to any subversive organization and has been found to belong to an <strong>INDIGENT FAMILY</strong> after interview and case study has been made.</p>'
+                + '<h4 class="cert-subheading">PURPOSE:</h4>'
+                + '<p class="cert-paragraph">This certification is being issued upon request of the above-named person for the purpose of '
+                + certBlank(purpose, 300) + ' this day of, ' + dateBlank + '.</p>';
+        }
+
+        if (type.indexOf('Certification') !== -1) {
+            return '<p class="cert-paragraph">This is to certify that '
+                + nameBlank + ' ' + ageBlank + ' years old, ' + genderBlank
+                + ', Filipino, and a resident of, ' + addressBlank
+                + ', has no pending administrative or criminal case file in this office with good moral character, a law-abiding citizen and bona fide member of this Barangay.</p>'
+                + '<p class="cert-paragraph">This certification is issued upon the request of the above-named this day of, ' + dateBlank + '.</p>';
+        }
+
+        if (type.indexOf('Clearance') !== -1) {
+            return '<p class="cert-paragraph">This is to certify that '
+                + nameBlank + ' ' + genderBlank
+                + ', Filipino, and a resident of, ' + addressBlank
+                + ', Cavite is known to be of good moral character and law-abiding citizen in the community.</p>'
+                + '<p class="cert-paragraph">To certify further, that he/she has no derogatory and/or criminal records filed in this barangay.</p>'
+                + '<p class="cert-paragraph">ISSUED this day of, ' + dateBlank
+                + ' at Barangay 49A-Akasya San Antonio, Cavite City upon request of the interested party.</p>';
+        }
+
+        // Any other type still in the records.
+        return '<p class="cert-paragraph">This is to certify that '
+            + nameBlank + ' ' + ageBlank + ' years old, ' + genderBlank
+            + ', Filipino and a resident of ' + addressBlank
+            + ', is a bona fide member of this Barangay of good moral character and a law-abiding citizen.</p>'
+            + '<p class="cert-paragraph">This certification is issued upon the request of the above-named this day of, ' + dateBlank + '.</p>';
+    }
+
+    function buildCertificateDocument(certificate, signatoryName, signatoryTitle, seal, brgyLogo) {
+        const type = String(certificate.certificate_type || '');
+        const title = type.indexOf('Indigency') !== -1
+            ? 'BARANGAY INDIGENCY'
+            : (type.indexOf('Certification') !== -1
+                ? 'BARANGAY CERTIFICATION'
+                : (type.indexOf('Clearance') !== -1 ? 'BARANGAY CLEARANCE' : 'CERTIFICATION'));
+
+        // The Certification template ends with a signature-over-printed-name block; the
+        // other two do not.
+        const isCertification = type.indexOf('Certification') !== -1;
+
+        const sealTag = seal ? '<img class="cert-seal" src="' + seal + '" alt="">' : '';
+        const brgyTag = brgyLogo ? '<img class="cert-brgy-logo" src="' + brgyLogo + '" alt="">' : '';
+        const backgroundTag = brgyLogo ? '<div class="cert-background"></div>' : '';
+
+        return '<!DOCTYPE html><html><head><meta charset="utf-8"><title>' + escapeHtml(title) + '</title>'
+            + '<style>'
+            + '@page { size: A4; margin: 16mm; }'
+            // print-color-adjust keeps the Control No. highlight visible on paper and in
+            // a downloaded PDF; without it browsers drop background colours.
+            + 'html, body { -webkit-print-color-adjust: exact; print-color-adjust: exact; }'
+            + 'body { font-family: "Times New Roman", Times, serif; color: #000; margin: 0; padding: 22px 40px; font-size: 12pt; line-height: 1.6; position: relative; }'
+            + '.cert-background { position: fixed; left: 50%; top: 50%; width: 300px; height: 300px; '
+            + 'transform: translate(-50%, -50%); opacity: 0.08; z-index: -1; pointer-events: none; '
+            + 'background-image: var(--brgy-logo); background-size: contain; background-repeat: no-repeat; '
+            + 'background-position: center; }'
+            + '.cert-header { text-align: center; position: relative; padding-bottom: 14px; margin-bottom: 24px; min-height: 100px; }'
+            + '.cert-seal { position: absolute; left: 0; top: 0; width: 100px; height: 100px; object-fit: contain; }'
+            + '.cert-brgy-logo { position: absolute; right: 0; top: 0; width: 100px; height: 100px; object-fit: contain; }'
+            + '.cert-header .line { font-size: 10.5pt; margin: 1px 0; }'
+            + '.cert-header .office { font-family: Arial, Helvetica, sans-serif; font-weight: bold; font-size: 11.5pt; margin-top: 5px; }'
+            + '.cert-title { font-family: Arial, Helvetica, sans-serif; text-align: center; font-size: 19pt; font-weight: bold; '
+            + 'letter-spacing: 0.5px; margin: 18px 0 14px 0; padding: 10px 0; border-top: 1px solid #000; border-bottom: 1px solid #000; }'
+            + '.cert-control-wrap { text-align: center; margin-bottom: 18px; }'
+            + '.cert-control { font-weight: bold; font-size: 12pt; background: #d1d1d1; padding: 2px 8px; display: inline-block; }'
+            + '.cert-subheading { font-family: Arial, Helvetica, sans-serif; font-size: 12.5pt; margin: 16px 0 6px 0; }'
+            + '.cert-control-wrap { text-align: center; margin: 0 0 14px 0; }'
+            + '.cert-salutation { margin-top: 0; }'
+            + '.cert-paragraph { text-align: justify; margin: 0 0 10px 0; }'
+            // The data sits on the underline; there is no caption label.
+            + '.cert-blank { display: inline-block; vertical-align: baseline; font-weight: bold; '
+            + 'text-align: center; border-bottom: 1px solid #000; padding: 0 4px 1px 4px; min-height: 15px; }'
+            + '.cert-signatory { margin-top: 40px; text-align: center; }'
+            + '.cert-signatory .name { font-weight: bold; text-decoration: underline; font-size: 13pt; }'
+            + '.cert-signatory .title { font-size: 11pt; margin-top: 2px; }'
+            + '.cert-signature-line { margin-top: 30px; text-align: center; }'
+            + '.cert-signature-line .line { border-top: 1px solid #000; display: inline-block; width: 220px; }'
+            + '.cert-signature-line .caption { font-size: 9.5pt; margin-top: 4px; }'
+            + '</style></head><body' + (brgyLogo ? ' style="--brgy-logo:url(' + brgyLogo + ')"' : '') + '>'
+            + backgroundTag
+            + '<div class="cert-header">'
+            + sealTag
+            + brgyTag
+            + '<div class="line">Republic of the Philippines</div>'
+            + '<div class="line">Province of Cavite</div>'
+            + '<div class="line">City of Cavite</div>'
+            + '<div class="line">Barangay 49-A (AKASYA)</div>'
+            + '<div class="line">+63 977-7483-304</div>'
+            + '<div class="office">OFFICE OF THE SANGGUNIANG BARANGAY</div>'
+            + '</div>'
+            + '<div class="cert-title">' + escapeHtml(title) + '</div>'
+            + '<div class="cert-control-wrap"><span class="cert-control">Control No.: ' + escapeHtml(generateControlNumber(certificate)) + '</span></div>'
+            + '<h4 class="cert-subheading cert-salutation">TO WHOM IT MAY CONCERN:</h4>'
+            + certificateBody(certificate)
+            + '<h4 class="cert-subheading">CERTIFIED BY:</h4>'
+            + '<div class="cert-signatory">'
+            + '<div class="name">' + escapeHtml(signatoryName) + '</div>'
+            + '<div class="title">' + escapeHtml(signatoryTitle) + '</div>'
+            + '</div>'
+            + (isCertification
+                ? '<div class="cert-signature-line"><span class="line"></span><div class="caption">SIGNATURE OVER PRINTED NAME</div></div>'
+                : '')
+            + '</body></html>';
     }
 
     // ============================================
@@ -782,6 +994,12 @@
         bind('closeViewModalBtn', closeViewModal);
         bind('closeViewFooterBtn', closeViewModal);
         bind('printCertificateBtn', printCertificate);
+        // The details page is the reachable view, so Print lives there too.
+        bind('printFromDetailsBtn', printCertificate);
+
+        // Exposed so the print output can be checked directly, and so the button is not
+        // the only way in.
+        window.printCertificate = printCertificate;
 
         document.querySelectorAll('.modal-overlay').forEach(function (modal) {
             modal.addEventListener('click', function (event) {

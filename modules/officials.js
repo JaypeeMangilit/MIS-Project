@@ -130,6 +130,68 @@
         }
     }
 
+    /**
+     * Term length for an Elected official, in years.
+     *
+     * A 4-year term starting 2023-07-01 ends 2026-06-30 - four years less one day, so
+     * the end date never overlaps the start of the next term.
+     */
+    const ELECTED_TERM_YEARS = 4;
+
+    /**
+     * Term End Date for an Elected official: Term Start Date plus the term length, less
+     * one day.
+     *
+     * The minus-one-day is deliberate and matches the data already in the table
+     * (2023-07-01 -> 2026-06-30): a term ends the day before its anniversary, so it never
+     * overlaps the start of the next term.
+     *
+     * The day is clamped for shorter months, so 2024-02-29 + 4 years becomes 2028-02-28
+     * rather than rolling into March.
+     *
+     * @return string|null YYYY-MM-DD, or null when the input is not a valid date.
+     */
+    function addYears(dateString, years) {
+        const raw = String(dateString || '').trim();
+        if (!/^\d{4}-\d{2}-\d{2}$/.test(raw)) return null;
+
+        const parts = raw.split('-').map(Number);
+        const year = parts[0] + years;
+        const month = parts[1];
+        const day = parts[2];
+
+        // Clamp to the last real day of the target month.
+        const lastDay = new Date(year, month, 0).getDate();
+        const clampedDay = Math.min(day, lastDay);
+
+        // Back off one day from the anniversary.
+        const end = new Date(year, month - 1, clampedDay);
+        end.setDate(end.getDate() - 1);
+
+        const mm = String(end.getMonth() + 1).padStart(2, '0');
+        const dd = String(end.getDate()).padStart(2, '0');
+
+        return end.getFullYear() + '-' + mm + '-' + dd;
+    }
+
+    /**
+     * Fill Term End Date from Term Start Date when the type is Elected.
+     *
+     * Only runs on user interaction, never while the Edit form is being populated, so a
+     * stored term is never overwritten by a recalculation.
+     */
+    function syncTermEnd() {
+        const typeField = document.getElementById('officialType');
+        const startField = document.getElementById('termStart');
+        const endField = document.getElementById('termEnd');
+        if (!typeField || !startField || !endField) return;
+
+        if ((typeField.value || 'Elected') !== 'Elected') return;
+        if (!startField.value) return;
+
+        endField.value = addYears(startField.value, ELECTED_TERM_YEARS);
+    }
+
     function setupFormEventListeners() {
         ['backToListBtn', 'cancelAddBtn'].forEach(function (id) {
             const btn = document.getElementById(id);
@@ -147,6 +209,23 @@
             saveBtn.parentNode.replaceChild(freshSave, saveBtn);
             freshSave.addEventListener('click', function () {
                 saveOfficial();
+            });
+        }
+
+        // Term End Date follows Term Start Date for an Elected official (4 years).
+        const termStartField = document.getElementById('termStart');
+        if (termStartField) {
+            termStartField.addEventListener('change', syncTermEnd);
+        }
+
+        const officialTypeField = document.getElementById('officialType');
+        if (officialTypeField) {
+            officialTypeField.addEventListener('change', function () {
+                // Switching to Elected fills the term end; switching to Appointed
+                // leaves whatever the user entered alone.
+                if ((officialTypeField.value || 'Elected') === 'Elected') {
+                    syncTermEnd();
+                }
             });
         }
 
@@ -397,6 +476,21 @@
             const result = await apiCall(query ? '?' + query : '');
             officialsCache = Array.isArray(result.data) ? result.data : [];
             renderOfficialsGrid(officialsCache);
+
+            // The term-expiry sweep runs server-side on this read, so it can move rows
+            // out of the list without anybody clicking Archive. Say so when it does.
+            const autoArchived = Array.isArray(result.auto_archived) ? result.auto_archived : [];
+            if (autoArchived.length > 0) {
+                const names = autoArchived.map(function (official) {
+                    return official.name + ' (' + official.official_id + ')';
+                }).join(', ');
+
+                alert(
+                    'Term ended - automatically archived ' + autoArchived.length +
+                    ' official' + (autoArchived.length === 1 ? '' : 's') + ':\n\n' +
+                    names + '\n\nTheir records were moved to the archive table.'
+                );
+            }
         } catch (error) {
             officialsCache = [];
             if (grid) {

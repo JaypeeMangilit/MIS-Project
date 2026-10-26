@@ -31,13 +31,12 @@ require_once __DIR__ . '/../config/app_session.php';
 requireLogin();
 
 /** Certificate types offered by the Issue New Certificate form. */
+// The three certificate types the Barangay issues. Order matters: the Edit form
+// dropdown and the control-number prefix are both derived from this list.
 $CERTIFICATE_TYPES = [
+    'Barangay Indigency',
     'Barangay Clearance',
-    'Certificate of Indigency',
-    'Certificate of Residency',
-    'Business Permit',
-    'Cedula (Community Tax Certificate)',
-    'Good Moral Character',
+    'Barangay Certification',
 ];
 
 /** Statuses offered by the Edit form. */
@@ -58,7 +57,8 @@ function certificateSelectSql(): string
                    c.amount_paid, c.date_issued, c.valid_until, c.status, c.issued_by,
                    c.created_at, c.updated_at,
                    r.resident_id AS resident_code, r.first_name, r.middle_name,
-                   r.last_name, r.suffix, r.purok, r.street_name
+                   r.last_name, r.suffix, r.purok, r.street_name, r.house_no,
+                   r.subdivision, r.gender, r.birth_date
             FROM certificate_issuances c
             INNER JOIN residents r ON r.id = c.resident_id";
 }
@@ -68,6 +68,41 @@ function certificateSelectSql(): string
  * and a numeric amount. The name follows the Residents module convention
  * ("Last, First M.").
  */
+/**
+ * The signatory for a certificate: the Punong Barangay.
+ *
+ * Read from barangay_officials rather than hardcoded, so the certificate is certified by
+ * whoever currently holds the post. Falls back to the phrase rather than a blank line.
+ */
+function certificateSignatory(): array
+{
+    $official = getRecord(
+        "SELECT first_name, middle_name, last_name, suffix, position
+         FROM barangay_officials
+         WHERE position = 'Punong Barangay'
+         ORDER BY CASE status WHEN 'Active' THEN 0 ELSE 1 END, id",
+        []
+    );
+
+    if (!$official) {
+        return ['name' => 'PUNONG BARANGAY', 'position' => 'Punong Barangay'];
+    }
+
+    $parts = array_filter([
+        $official['first_name'] ?? '',
+        $official['middle_name'] ?? '',
+        $official['last_name'] ?? '',
+        $official['suffix'] ?? '',
+    ], static function ($part) {
+        return trim((string) $part) !== '';
+    });
+
+    return [
+        'name'     => strtoupper(implode(' ', $parts)),
+        'position' => $official['position'] ?? 'Punong Barangay',
+    ];
+}
+
 function decorateCertificate(array $row): array
 {
     $middle = trim((string) ($row['middle_name'] ?? ''));
@@ -118,6 +153,8 @@ function certificateControlNumber(string $type, string $dateIssued, $id): string
         $typeCode = 'CED';
     } elseif (strpos($type, 'Good Moral') !== false) {
         $typeCode = 'GMC';
+    } elseif (strpos($type, 'Barangay Certification') !== false) {
+        $typeCode = 'CERT';
     }
 
     $year = strlen($dateIssued) >= 4 ? substr($dateIssued, 0, 4) : date('Y');
@@ -295,6 +332,69 @@ if (!isDatabaseConnected()) {
 
 $method = $_SERVER['REQUEST_METHOD'];
 
+/**
+ * A certificate's short label for the activity trail: the certificate type plus
+ * its control number when one is present.
+ */
+function certificateShortLabel($record)
+{
+    if (!is_array($record)) {
+        return 'certificate';
+    }
+
+    $label = trim((string) ($record['certificate_type'] ?? ''));
+    $control = trim((string) ($record['control_number'] ?? ''));
+
+    if ($label === '') {
+        $label = 'certificate';
+    }
+
+    return $control !== '' ? $label . ' ' . $control : $label;
+}
+
+/**
+ * Permanently remove an archived certificate row.
+ *
+ * One-directional: deletes from archived_certificate_issuances only and never touches
+ * certificate_issuances. The row is gone afterwards, so there is no undo.
+ */
+function permanentlyDeleteCertificate($id)
+{
+    $archived = getRecord("SELECT id FROM archived_certificate_issuances WHERE id = ?", [$id], 'i');
+
+    if (!$archived) {
+        return ['success' => false, 'affected' => 0, 'message' => 'Archived certificate record not found'];
+    }
+
+    $conn = getConnection();
+    $deleted = 0;
+    $error = null;
+
+    try {
+        $conn->beginTransaction();
+
+        $delete = $conn->prepare("DELETE FROM archived_certificate_issuances WHERE id = ?");
+        $delete->execute([$id]);
+        $deleted = $delete->rowCount();
+
+        $conn->commit();
+    } catch (PDOException $e) {
+        if ($conn->inTransaction()) {
+            $conn->rollBack();
+        }
+        error_log('Delete archived certificate error: ' . $e->getMessage());
+        $error = $e->getMessage();
+    }
+
+    return [
+        'success'  => $error === null && $deleted > 0,
+        'affected' => $deleted,
+        'message'  => $error !== null
+            ? 'Delete failed: ' . $error
+            : ($deleted > 0 ? 'Archived certificate permanently deleted' : 'Archived certificate could not be deleted'),
+    ];
+}
+
 switch ($method) {
     case 'GET':
         // ?archived=1 reads archived_certificate_issuances (the Archives page);
@@ -311,7 +411,11 @@ switch ($method) {
                 break;
             }
 
-            echo json_encode(['success' => true, 'data' => $decorate($record)]);
+            echo json_encode([
+                'success' => true,
+                'data' => $decorate($record),
+                'signatory' => certificateSignatory(),
+            ]);
             break;
         }
 
@@ -384,6 +488,28 @@ switch ($method) {
             break;
         }
 
+        // { action: 'delete', id: N } permanently removes an archived row.
+        if (($data['action'] ?? '') === 'delete') {
+            $deleteId = filter_var($data['id'] ?? null, FILTER_VALIDATE_INT, ['options' => ['min_range' => 1]]);
+            if ($deleteId === false || $deleteId === null) {
+                certificateFail('A certificate record id is required.');
+                break;
+            }
+
+            $result = permanentlyDeleteCertificate($deleteId);
+
+            if ($result['success']) {
+                logUserActivity('Certificate', 'Permanently deleted archived certificate #' . $deleteId);
+            }
+
+            echo json_encode([
+                'success'  => $result['success'],
+                'affected' => $result['affected'],
+                'message'  => $result['message'],
+            ]);
+            break;
+        }
+
         // { action: 'restore', id: N } moves an archived row back into
         // certificate_issuances (the reverse of DELETE, same transaction shape).
         if (($data['action'] ?? '') === 'restore') {
@@ -399,6 +525,14 @@ switch ($method) {
                 break;
             }
 
+            // certificate_issuances.id is the primary key, so a live row already holding
+            // it would collide. Refuse with a readable message instead of a raw SQL error.
+            $liveId = getRecord("SELECT id FROM certificate_issuances WHERE id = ?", [$id], 'i');
+            if ($liveId) {
+                certificateFail('A certificate record with this ID already exists.', 409);
+                break;
+            }
+
             // The live table has a foreign key to residents, so a certificate whose
             // resident is gone cannot be restored - say so instead of failing on the FK.
             $resident = getRecord(
@@ -409,6 +543,14 @@ switch ($method) {
             );
             if (!$resident) {
                 certificateFail('The resident for this certificate no longer exists, so it cannot be restored.', 409);
+                break;
+            }
+
+            // certificate_issuances.id is the primary key, so a live row already holding
+            // it would collide. Refuse with a readable message instead of a raw SQL error.
+            $liveId = getRecord("SELECT id FROM certificate_issuances WHERE id = ?", [$id], 'i');
+            if ($liveId) {
+                certificateFail('A certificate record with this ID already exists.', 409);
                 break;
             }
 
@@ -509,9 +651,12 @@ switch ($method) {
 
         $record = getRecord(certificateSelectSql() . " WHERE c.id = ?", [$newId], 'i');
 
+        logUserActivity('Certificate', 'Issued ' . certificateShortLabel($record) . ' (record #' . $newId . ')');
+
         echo json_encode([
             'success' => true,
             'data' => $record ? decorateCertificate($record) : null,
+            'signatory' => certificateSignatory(),
             'message' => 'Certificate saved successfully.',
         ]);
         break;
@@ -566,9 +711,12 @@ switch ($method) {
 
         $record = getRecord(certificateSelectSql() . " WHERE c.id = ?", [$id], 'i');
 
+        logUserActivity('Certificate', 'Updated ' . certificateShortLabel($record) . ' (record #' . $id . ')');
+
         echo json_encode([
             'success' => true,
             'data' => $record ? decorateCertificate($record) : null,
+            'signatory' => certificateSignatory(),
             'affected' => $affected,
             'message' => 'Certificate updated successfully.',
         ]);
@@ -645,6 +793,10 @@ switch ($method) {
         if ($error !== null) {
             certificateFail('The certificate record could not be archived.', 500);
             break;
+        }
+
+        if ($archived > 0) {
+            logUserActivity('Certificate', 'Archived certificate record #' . $id);
         }
 
         echo json_encode([
