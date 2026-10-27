@@ -146,6 +146,24 @@
                                     <label>Address</label>
                                     <input type="text" id="address" placeholder="Enter complete address">
                                 </div>
+                                <div class="form-field">
+                                    <label>Birthdate</label>
+                                    <input type="date" id="birthdate">
+                                </div>
+                                <div class="form-field">
+                                    <label>Age</label>
+                                    <input type="text" id="age" readonly placeholder="Auto-calculated"
+                                           title="Age is calculated automatically from the Birthdate"
+                                           aria-label="Age (calculated from Birthdate)">
+                                </div>
+                                <div class="form-field">
+                                    <label>Date Started Living at Current Address</label>
+                                    <input type="date" id="moveInDate" title="Move-in date" aria-label="Move-in date">
+                                </div>
+                                <div class="form-field">
+                                    <label>Length of Residence</label>
+                                    <input type="text" id="lengthOfResidence" readonly placeholder="—">
+                                </div>
                             </div>
                         </div>
 
@@ -299,7 +317,10 @@
                                     <div class="info-field"><label>Last Name</label><span id="viewLastName">—</span></div>
                                     <div class="info-field"><label>Email Address</label><span id="viewEmail">—</span></div>
                                     <div class="info-field"><label>Contact Number</label><span id="viewMobile">—</span></div>
+                                    <div class="info-field"><label>Birthdate</label><span id="viewBirthdate">—</span></div>
+                                    <div class="info-field"><label>Age</label><span id="viewAge">—</span></div>
                                     <div class="info-field full-width"><label>Address</label><span id="viewAddress">—</span></div>
+                                    <div class="info-field full-width"><label>Length of Residence</label><span id="viewLengthOfResidence">—</span></div>
                                 </div>
                             </div>
 
@@ -404,6 +425,24 @@
                                 <div class="form-field">
                                     <label>Address</label>
                                     <input type="text" id="editAddress" placeholder="Enter complete address">
+                                </div>
+                                <div class="form-field">
+                                    <label>Birthdate</label>
+                                    <input type="date" id="editBirthdate">
+                                </div>
+                                <div class="form-field">
+                                    <label>Age</label>
+                                    <input type="text" id="editAge" readonly placeholder="Auto-calculated"
+                                           title="Age is calculated automatically from the Birthdate"
+                                           aria-label="Age (calculated from Birthdate)">
+                                </div>
+                                <div class="form-field">
+                                    <label>Date Started Living at Current Address</label>
+                                    <input type="date" id="editMoveInDate" title="Move-in date" aria-label="Move-in date">
+                                </div>
+                                <div class="form-field">
+                                    <label>Length of Residence</label>
+                                    <input type="text" id="editLengthOfResidence" readonly placeholder="—">
                                 </div>
                             </div>
                         </div>

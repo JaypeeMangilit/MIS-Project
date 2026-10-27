@@ -14,7 +14,7 @@
     const API_URL = 'api/officials.php';
 
     // State
-    let currentFilters = { search: '', termStart: '' };
+    let currentFilters = { search: '', termStart: '', status: '', position: '' };
     let currentView = 'list';        // 'list' | 'form'
     let editingId = null;            // null = Add, otherwise the id being edited
     let officialsCache = [];         // last rows loaded, used to prefill the Edit form
@@ -87,6 +87,30 @@
         }
 
         // Filter by term
+        // The two list filters and the batch archive dropdown.
+        const statusFilterBtn = document.getElementById('statusFilterBtn');
+        if (statusFilterBtn) {
+            statusFilterBtn.addEventListener('click', toggleStatusDropdown);
+        }
+
+        const positionFilterBtn = document.getElementById('positionFilterBtn');
+        if (positionFilterBtn) {
+            positionFilterBtn.addEventListener('click', togglePositionDropdown);
+        }
+
+        const batchArchiveBtn = document.getElementById('batchArchiveBtn');
+        if (batchArchiveBtn) {
+            batchArchiveBtn.addEventListener('click', toggleBatchArchiveDropdown);
+        }
+
+        // Close any open dropdown when clicking elsewhere.
+        document.addEventListener('click', function (event) {
+            if (event.target.closest && event.target.closest('.dropdown-anchor')) return;
+            document.querySelectorAll('.term-dropdown.open').forEach(function (open) {
+                open.classList.remove('open');
+            });
+        });
+
         const filterBtn = document.getElementById('filterBtn');
         if (filterBtn) {
             const freshFilterBtn = filterBtn.cloneNode(true);
@@ -216,6 +240,23 @@
         const termStartField = document.getElementById('termStart');
         if (termStartField) {
             termStartField.addEventListener('change', syncTermEnd);
+        }
+
+        // Age follows Birthdate, so it is recomputed on both change and input.
+        const birthdateField = document.getElementById('birthdate');
+        if (birthdateField) {
+            birthdateField.addEventListener('change', syncOfficialAge);
+            birthdateField.addEventListener('input', syncOfficialAge);
+        }
+
+        const moveInDateField = document.getElementById('moveInDate');
+        const lengthOfResidenceField = document.getElementById('lengthOfResidence');
+        if (moveInDateField && lengthOfResidenceField) {
+            const freshMoveIn = moveInDateField.cloneNode(true);
+            moveInDateField.parentNode.replaceChild(freshMoveIn, moveInDateField);
+            freshMoveIn.addEventListener('change', function () {
+                lengthOfResidenceField.value = calculateLengthOfResidence(this.value);
+            });
         }
 
         const officialTypeField = document.getElementById('officialType');
@@ -383,6 +424,21 @@
         setValue('suffix', official.suffix);
         setValue('gender', official.gender);
         setValue('birthdate', toDateInput(official.birth_date));
+        syncOfficialAge();
+        // A position saved before the form was narrowed must still display its real
+        // value rather than a blank, so it is added as a temporary option.
+        const positionSelect = document.getElementById('position');
+        if (positionSelect && official.position) {
+            const hasOption = Array.prototype.some.call(positionSelect.options, function (option) {
+                return option.value === official.position;
+            });
+            if (!hasOption) {
+                const option = document.createElement('option');
+                option.value = official.position;
+                option.textContent = official.position + ' (current)';
+                positionSelect.appendChild(option);
+            }
+        }
         setValue('position', official.position);
         setValue('committee', official.committee);
         setValue('termStart', toDateInput(official.term_start));
@@ -390,6 +446,8 @@
         setValue('mobile', official.mobile_number);
         setValue('email', official.email);
         setValue('address', official.address);
+        setValue('moveInDate', toDateInput(official.move_in_date));
+        setValue('lengthOfResidence', calculateLengthOfResidence(toDateInput(official.move_in_date)));
         setValue('officialType', official.official_type || 'Elected');
 
         const status = official.status || 'Active';
@@ -409,6 +467,220 @@
         if (field) field.value = value === null || value === undefined ? '' : value;
     }
 
+    /**
+     * Age in whole years for a "YYYY-MM-DD" birth date, or null when the date is
+     * empty, impossible, or still in the future.
+     *
+     * Completed years only: the year is dropped by one when this year's birthday has
+     * not happened yet. Mirrors residentAgeFromBirthDate() in api/residents.php.
+     */
+    function calculateAgeFromBirthDate(birthDate) {
+        const raw = String(birthDate || '').trim();
+        if (!/^\d{4}-\d{2}-\d{2}$/.test(raw)) return null;
+
+        const parts = raw.split('-').map(Number);
+        const birth = new Date(parts[0], parts[1] - 1, parts[2]);
+        // Reject impossible dates such as 2001-02-30, which Date would roll over.
+        if (birth.getFullYear() !== parts[0] || birth.getMonth() !== parts[1] - 1 || birth.getDate() !== parts[2]) {
+            return null;
+        }
+
+        var today = new Date();
+        if (birth.getTime() > today.getTime()) return null;
+
+        var age = today.getFullYear() - birth.getFullYear();
+        var monthDiff = today.getMonth() - birth.getMonth();
+        if (monthDiff < 0 || (monthDiff === 0 && today.getDate() < birth.getDate())) {
+            age--;
+        }
+        return age;
+    }
+
+    function calculateLengthOfResidence(moveInDate) {
+        if (!moveInDate) return 'Not provided';
+        const today = new Date();
+        const start = new Date(moveInDate);
+        if (isNaN(start.getTime()) || start > today) return 'Not provided';
+        let years = today.getFullYear() - start.getFullYear();
+        let months = today.getMonth() - start.getMonth();
+        let days = today.getDate() - start.getDate();
+        if (days < 0) {
+            months--;
+            const prevMonth = new Date(today.getFullYear(), today.getMonth(), 0);
+            days += prevMonth.getDate();
+        }
+        if (months < 0) {
+            years--;
+            months += 12;
+        }
+        if (years < 0) return 'Not provided';
+        if (years === 0 && months === 0 && days === 0) return 'Today';
+        const parts = [];
+        if (years > 0) parts.push(years + ' year' + (years !== 1 ? 's' : ''));
+        if (months > 0) parts.push(months + ' month' + (months !== 1 ? 's' : ''));
+        if (days > 0) parts.push(days + ' day' + (days !== 1 ? 's' : ''));
+        return parts.join(' and ');
+    }
+
+    /** Recompute the read-only Age box from the Birthdate box. */
+    function syncOfficialAge() {
+        const field = document.getElementById('age');
+        if (!field) return;
+        const age = calculateAgeFromBirthDate(value('birthdate'));
+        field.value = age === null ? '' : String(age);
+    }
+
+    /**
+     * A read-only dropdown that displays a value straight from the database.
+     *
+     * Used on the list cards and the View page, where the status and the position
+     * are shown but must not be changed. `disabled` keeps the browser from opening
+     * it and from submitting it.
+     */
+    function readOnlySelect(name, value, options) {
+        const attrs = ' name="' + name + '" disabled readonly aria-label="'
+            + name.replace(/_/g, ' ') + '"';
+        let html = '<select' + attrs + '>';
+        options.forEach(function (option) {
+            const selected = option === value ? ' selected' : '';
+            html += '<option value="' + escapeHtml(option) + '"' + selected + '>'
+                + escapeHtml(option) + '</option>';
+        });
+        return html + '</select>';
+    }
+
+    /**
+     * The position options the form offers, plus the positions saved before the form
+     * was narrowed. The read-only dropdowns have to list every value that can be in
+     * the database, or a legacy record would silently display the wrong option.
+     */
+    const OFFICIAL_POSITION_OPTIONS = [
+        'Secretary', 'Captain', 'Councilor',
+        'Punong Barangay', 'Barangay Kagawad', 'SK Chairman',
+        'Barangay Secretary', 'Barangay Treasurer'
+    ];
+
+    /** Status options, matching $OFFICIAL_STATUSES in the API. */
+    const OFFICIAL_STATUS_OPTIONS = ['Active', 'Inactive'];
+
+    /**
+     * Batch archive. The dropdown lists every official currently in the grid; ticking
+     * boxes picks the ones to archive, and the button moves them all in one go.
+     */
+    let batchSelection = [];
+
+    function renderBatchArchiveDropdown() {
+        const dropdown = document.getElementById('batchArchiveDropdown');
+        if (!dropdown) return;
+
+        const rows = officialsCache || [];
+        if (rows.length === 0) {
+            dropdown.innerHTML = '<div class="term-empty">No officials to archive</div>';
+            return;
+        }
+
+        const allChecked = batchSelection.length === rows.length;
+        let html = '<label class="batch-option batch-option-all">' +
+                   '<input type="checkbox" id="batchSelectAll"' + (allChecked ? ' checked' : '') + '> ' +
+                   '<span>Select all (' + rows.length + ')</span></label>';
+
+        html += rows.map(function (official) {
+            const checked = batchSelection.indexOf(String(official.id)) !== -1 ? ' checked' : '';
+            return '<label class="batch-option">' +
+                   '<input type="checkbox" class="batch-checkbox" data-id="' + official.id + '"' + checked + '> ' +
+                   '<span>' + escapeHtml(displayName(official)) + '</span>' +
+                   '<em>' + escapeHtml(official.position || '') + '</em>' +
+                   '</label>';
+        }).join('');
+
+        html += '<button type="button" class="batch-apply" id="batchArchiveApply"' +
+                (batchSelection.length === 0 ? ' disabled' : '') + '>Archive selected (0)</button>';
+
+        dropdown.innerHTML = html;
+
+        const applyBtn = document.getElementById('batchArchiveApply');
+        const syncApply = function () {
+            if (!applyBtn) return;
+            applyBtn.textContent = 'Archive selected (' + batchSelection.length + ')';
+            applyBtn.disabled = batchSelection.length === 0;
+        };
+
+        const selectAll = document.getElementById('batchSelectAll');
+        if (selectAll) {
+            selectAll.addEventListener('change', function () {
+                batchSelection = selectAll.checked ? rows.map(function (o) { return String(o.id); }) : [];
+                renderBatchArchiveDropdown();
+            });
+        }
+
+        dropdown.querySelectorAll('.batch-checkbox').forEach(function (box) {
+            box.addEventListener('change', function () {
+                const id = box.getAttribute('data-id');
+                const at = batchSelection.indexOf(id);
+                if (box.checked && at === -1) batchSelection.push(id);
+                if (!box.checked && at !== -1) batchSelection.splice(at, 1);
+                syncApply();
+            });
+        });
+
+        if (applyBtn) {
+            applyBtn.addEventListener('click', function () {
+                archiveSelected(batchSelection);
+            });
+        }
+    }
+
+    function toggleBatchArchiveDropdown() {
+        const dropdown = document.getElementById('batchArchiveDropdown');
+        if (!dropdown) return;
+        const wasOpen = dropdown.classList.contains('open');
+        closeAllDropdowns();
+        if (!wasOpen) {
+            renderBatchArchiveDropdown();
+            dropdown.classList.add('open');
+        }
+    }
+
+    /** Archive every id in the list, one request each, reporting what happened. */
+    async function archiveSelected(ids) {
+        if (!ids || ids.length === 0) {
+            alert('Select at least one official to archive.');
+            return;
+        }
+
+        const names = (officialsCache || []).filter(function (o) {
+            return ids.indexOf(String(o.id)) !== -1;
+        }).map(function (o) { return displayName(o); });
+
+        if (!confirm('Archive ' + ids.length + ' official(s)?\n\n' + names.join('\n') +
+                     '\n\nEach record is moved to the archive and can be restored from there.')) {
+            return;
+        }
+
+        let done = 0;
+        let failed = 0;
+        for (let i = 0; i < ids.length; i++) {
+            try {
+                const result = await apiCall('?id=' + encodeURIComponent(ids[i]), { method: 'DELETE' });
+                if (result && result.success) done++; else failed++;
+            } catch (error) {
+                failed++;
+            }
+        }
+
+        batchSelection = [];
+        alert(failed === 0
+            ? done + ' official(s) archived.'
+            : done + ' archived, ' + failed + ' failed.');
+        loadOfficialsGrid();
+    }
+
+    /** Age as it appears on the list card. */
+    function ageLabel(official) {
+        const age = calculateAgeFromBirthDate(toDateInput(official.birth_date));
+        return age === null ? 'Age: —' : 'Age: ' + age;
+    }
+
     /** SQL Server returns dates as "2023-07-01 00:00:00.0000000". */
     function toDateInput(value) {
         if (!value) return '';
@@ -419,6 +691,20 @@
         document.querySelectorAll('#addOfficialView input, #addOfficialView select').forEach(function (input) {
             if (input.type !== 'file') input.value = '';
         });
+
+        // Age is derived, so it is emptied along with the Birthdate it came from.
+        const ageField = document.getElementById('age');
+        if (ageField) ageField.value = '';
+
+        // Remove any "(current)" option added while editing a legacy position.
+        const positionSelect = document.getElementById('position');
+        if (positionSelect) {
+            Array.prototype.slice.call(positionSelect.options).forEach(function (option) {
+                if (option.textContent.indexOf('(current)') !== -1) {
+                    positionSelect.removeChild(option);
+                }
+            });
+        }
 
         document.querySelectorAll('.status-option-new, .status-option').forEach(function (btn) {
             btn.classList.remove('active');
@@ -470,6 +756,8 @@
         const params = new URLSearchParams();
         if (currentFilters.search) params.set('search', currentFilters.search);
         if (currentFilters.termStart) params.set('term_start', currentFilters.termStart);
+        if (currentFilters.status) params.set('status', currentFilters.status);
+        if (currentFilters.position) params.set('position', currentFilters.position);
 
         try {
             const query = params.toString();
@@ -528,6 +816,9 @@
                         '<span class="term-label">Term:</span>' +
                         '<span class="term-text">' + escapeHtml(termLabel(official)) + '</span>' +
                     '</div>' +
+                    '<div class="official-residence">' +
+                        '<span class="residence-text">' + escapeHtml(calculateLengthOfResidence(toDateInput(official.move_in_date))) + '</span>' +
+                    '</div>' +
                     '<div class="official-contact">' +
                         '<div class="contact-item">' +
                             '<img src="Images/Contact_Icon.svg" alt="Phone" class="contact-icon-img">' +
@@ -568,6 +859,27 @@
         }
         if (startYear && endYear) return startYear + ' - ' + endYear;
         return startYear || endYear || '—';
+    }
+
+    /** Longhand date as shown on the View page, e.g. "January 1, 2026". */
+    function longDate(value) {
+        const raw = toDateInput(value);
+        if (!raw) return '';
+        const parts = raw.split('-').map(Number);
+        const date = new Date(parts[0], parts[1] - 1, parts[2]);
+        if (isNaN(date.getTime())) return raw;
+        return date.toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' });
+    }
+
+    /** Term with the specific month and date, e.g. "January 1, 2026 - December 31, 2029". */
+    function termDateLabel(official) {
+        const start = longDate(official.term_start);
+        const end = longDate(official.term_end);
+        if ((official.official_type || 'Elected') === 'Appointed') {
+            return start ? 'Appointed: ' + start : 'Appointed';
+        }
+        if (start && end) return start + ' - ' + end;
+        return start || end || '—';
     }
 
     function initials(official) {
@@ -617,27 +929,116 @@
         });
     }
 
-    function updateFilterButtonLabel() {
-        const label = document.querySelector('#filterBtn span');
-        if (!label) return;
-
-        if (!currentFilters.termStart) {
-            label.textContent = 'Filter by Term';
-            return;
-        }
-
-        const match = termOptions.filter(function (term) {
-            return String(term.term_start) === String(currentFilters.termStart);
-        })[0];
-
-        label.textContent = match ? match.label : 'Filter by Term';
-    }
-
     function toggleTermDropdown() {
         const dropdown = document.getElementById('termDropdown');
         if (!dropdown) return;
-        renderTermDropdown();
-        dropdown.classList.toggle('open');
+        const wasOpen = dropdown.classList.contains('open');
+        closeAllDropdowns();
+        if (!wasOpen) {
+            renderTermDropdown();
+            dropdown.classList.add('open');
+        }
+    }
+
+    function toggleStatusDropdown() {
+        const dropdown = document.getElementById('statusDropdown');
+        if (!dropdown) return;
+        const wasOpen = dropdown.classList.contains('open');
+        closeAllDropdowns();
+        if (!wasOpen) {
+            renderListFilter('statusDropdown', 'All Statuses', currentFilters.status,
+                OFFICIAL_STATUS_FILTERS, 'status');
+            dropdown.classList.add('open');
+        }
+    }
+
+    function togglePositionDropdown() {
+        const dropdown = document.getElementById('positionDropdown');
+        if (!dropdown) return;
+        const wasOpen = dropdown.classList.contains('open');
+        closeAllDropdowns();
+        if (!wasOpen) {
+            renderListFilter('positionDropdown', 'All Positions', currentFilters.position,
+                OFFICIAL_POSITION_FILTERS, 'position');
+            dropdown.classList.add('open');
+        }
+    }
+
+    /** Options for the two list filters. */
+    const OFFICIAL_STATUS_FILTERS = ['Active', 'Inactive'];
+    const OFFICIAL_POSITION_FILTERS = [
+        'Secretary', 'Captain', 'Councilor',
+        'Punong Barangay', 'Barangay Kagawad', 'SK Chairman',
+        'Barangay Secretary', 'Barangay Treasurer'
+    ];
+
+    /**
+     * Render one of the list filter dropdowns. Both work exactly like the term
+     * dropdown: an "All ..." entry plus one entry per value.
+     *
+     * @param {string} dropdownId  the dropdown element
+     * @param {string} allLabel    label for the unfiltered entry
+     * @param {string} current     the active filter value ('' = unfiltered)
+     * @param {string[]} options   every value the database can hold
+     * @param {string} dataAttr    attribute carrying the value on each button
+     */
+    function renderListFilter(dropdownId, allLabel, current, options, dataAttr) {
+        const dropdown = document.getElementById(dropdownId);
+        if (!dropdown) return;
+
+        let html = '<button type="button" class="term-option' + (current ? '' : ' active') +
+                   '" data-' + dataAttr + '="">' + escapeHtml(allLabel) + '</button>';
+        html += options.map(function (option) {
+            const active = option === current ? ' active' : '';
+            return '<button type="button" class="term-option' + active + '" data-' + dataAttr + '="' +
+                   escapeHtml(option) + '">' + escapeHtml(option) + '</button>';
+        }).join('');
+
+        dropdown.innerHTML = html;
+
+        dropdown.querySelectorAll('.term-option').forEach(function (btn) {
+            btn.addEventListener('click', function () {
+                dropdown.classList.remove('open');
+                applyListFilter(dataAttr, btn.getAttribute('data-' + dataAttr));
+            });
+        });
+    }
+
+    /** Store a filter value, relabel its button and reload the grid. */
+    function applyListFilter(kind, value) {
+        if (kind === 'status') currentFilters.status = value;
+        if (kind === 'position') currentFilters.position = value;
+        updateFilterButtonLabel();
+        loadOfficialsGrid();
+    }
+
+    /** Show the status / position filter values on their buttons. */
+    function updateFilterButtonLabel() {
+        const termLabel = document.querySelector('#filterBtn span');
+        if (termLabel) {
+            if (!currentFilters.termStart) {
+                termLabel.textContent = 'Filter by Term';
+            } else {
+                const match = termOptions.filter(function (term) {
+                    return String(term.term_start) === String(currentFilters.termStart);
+                })[0];
+                termLabel.textContent = match ? match.label : 'Filter by Term';
+            }
+        }
+
+        const statusLabel = document.querySelector('#statusFilterBtn span');
+        if (statusLabel) {
+            statusLabel.textContent = currentFilters.status
+                ? 'Status: ' + currentFilters.status
+                : 'Filter by Status';
+        }
+
+        const positionLabel = document.querySelector('#positionFilterBtn span');
+        if (positionLabel) {
+            positionLabel.textContent = currentFilters.position
+                ? 'Position: ' + currentFilters.position
+                : 'Filter by Position';
+        }
     }
 
     // ------------------------------------------------------------------
@@ -658,6 +1059,7 @@
             mobile_number: value('mobile'),
             email: value('email'),
             address: value('address'),
+            move_in_date: value('moveInDate') || null,
             status: value('officialStatus') || 'Active',
             official_type: value('officialType') || 'Elected'
         };
@@ -698,6 +1100,11 @@
             return;
         }
 
+        if (payload.move_in_date && new Date(payload.move_in_date) > new Date()) {
+            alert('Move-in Date cannot be in the future.');
+            return;
+        }
+
         const saveBtn = document.getElementById('saveOfficialBtn');
         if (saveBtn) saveBtn.disabled = true;
 
@@ -733,9 +1140,7 @@
         if (!dropdown) return;
 
         dropdown.innerHTML =
-            '<button type="button" class="export-option" data-format="print">Print / Save as PDF (Directory)</button>' +
-            '<button type="button" class="export-option" data-format="excel">Export to Excel (.xls)</button>' +
-            '<button type="button" class="export-option" data-format="csv">Export to CSV (.csv)</button>';
+            '<button type="button" class="export-option" data-format="print">Save as PDF</button>';
 
         dropdown.querySelectorAll('.export-option').forEach(function (option) {
             option.addEventListener('click', function () {
@@ -748,8 +1153,20 @@
     function toggleExportDropdown() {
         const dropdown = document.getElementById('exportDropdown');
         if (!dropdown) return;
-        if (!dropdown.classList.contains('open')) renderExportDropdown();
-        dropdown.classList.toggle('open');
+        const wasOpen = dropdown.classList.contains('open');
+        closeAllDropdowns();
+        if (!wasOpen) {
+            if (!dropdown.classList.contains('open')) renderExportDropdown();
+            dropdown.classList.add('open');
+        }
+    }
+
+    /** Close every toolbar dropdown on the Officials list page. */
+    function closeAllDropdowns() {
+        ['termDropdown', 'statusDropdown', 'positionDropdown', 'batchArchiveDropdown', 'exportDropdown'].forEach(function (id) {
+            const el = document.getElementById(id);
+            if (el) el.classList.remove('open');
+        });
     }
 
     /** Rows for export: the same search + term filter the grid is using, from the API. */
@@ -757,6 +1174,8 @@
         const params = new URLSearchParams();
         if (currentFilters.search) params.set('search', currentFilters.search);
         if (currentFilters.termStart) params.set('term_start', currentFilters.termStart);
+        if (currentFilters.status) params.set('status', currentFilters.status);
+        if (currentFilters.position) params.set('position', currentFilters.position);
         params.set('limit', '1000');
         return params.toString();
     }
@@ -1249,6 +1668,7 @@
                 alert(error.message);
             });
     };
+
 
     /** Asks before opening the edit form, the same way the Residents module does. */
     function showEditConfirmModal(official) {

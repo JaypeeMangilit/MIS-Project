@@ -4,7 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Barangay 49 Akasya - Barangay Officials</title>
-    <link rel="stylesheet" href="modules/officials.css?v=5">
+    <link rel="stylesheet" href="modules/officials-main.css">
     <link rel="stylesheet" href="sidebar.css">
 </head>
 <body>
@@ -26,6 +26,27 @@
                                 <span>Filter by Term</span>
                             </button>
                             <div class="term-dropdown" id="termDropdown"></div>
+                        </div>
+                        <div class="dropdown-anchor">
+                            <button class="btn-filter" id="statusFilterBtn">
+                                <img src="Images/Filter_Icon.svg" alt="Filter">
+                                <span>Filter by Status</span>
+                            </button>
+                            <div class="term-dropdown" id="statusDropdown"></div>
+                        </div>
+                        <div class="dropdown-anchor">
+                            <button class="btn-filter" id="positionFilterBtn">
+                                <img src="Images/Filter_Icon.svg" alt="Filter">
+                                <span>Filter by Position</span>
+                            </button>
+                            <div class="term-dropdown" id="positionDropdown"></div>
+                        </div>
+                        <div class="dropdown-anchor">
+                            <button class="btn-secondary" id="batchArchiveBtn">
+                                <img src="Images/Archive_Icon.svg" alt="Archive">
+                                <span>Batch Archive</span>
+                            </button>
+                            <div class="term-dropdown" id="batchArchiveDropdown"></div>
                         </div>
                         <div class="dropdown-anchor">
                             <button class="btn-secondary" id="exportBtn">
@@ -128,6 +149,12 @@
                                     <label for="birthdate">Birthdate</label>
                                     <input type="date" id="birthdate" title="Birthdate" aria-label="Birthdate">
                                 </div>
+                                <div class="form-group-new">
+                                    <label for="age">Age</label>
+                                    <input type="text" id="age" readonly placeholder="Auto-calculated"
+                                           title="Age is calculated automatically from the Birthdate"
+                                           aria-label="Age (calculated from Birthdate)">
+                                </div>
                             </div>
                         </div>
 
@@ -139,11 +166,9 @@
                                     <label for="position">Position / Role <span class="required">*</span></label>
                                     <select id="position" title="Position" aria-label="Position">
                                         <option value="">Select Position</option>
-                                        <option value="Punong Barangay">Punong Barangay</option>
-                                        <option value="Barangay Kagawad">Barangay Kagawad</option>
-                                        <option value="SK Chairman">SK Chairman</option>
-                                        <option value="Barangay Secretary">Barangay Secretary</option>
-                                        <option value="Barangay Treasurer">Barangay Treasurer</option>
+                                        <option value="Secretary">Secretary</option>
+                                        <option value="Captain">Captain</option>
+                                        <option value="Councilor">Councilor</option>
                                     </select>
                                 </div>
                                 <div class="form-group-new">
@@ -195,17 +220,27 @@
                                     <label>Address in Barangay</label>
                                     <input type="text" id="address" placeholder="Enter house number, street, purok">
                                 </div>
+                                <div class="form-group-new">
+                                    <label>Date Started Living at Current Address</label>
+                                    <input type="date" id="moveInDate" title="Move-in date" aria-label="Move-in date">
+                                </div>
+                                <div class="form-group-new">
+                                    <label>Length of Residence</label>
+                                    <input type="text" id="lengthOfResidence" readonly placeholder="—">
+                                </div>
                             </div>
                         </div>
 
                         <!-- Current Status Section -->
                         <div class="form-section-new">
                             <div class="section-title-new">Current Status</div>
-                            <div class="status-options-new">
-                                <button type="button" class="status-option-new active" data-status="Active">Active</button>
-                                <button type="button" class="status-option-new" data-status="Inactive">Inactive / End of Term</button>
+                            <div class="form-group-new">
+                                <label for="officialStatus">Status</label>
+                                <select id="officialStatus" title="Status" aria-label="Status">
+                                    <option value="Active">Active</option>
+                                    <option value="Inactive">Inactive</option>
+                                </select>
                             </div>
-                            <input type="hidden" id="officialStatus" value="Active">
                         </div>
 
                         <!-- Form Actions -->

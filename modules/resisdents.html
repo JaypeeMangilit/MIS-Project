@@ -197,6 +197,14 @@
                                 <input type="date" id="birthDate" title="Date of birth" aria-label="Date of birth">
                             </div>
                             <div class="form-group-new">
+                                <label>Date Started Living at Current Address</label>
+                                <input type="date" id="moveInDate" title="Date started living at current address" aria-label="Move-in date">
+                            </div>
+                            <div class="form-group-new">
+                                <label>Length of Residence</label>
+                                <input type="text" id="lengthOfResidence" readonly placeholder="—">
+                            </div>
+                            <div class="form-group-new">
                                 <label>Civil Status <span class="required">*</span></label>
                                 <select id="civilStatus" title="Civil status" aria-label="Civil status">
                                     <option value="">Select status</option>
@@ -330,12 +338,6 @@
                         </div>
                     </div>
                     <div class="profile-actions">
-                        <button class="btn-outline" id="printIdBtn">
-                            <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
-                                <path d="M2 12H14M8 2V10M8 10L5 7M8 10L11 7" stroke="#16324A" stroke-width="1.33" stroke-linecap="round"/>
-                            </svg>
-                            <span>Print ID</span>
-                        </button>
                         <button class="btn-primary" id="editFromViewBtn">
                             <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
                                 <path d="M11.33 1.33L14.67 4.67M3.33 12.67L2 14L3.33 12.67ZM12.67 3.33L14 4.67L6.67 12L3.33 12.67L4 9.33L12.67 3.33Z" stroke="white" stroke-width="1.33" stroke-linecap="round"/>
@@ -368,6 +370,8 @@
                         <div class="info-field"><label>Nationality</label><span id="viewNationality">—</span></div>
                         <div class="info-field"><label>Voter Status</label><span id="viewVoterStatus">—</span></div>
                         <div class="info-field"><label>Resident Status</label><span id="viewResidentStatus">—</span></div>
+                        <div class="info-field"><label>Date Started Living at Current Address</label><span id="viewMoveInDate">—</span></div>
+                        <div class="info-field"><label>Length of Residence</label><span id="viewLengthOfResidence">—</span></div>
                     </div>
                 </div>
 
@@ -506,6 +510,14 @@
                             <div class="edit-form-group">
                                 <label>Age</label>
                                 <input type="text" id="editAge" readonly title="Age" aria-label="Age">
+                            </div>
+                            <div class="edit-form-group">
+                                <label>Date Started Living at Current Address</label>
+                                <input type="date" id="editMoveInDate" title="Move-in date" aria-label="Move-in date">
+                            </div>
+                            <div class="edit-form-group">
+                                <label>Length of Residence</label>
+                                <input type="text" id="editLengthOfResidence" readonly title="Length of residence" aria-label="Length of residence" placeholder="—">
                             </div>
                             <div class="edit-form-group">
                                 <label>Place of Birth</label>

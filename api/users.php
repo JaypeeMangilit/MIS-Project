@@ -87,7 +87,8 @@ function userRolePrefix(string $role): ?string
 function userPublicColumns(): string
 {
     return 'id, user_id, first_name, middle_name, last_name, suffix, username, email,
-            mobile_number, role, status, profile_image, address, last_login, created_at, updated_at,
+            mobile_number, role, status, profile_image, address, birth_date, move_in_date,
+            last_login, created_at, updated_at,
             archived_at, archived_by';
 }
 
@@ -231,6 +232,44 @@ function currentUserName(): string
         return $name;
     }
     return (string) ($_SESSION['username'] ?? 'System');
+}
+
+/**
+ * Normalise a birth date for storage: an empty value stays null, anything that is not
+ * a real calendar date is refused.
+ *
+ * Age is never accepted here - it is derived from the birth date in the UI, so a client
+ * cannot store an age that disagrees with it.
+ *
+ * @return string|null
+ */
+function normaliseBirthDate($value)
+{
+    $birthDate = trim((string) $value);
+    if ($birthDate === '') {
+        return null;
+    }
+    $parts = explode('-', $birthDate);
+    if (count($parts) !== 3 || !checkdate((int) $parts[1], (int) $parts[2], (int) $parts[0])) {
+        return null;
+    }
+    return $birthDate;
+}
+
+function normaliseMoveInDate($value)
+{
+    $moveInDate = trim((string) $value);
+    if ($moveInDate === '') {
+        return null;
+    }
+    $parts = explode('-', $moveInDate);
+    if (count($parts) !== 3 || !checkdate((int) $parts[1], (int) $parts[2], (int) $parts[0])) {
+        return null;
+    }
+    if ($moveInDate > date('Y-m-d')) {
+        return null;
+    }
+    return $moveInDate;
 }
 
 /**
@@ -541,16 +580,19 @@ switch ($method) {
             // invisible and unreachable.
             $users = getRecords(
                 "SELECT id, user_id, first_name, middle_name, last_name, suffix, username, email,
-                        mobile_number, role, status, profile_image, last_login, created_at,
+                        mobile_number, role, status, profile_image, address, birth_date, move_in_date,
+                        last_login, created_at,
                         archived_at, archived_by
                  FROM (
                      SELECT id, user_id, first_name, middle_name, last_name, suffix, username, email,
-                            mobile_number, role, status, profile_image, last_login, created_at,
+                            mobile_number, role, status, profile_image, address, birth_date, move_in_date,
+                            last_login, created_at,
                             archived_at, archived_by
                      FROM system_users WHERE status = 'Archived'
                      UNION ALL
                      SELECT id, user_id, first_name, middle_name, last_name, suffix, username, email,
-                            mobile_number, role, status, profile_image, last_login, created_at,
+                            mobile_number, role, status, profile_image, address, birth_date, move_in_date,
+                            last_login, created_at,
                             archived_at, archived_by
                      FROM archived_system_users
                  ) AS archived_accounts" . $where . " ORDER BY archived_at DESC",
@@ -732,9 +774,11 @@ switch ($method) {
         // Store the password as typed (see store_password() in config/functions.php).
         $storedPassword = store_password($password);
 
+        $birthDate = normaliseBirthDate($data['birth_date'] ?? '');
+
         $sql = "INSERT INTO system_users (user_id, first_name, middle_name, last_name, suffix, username,
-                password, email, mobile_number, role, status, address)
-                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)";
+                password, email, mobile_number, role, status, address, birth_date, move_in_date)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)";
 
         $params = [
             $user_id,
@@ -749,9 +793,11 @@ switch ($method) {
             $role,
             $data['status'] ?? 'Active',
             $data['address'] ?? '',
+            $birthDate,
+            normaliseMoveInDate($data['move_in_date'] ?? ''),
         ];
 
-        $id = insertRecord($sql, $params, 'ssssssssssss');
+        $id = insertRecord($sql, $params, 'ssssssssssssss');
 
         if (!$id) {
             echo json_encode(['success' => false, 'message' => 'Unable to save the user. Please try again.']);
@@ -860,6 +906,9 @@ switch ($method) {
         }
 
         $passwordSql = '';
+        // An edit that does not mention a birth date keeps the stored one.
+        $birthDate = normaliseBirthDate($data['birth_date'] ?? ($existing['birth_date'] ?? ''));
+        $moveInDate = normaliseMoveInDate($data['move_in_date'] ?? ($existing['move_in_date'] ?? ''));
         $params = [
             $newUserId,
             $firstName,
@@ -872,8 +921,10 @@ switch ($method) {
             $role,
             $status,
             $data['address'] ?? '',
+            $birthDate,
+            $moveInDate,
         ];
-        $types = 'sssssssssss';
+        $types = 'sssssssssssss';
 
         if (!empty($data['password'])) {
             $passwordSql = ', password = ?';
@@ -887,7 +938,7 @@ switch ($method) {
         $affected = executeStatement(
             "UPDATE system_users SET user_id = ?, first_name = ?, middle_name = ?, last_name = ?,
                     suffix = ?, username = ?, email = ?, mobile_number = ?, role = ?, status = ?,
-                    address = ?
+                    address = ?, birth_date = ?, move_in_date = ?
                     $passwordSql
              WHERE id = ?",
             $params,

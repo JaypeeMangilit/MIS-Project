@@ -32,13 +32,28 @@ require_once __DIR__ . '/../config/app_session.php';
 requireLogin();
 
 /** Positions offered by the Add/Edit Official form. */
+/** Positions the Add/Edit Official form offers. */
 $OFFICIAL_POSITIONS = [
+    'Secretary',
+    'Captain',
+    'Councilor',
+];
+
+/**
+ * Positions held by records saved before the form was narrowed to the three above.
+ * They stay valid so an existing official can still be edited without first being
+ * reassigned, and so the Edit form can display the stored value.
+ */
+$OFFICIAL_POSITIONS_LEGACY = [
     'Punong Barangay',
     'Barangay Kagawad',
     'SK Chairman',
     'Barangay Secretary',
     'Barangay Treasurer',
 ];
+
+/** Every position the API will accept: the form's choices plus the legacy ones. */
+$OFFICIAL_POSITIONS_VALID = array_merge($OFFICIAL_POSITIONS, $OFFICIAL_POSITIONS_LEGACY);
 
 /** Committees offered by the Add/Edit Official form. */
 $OFFICIAL_COMMITTEES = [
@@ -157,7 +172,7 @@ function normaliseMobile($value): string
 /** Validate the shared payload of POST and PUT. Returns an error message or ''. */
 function validateOfficialPayload(array $data): string
 {
-    global $OFFICIAL_POSITIONS, $OFFICIAL_COMMITTEES, $OFFICIAL_TYPES, $OFFICIAL_STATUSES;
+    global $OFFICIAL_POSITIONS, $OFFICIAL_POSITIONS_VALID, $OFFICIAL_COMMITTEES, $OFFICIAL_TYPES, $OFFICIAL_STATUSES;
 
     $required = [
         'first_name' => 'First Name',
@@ -188,7 +203,7 @@ function validateOfficialPayload(array $data): string
         return 'Gender must be Male or Female.';
     }
 
-    if (!in_array($data['position'] ?? '', $OFFICIAL_POSITIONS, true)) {
+    if (!in_array($data['position'] ?? '', $OFFICIAL_POSITIONS_VALID, true)) {
         return 'Position / Role is not one of the offered positions.';
     }
 
@@ -217,6 +232,14 @@ function validateOfficialPayload(array $data): string
     $birthDate = trim((string) ($data['birth_date'] ?? ''));
     if ($birthDate !== '' && strtotime($birthDate) === false) {
         return 'Birthdate is not a valid date.';
+    }
+
+    $moveInDate = trim((string) ($data['move_in_date'] ?? ''));
+    if ($moveInDate !== '' && strtotime($moveInDate) === false) {
+        return 'Move-in Date is not a valid date.';
+    }
+    if ($moveInDate !== '' && $moveInDate > date('Y-m-d')) {
+        return 'Move-in Date cannot be in the future.';
     }
 
     return '';
@@ -703,8 +726,8 @@ switch ($_SERVER['REQUEST_METHOD']) {
         $insertSql = "INSERT INTO barangay_officials (
                         official_id, first_name, middle_name, last_name, suffix, gender,
                         birth_date, position, committee, term_start, term_end, mobile_number,
-                        email, address, status, official_type
-                      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)";
+                        email, address, status, official_type, move_in_date
+                      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)";
 
         $officialId = null;
         $newId = false;
@@ -731,9 +754,10 @@ switch ($_SERVER['REQUEST_METHOD']) {
                 trim((string) ($data['address'] ?? '')) !== '' ? trim((string) $data['address']) : null,
                 $data['status'] ?? 'Active',
                 $data['official_type'] ?? 'Elected',
+                trim((string) ($data['move_in_date'] ?? '')) !== '' ? $data['move_in_date'] : null,
             ];
 
-            $newId = insertRecord($insertSql, $params, 'ssssssssssssssss');
+            $newId = insertRecord($insertSql, $params, 'sssssssssssssssss');
             if ($newId) {
                 break;
             }
@@ -797,7 +821,7 @@ switch ($_SERVER['REQUEST_METHOD']) {
                 first_name = ?, middle_name = ?, last_name = ?, suffix = ?, gender = ?,
                 birth_date = ?, position = ?, committee = ?, term_start = ?, term_end = ?,
                 mobile_number = ?, email = ?, address = ?, status = ?, official_type = ?,
-                updated_at = " . db_now_sql() . "
+                move_in_date = ?, updated_at = " . db_now_sql() . "
              WHERE id = ?",
             [
                 trim((string) $data['first_name']),
@@ -815,9 +839,10 @@ switch ($_SERVER['REQUEST_METHOD']) {
                 trim((string) ($data['address'] ?? '')) !== '' ? trim((string) $data['address']) : null,
                 $data['status'] ?? 'Active',
                 $data['official_type'] ?? 'Elected',
+                trim((string) ($data['move_in_date'] ?? '')) !== '' ? $data['move_in_date'] : null,
                 $id,
             ],
-            'ssssssssssssssssi'
+            'sssssssssssssssssi'
         );
 
         if ($ok === false) {

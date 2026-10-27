@@ -1,0 +1,1564 @@
+/* Reset and Base Styles */
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+}
+
+body {
+    font-family: 'Inter', sans-serif;
+    background: #F4F8FB;
+    overflow-x: hidden;
+}
+
+/* Officials Container */
+.officials-container {
+    display: flex;
+    min-height: 100vh;
+    width: 100%;
+}
+
+/* Content Area */
+.content-area {
+    flex: 1;
+    padding: 24px;
+    overflow-y: auto;
+}
+
+.hidden-file-input {
+    display: none;
+}
+
+/* Actions Bar */
+.actions-bar {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 16px;
+    margin-bottom: 24px;
+}
+
+.search-box {
+    width: 280px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 0 12px;
+    background: white;
+    border: 1px solid #D6E2EA;
+    border-radius: 6px;
+    height: 40px;
+}
+
+.search-box input {
+    flex: 1;
+    border: none;
+    background: transparent;
+    font-size: 14px;
+    outline: none;
+}
+
+.search-box input::placeholder {
+    color: #757575;
+}
+
+.action-buttons {
+    display: flex;
+    justify-content: flex-end;
+    gap: 6px;
+    position: relative;
+    margin-left: auto;
+}
+
+.btn-filter, .btn-primary, .btn-secondary {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 0 10px;
+    height: 40px;
+    border-radius: 6px;
+    font-size: 14px;
+    font-weight: 500;
+    cursor: pointer;
+    transition: all 0.2s ease;
+}
+
+/* Keeps each toolbar dropdown under its own button (the term filter and the
+   export menu both hang off this anchor). */
+.dropdown-anchor {
+    position: relative;
+    display: inline-flex;
+}
+
+.btn-filter {
+    background: white;
+    color: #16324A;
+    border: 1px solid #D6E2EA;
+}
+
+.btn-filter:hover {
+    background: #F4F8FB;
+}
+
+.btn-primary {
+    background: #0F6CBD;
+    color: white;
+    border: none;
+}
+
+.btn-primary:hover {
+    background: #0c5d9e;
+    transform: translateY(-1px);
+}
+
+/* Same tokens as .btn-filter, matching the Export List button in the Residents
+   and Blotter toolbars. */
+.btn-secondary {
+    background: white;
+    color: #16324A;
+    border: 1px solid #D6E2EA;
+}
+
+.btn-secondary:hover {
+    background: #F4F8FB;
+}
+
+/* Officials Grid */
+.officials-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(364px, 1fr));
+    gap: 20px;
+}
+
+/* Official Card */
+.official-card {
+    background: white;
+    border-radius: 8px;
+    border: 1px solid #D6E2EA;
+    padding: 24px;
+    position: relative;
+    transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+
+.official-card:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+}
+
+.status-badge {
+    position: absolute;
+    top: 17px;
+    right: 17px;
+    padding: 4px 8px;
+    background: #1F8F5F;
+    border-radius: 4px;
+    color: white;
+    font-size: 11px;
+    font-weight: 600;
+    text-transform: uppercase;
+}
+
+.status-badge.inactive {
+    background: #C94A4A;
+}
+
+.avatar-container {
+    display: flex;
+    justify-content: center;
+    margin-bottom: 16px;
+}
+
+.official-avatar {
+    width: 100px;
+    height: 100px;
+    background: #EEF3F7;
+    border-radius: 50px;
+    box-shadow: 0px 2px 8px rgba(0, 0, 0, 0.08);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 48px;
+    font-weight: 600;
+    color: #16324A;
+}
+
+.official-name {
+    text-align: center;
+    font-size: 18px;
+    font-weight: 600;
+    color: #16324A;
+    margin-bottom: 4px;
+}
+
+.official-position {
+    text-align: center;
+    font-size: 13px;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    color: #0F6CBD;
+    margin-bottom: 8px;
+}
+
+/* Term Section - Properly aligned with label */
+.official-term {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 4px;
+    margin-bottom: 16px;
+    flex-wrap: wrap;
+}
+
+.term-label {
+    font-size: 12px;
+    font-weight: 500;
+    color: #5F7385;
+}
+
+.term-icon-svg {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 12px;
+    height: 12px;
+    margin: 0 2px;
+}
+
+.term-text {
+    font-size: 12px;
+    color: #5F7385;
+    font-weight: 400;
+}
+
+.official-contact {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    margin-bottom: 20px;
+}
+
+.contact-item {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.contact-icon {
+    width: 13px;
+    height: 13px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.contact-text {
+    font-size: 13px;
+    color: #5F7385;
+}
+
+.card-actions {
+    display: flex;
+    gap: 8px;
+    padding-top: 16px;
+    border-top: 1px solid #D6E2EA;
+}
+
+.action-btn {
+    flex: 1;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 6px;
+    padding: 9px 6px;
+    background: #EEF3F7;
+    border-radius: 6px;
+    font-size: 13px;
+    font-weight: 500;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    border: none;
+}
+
+.action-btn.edit {
+    color: #16324A;
+}
+
+.action-btn.edit:hover {
+    background: #E0E8F0;
+}
+
+.action-btn.delete {
+    background: #C94A4A;
+    color: white;
+}
+
+.action-btn.delete:hover {
+    background: #b33d3d;
+}
+
+.action-btn.view {
+    background: #EEF3F7;
+    color: #16324A;
+}
+
+.action-btn.view:hover {
+    background: #E0E8F0;
+}
+
+/* Archive - replaces the old Delete button on the official card. The record is
+   moved to archived_barangay_officials, never deleted, so it keeps the same
+   red treatment the project uses for archive actions (see certificates.css). */
+.action-btn.archive {
+    background: #C94A4A;
+    color: white;
+}
+
+.action-btn.archive:hover {
+    background: #b33d3d;
+}
+
+/* Modal Styles */
+.modal {
+    display: none;
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: rgba(0, 0, 0, 0.5);
+    z-index: 1000;
+    align-items: center;
+    justify-content: center;
+}
+
+.modal.active {
+    display: flex;
+}
+
+.modal-content {
+    background: white;
+    border-radius: 8px;
+    width: 90%;
+    max-width: 500px;
+    max-height: 90vh;
+    overflow-y: auto;
+}
+
+.modal-content.modal-large {
+    max-width: 700px;
+}
+
+.modal-header {
+    padding: 20px 24px;
+    border-bottom: 1px solid #D6E2EA;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.modal-header h3 {
+    color: #16324A;
+    font-size: 18px;
+    font-weight: 600;
+}
+
+.modal-close {
+    background: none;
+    border: none;
+    font-size: 24px;
+    cursor: pointer;
+    color: #5F7385;
+}
+
+.modal-body {
+    padding: 24px;
+}
+
+/* ------------------------------------------------------------------
+   Confirm Edit dialog - same tokens as the residents module's
+   #editConfirmModal so both modules ask the same way.
+   ------------------------------------------------------------------ */
+.edit-confirm-modal {
+    max-width: 460px;
+}
+
+.edit-confirm-content {
+    padding: 24px 24px 16px;
+}
+
+.edit-confirm-header {
+    display: flex;
+    align-items: flex-start;
+    gap: 12px;
+}
+
+.edit-confirm-icon {
+    width: 44px;
+    height: 44px;
+    border-radius: 50%;
+    background: #E6F0FF;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+}
+
+.edit-confirm-title-section {
+    min-width: 0;
+}
+
+.edit-confirm-title {
+    font-size: 18px;
+    font-weight: 600;
+    color: #16324A;
+    margin-bottom: 4px;
+}
+
+.edit-confirm-message {
+    font-size: 13px;
+    line-height: 1.5;
+    color: #5F7385;
+}
+
+.edit-confirm-info {
+    margin-top: 16px;
+    padding: 12px 16px;
+    background: #F4F8FB;
+    border: 1px solid #D6E2EA;
+    border-radius: 8px;
+}
+
+.edit-confirm-info .info-row {
+    display: flex;
+    align-items: baseline;
+    gap: 10px;
+}
+
+.edit-confirm-info .info-row + .info-row {
+    margin-top: 8px;
+}
+
+.edit-confirm-info .info-label {
+    width: 70px;
+    flex-shrink: 0;
+    font-size: 12px;
+    font-weight: 600;
+    color: #5F7385;
+    text-transform: uppercase;
+    letter-spacing: 0.03em;
+}
+
+.edit-confirm-info .info-value {
+    font-size: 14px;
+    font-weight: 600;
+    color: #16324A;
+}
+
+.edit-confirm-info .info-action {
+    font-size: 13px;
+    color: #5F7385;
+}
+
+.edit-confirm-footer {
+    display: flex;
+    justify-content: flex-end;
+    gap: 10px;
+    padding: 16px 24px 24px;
+    border-top: 1px solid #D6E2EA;
+}
+
+.btn-edit-cancel,
+.btn-edit-confirm {
+    padding: 10px 18px;
+    border-radius: 6px;
+    font-size: 14px;
+    font-weight: 600;
+    font-family: inherit;
+    cursor: pointer;
+}
+
+.btn-edit-cancel {
+    background: #FFFFFF;
+    border: 1px solid #D6E2EA;
+    color: #5F7385;
+}
+
+.btn-edit-cancel:hover {
+    background: #F4F8FB;
+}
+
+.btn-edit-confirm {
+    background: #0F6CBD;
+    border: 1px solid #0F6CBD;
+    color: #FFFFFF;
+}
+
+.btn-edit-confirm:hover {
+    background: #0B5697;
+    border-color: #0B5697;
+}
+
+@media (max-width: 640px) {
+    .edit-confirm-footer {
+        flex-direction: column-reverse;
+    }
+}
+
+.form-group {
+    margin-bottom: 16px;
+}
+
+.form-group label {
+    display: block;
+    margin-bottom: 6px;
+    color: #16324A;
+    font-size: 13px;
+    font-weight: 600;
+}
+
+.form-group input,
+.form-group select,
+.form-group textarea {
+    width: 100%;
+    padding: 10px 12px;
+    border: 1px solid #D6E2EA;
+    border-radius: 6px;
+    font-size: 14px;
+    font-family: inherit;
+}
+
+.form-group input:focus,
+.form-group select:focus,
+.form-group textarea:focus {
+    outline: none;
+    border-color: #0F6CBD;
+}
+
+.form-row {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 16px;
+}
+
+.form-actions {
+    display: flex;
+    justify-content: flex-end;
+    gap: 12px;
+    margin-top: 24px;
+}
+
+.btn-secondary {
+    padding: 10px 16px;
+    background: white;
+    border: 1px solid #D6E2EA;
+    border-radius: 6px;
+    font-size: 14px;
+    font-weight: 600;
+    cursor: pointer;
+}
+
+/* View Modal Styles */
+.official-detail-section {
+    margin-bottom: 24px;
+}
+
+.official-detail-section h4 {
+    color: #5F7385;
+    font-size: 12px;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.6px;
+    margin-bottom: 12px;
+    padding-bottom: 8px;
+    border-bottom: 1px solid #D6E2EA;
+}
+
+.detail-row {
+    display: flex;
+    margin-bottom: 12px;
+}
+
+.detail-label {
+    width: 120px;
+    color: #5F7385;
+    font-size: 14px;
+    font-weight: 500;
+}
+
+.detail-value {
+    flex: 1;
+    color: #16324A;
+    font-size: 14px;
+    font-weight: 500;
+}
+
+.detail-avatar {
+    display: flex;
+    justify-content: center;
+    margin-bottom: 16px;
+}
+
+/* ============================================
+   ADD NEW OFFICIAL VIEW STYLES
+   ============================================ */
+
+/* Page View Toggle */
+.page-view {
+    display: none;
+}
+
+.page-view.active {
+    display: block;
+}
+
+/* Header Info */
+.header-info .breadcrumb {
+    color: #5F7385;
+    font-size: 13px;
+    font-weight: 500;
+    margin-bottom: 4px;
+}
+
+/* Add Official Container */
+.add-official-container {
+    max-width: 100%;
+}
+
+/* Add Official Header */
+.add-official-header {
+    margin-bottom: 20px;
+}
+
+.back-button-wrapper {
+    margin-bottom: 16px;
+}
+
+.back-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    background: none;
+    border: none;
+    color: #16324A;
+    font-size: 14px;
+    font-weight: 500;
+    cursor: pointer;
+    padding: 8px 0;
+    transition: all 0.2s ease;
+}
+
+.back-btn:hover {
+    color: #0F6CBD;
+    transform: translateX(-4px);
+}
+
+.back-btn svg {
+    transition: transform 0.2s ease;
+}
+
+.back-btn:hover svg {
+    stroke: #0F6CBD;
+}
+
+.header-title h1 {
+    color: #16324A;
+    font-size: 24px;
+    font-weight: 700;
+    margin-bottom: 4px;
+}
+
+.header-title p {
+    color: #5F7385;
+    font-size: 14px;
+    font-weight: 400;
+}
+
+/* Info Banner */
+.info-banner {
+    background: white;
+    border-radius: 8px;
+    border: 1px solid #D6E2EA;
+    padding: 16px 20px;
+    margin-bottom: 24px;
+}
+
+.info-banner h3 {
+    color: #16324A;
+    font-size: 16px;
+    font-weight: 600;
+    margin-bottom: 4px;
+}
+
+.info-banner p {
+    color: #5F7385;
+    font-size: 13px;
+    font-weight: 400;
+    line-height: 1.4;
+}
+
+/* Form Container */
+.form-container {
+    background: white;
+    border-radius: 8px;
+    border: 1px solid #D6E2EA;
+    padding: 28px;
+    display: flex;
+    flex-direction: column;
+    gap: 28px;
+}
+
+/* Form Section */
+.form-section {
+    display: flex;
+    flex-direction: column;
+    gap: 20px;
+}
+
+.section-title {
+    color: #16324A;
+    font-size: 16px;
+    font-weight: 600;
+    padding-bottom: 8px;
+    border-bottom: 1px solid #D6E2EA;
+}
+
+/* Photo Upload Area */
+.photo-upload-area {
+    display: flex;
+    align-items: center;
+    gap: 24px;
+    flex-wrap: wrap;
+}
+
+.photo-placeholder {
+    width: 100px;
+    height: 100px;
+    background: #EEF3F7;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border: 1px solid #D6E2EA;
+    overflow: hidden;
+    flex-shrink: 0;
+}
+
+.photo-placeholder svg {
+    width: 40px;
+    height: 40px;
+}
+
+.photo-placeholder img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+}
+
+.photo-info {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+
+.upload-btn {
+    padding: 8px 16px;
+    background: #EEF3F7;
+    border: 1px solid #D6E2EA;
+    border-radius: 6px;
+    font-size: 13px;
+    font-weight: 500;
+    color: #16324A;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    width: fit-content;
+}
+
+.upload-btn:hover {
+    background: #E0E8F0;
+}
+
+.photo-info p {
+    color: #5F7385;
+    font-size: 12px;
+}
+
+/* Form Row - Two Columns */
+.form-row {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 20px;
+}
+
+/* Form Group */
+.form-group {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+
+.form-group label {
+    color: #16324A;
+    font-size: 13px;
+    font-weight: 600;
+}
+
+.form-group .required {
+    color: #C94A4A;
+}
+
+.form-group input,
+.form-group select,
+.form-group textarea {
+    width: 100%;
+    height: 42px;
+    padding: 0 14px;
+    background: white;
+    border: 1px solid #D6E2EA;
+    border-radius: 6px;
+    font-size: 14px;
+    font-family: 'Inter', sans-serif;
+    color: #16324A;
+    transition: all 0.2s ease;
+}
+
+.form-group textarea {
+    height: auto;
+    padding: 12px 14px;
+    resize: vertical;
+}
+
+.form-group input:focus,
+.form-group select:focus,
+.form-group textarea:focus {
+    outline: none;
+    border-color: #0F6CBD;
+    box-shadow: 0 0 0 3px rgba(15, 108, 189, 0.1);
+}
+
+.form-group input::placeholder,
+.form-group select:invalid {
+    color: #8A9AAB;
+}
+
+/* Status Options */
+.status-options {
+    display: flex;
+    gap: 12px;
+    flex-wrap: wrap;
+}
+
+.status-option {
+    padding: 6px 16px;
+    background: #EEF3F7;
+    border: none;
+    border-radius: 20px;
+    font-size: 13px;
+    font-weight: 500;
+    color: #16324A;
+    cursor: pointer;
+    transition: all 0.2s ease;
+}
+
+.status-option:hover {
+    background: #E0E8F0;
+}
+
+.status-option.active {
+    background: #0F6CBD;
+    color: white;
+}
+
+/* Form Actions */
+.form-actions {
+    display: flex;
+    justify-content: flex-end;
+    align-items: center;
+    gap: 12px;
+    padding-top: 20px;
+    border-top: 1px solid #D6E2EA;
+    margin-top: 8px;
+}
+
+.btn-cancel,
+.btn-submit {
+    height: 42px;
+    padding: 0 24px;
+    border-radius: 6px;
+    font-size: 14px;
+    font-weight: 500;
+    cursor: pointer;
+    transition: all 0.2s ease;
+}
+
+.btn-cancel {
+    background: white;
+    border: 1px solid #D6E2EA;
+    color: #16324A;
+}
+
+.btn-cancel:hover {
+    background: #F4F8FB;
+}
+
+.btn-submit {
+    background: #0F6CBD;
+    border: none;
+    color: white;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.btn-submit:hover {
+    background: #0c5d9e;
+    transform: translateY(-1px);
+    box-shadow: 0 2px 8px rgba(15, 108, 189, 0.3);
+}
+
+/* Icon Styles for Term and Contact */
+.term-icon-img,
+.contact-icon-img {
+    width: 14px;
+    height: 14px;
+    display: inline-block;
+    vertical-align: middle;
+}
+
+/* ============================================
+   ADD OFFICIAL VIEW - NEW DESIGN STYLES
+   ============================================ */
+
+/* Add Official Container */
+.add-official-container {
+    max-width: 100%;
+}
+
+.add-official-header {
+    margin-bottom: 20px;
+}
+
+.back-button-wrapper {
+    margin-bottom: 16px;
+}
+
+.back-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    background: none;
+    border: none;
+    color: #16324A;
+    font-size: 14px;
+    font-weight: 500;
+    cursor: pointer;
+    padding: 8px 0;
+    transition: all 0.2s ease;
+}
+
+.back-btn:hover {
+    color: #0F6CBD;
+    transform: translateX(-4px);
+}
+
+.back-btn svg {
+    transition: transform 0.2s ease;
+}
+
+.back-btn:hover svg {
+    stroke: #0F6CBD;
+}
+
+/* Info Banner New */
+.info-banner-new {
+    background: white;
+    border-radius: 8px;
+    border: 1px solid #D6E2EA;
+    padding: 16px 18px;
+    margin-bottom: 20px;
+}
+
+.info-banner-new h3 {
+    color: #16324A;
+    font-size: 16px;
+    font-weight: 600;
+    margin-bottom: 4px;
+}
+
+.info-banner-new p {
+    color: #5F7385;
+    font-size: 13px;
+    font-weight: 500;
+    line-height: 1.4;
+}
+
+/* Form Container New */
+.form-container-new {
+    background: white;
+    border-radius: 8px;
+    border: 1px solid #D6E2EA;
+    padding: 24px;
+    display: flex;
+    flex-direction: column;
+    gap: 32px;
+    max-width: 980px;
+}
+
+/* Form Section New */
+.form-section-new {
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+}
+
+.section-title-new {
+    color: #16324A;
+    font-size: 16px;
+    font-weight: 600;
+    padding-bottom: 8px;
+    border-bottom: 1px solid #D6E2EA;
+}
+
+/* Form Grid - 2 columns */
+.form-grid {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 16px;
+}
+
+.form-grid .full-width {
+    grid-column: span 2;
+}
+
+/* Form Group New */
+/* Small note under a field, e.g. the auto-calculated term end. */
+.field-hint {
+    display: block;
+    margin-top: 6px;
+    font-size: 12px;
+    font-weight: 400;
+    color: #5F7385;
+    line-height: 1.4;
+}
+
+.form-group-new {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+
+.form-group-new label {
+    color: #16324A;
+    font-size: 13px;
+    font-weight: 600;
+}
+
+.form-group-new .required {
+    color: #C94A4A;
+}
+
+.form-group-new input,
+.form-group-new select {
+    width: 100%;
+    height: 42px;
+    padding: 0 12px;
+    background: white;
+    border: 1px solid #D6E2EA;
+    border-radius: 6px;
+    font-size: 14px;
+    font-family: 'Inter', sans-serif;
+    color: #16324A;
+    transition: all 0.2s ease;
+}
+
+.form-group-new input:focus,
+.form-group-new select:focus {
+    outline: none;
+    border-color: #0F6CBD;
+    box-shadow: 0 0 0 3px rgba(15, 108, 189, 0.1);
+}
+
+.form-group-new input::placeholder {
+    color: #8A9AAB;
+}
+
+/* Photo Upload New */
+.photo-upload-area-new {
+    display: flex;
+    align-items: center;
+    gap: 20px;
+    flex-wrap: wrap;
+}
+
+.photo-placeholder-new {
+    width: 100px;
+    height: 100px;
+    background: #EEF3F7;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border: 1px solid #D6E2EA;
+    overflow: hidden;
+    flex-shrink: 0;
+}
+
+.photo-placeholder-new img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+}
+
+.photo-info-new {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+
+.upload-btn-new {
+    padding: 8px 16px;
+    background: #EEF3F7;
+    border: 1px solid #D6E2EA;
+    border-radius: 6px;
+    font-size: 13px;
+    font-weight: 500;
+    color: #16324A;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    width: fit-content;
+}
+
+.upload-btn-new:hover {
+    background: #E0E8F0;
+}
+
+.photo-info-new p {
+    color: #5F7385;
+    font-size: 12px;
+}
+
+/* Status Options New */
+.status-options-new {
+    display: flex;
+    gap: 8px;
+    flex-wrap: wrap;
+}
+
+.status-option-new {
+    padding: 6px 12px;
+    background: #EEF3F7;
+    border: none;
+    border-radius: 12px;
+    font-size: 12px;
+    font-weight: 600;
+    color: #16324A;
+    cursor: pointer;
+    transition: all 0.2s ease;
+}
+
+.status-option-new:hover {
+    background: #E0E8F0;
+}
+
+.status-option-new.active {
+    background: #0F6CBD;
+    color: white;
+}
+
+/* Form Actions New */
+.form-actions-new {
+    display: flex;
+    justify-content: flex-end;
+    align-items: center;
+    gap: 12px;
+    padding-top: 16px;
+    border-top: 1px solid #D6E2EA;
+}
+
+.btn-cancel-new {
+    height: 42px;
+    padding: 0 20px;
+    background: #EEF3F7;
+    border: 1px solid #D6E2EA;
+    border-radius: 6px;
+    color: #16324A;
+    font-size: 14px;
+    font-weight: 500;
+    cursor: pointer;
+    transition: all 0.2s ease;
+}
+
+.btn-cancel-new:hover {
+    background: #E0E8F0;
+}
+
+.btn-submit-new {
+    height: 42px;
+    padding: 0 20px;
+    background: #0F6CBD;
+    border: none;
+    border-radius: 6px;
+    color: white;
+    font-size: 14px;
+    font-weight: 500;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+
+.btn-submit-new:hover {
+    background: #0c5d9e;
+    transform: translateY(-1px);
+    box-shadow: 0 2px 8px rgba(15, 108, 189, 0.3);
+}
+
+/* Responsive for Add Official */
+@media screen and (max-width: 768px) {
+    .form-grid {
+        grid-template-columns: 1fr;
+    }
+    
+    .form-grid .full-width {
+        grid-column: span 1;
+    }
+    
+    .photo-upload-area-new {
+        flex-direction: column;
+        align-items: center;
+        text-align: center;
+    }
+    
+    .photo-info-new {
+        align-items: center;
+    }
+    
+    .form-actions-new {
+        flex-direction: column;
+    }
+    
+    .btn-cancel-new,
+    .btn-submit-new {
+        width: 100%;
+        justify-content: center;
+    }
+    
+    .add-official-header {
+        text-align: center;
+    }
+    
+    .back-button-wrapper {
+        text-align: left;
+    }
+    
+    .status-options-new {
+        justify-content: center;
+    }
+}
+
+@media screen and (max-width: 480px) {
+    .form-container-new {
+        padding: 20px;
+    }
+    
+    .section-title-new {
+        font-size: 15px;
+    }
+}
+
+/* Responsive Design for Add Official View */
+@media screen and (max-width: 768px) {
+    .form-row {
+        grid-template-columns: 1fr;
+        gap: 16px;
+    }
+    
+    .photo-upload-area {
+        flex-direction: column;
+        align-items: center;
+        text-align: center;
+    }
+    
+    .photo-info {
+        align-items: center;
+    }
+    
+    .form-actions {
+        flex-direction: column;
+    }
+    
+    .btn-cancel,
+    .btn-submit {
+        width: 100%;
+        justify-content: center;
+    }
+    
+    .add-official-header {
+        text-align: center;
+    }
+    
+    .back-button-wrapper {
+        text-align: left;
+    }
+    
+    .status-options {
+        justify-content: center;
+    }
+    
+    .form-container {
+        padding: 20px;
+    }
+}
+
+@media screen and (max-width: 480px) {
+    .form-container {
+        padding: 16px;
+    }
+    
+    .section-title {
+        font-size: 15px;
+    }
+    
+    .header-title h1 {
+        font-size: 20px;
+    }
+    
+    .info-banner {
+        padding: 12px 16px;
+    }
+    
+    .info-banner h3 {
+        font-size: 14px;
+    }
+}
+
+/* Responsive Design */
+@media screen and (max-width: 1024px) {
+    .officials-grid {
+        grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
+    }
+}
+
+@media screen and (max-width: 768px) {
+    .sidebar {
+        transform: translateX(-100%);
+        transition: transform 0.3s ease;
+    }
+    
+    .sidebar.mobile-open {
+        transform: translateX(0);
+    }
+    
+    .main-content {
+        margin-left: 0;
+    }
+    
+    .actions-bar {
+        flex-direction: column;
+        align-items: stretch;
+    }
+    
+    .search-box {
+        width: 100%;
+    }
+    
+    .action-buttons {
+        justify-content: stretch;
+    }
+    
+    .btn-filter, .btn-primary {
+        flex: 1;
+        justify-content: center;
+    }
+    
+    .officials-header {
+        padding: 16px;
+        height: auto;
+        flex-direction: column;
+        gap: 12px;
+        align-items: flex-start;
+    }
+    
+    .content-area {
+        padding: 16px;
+    }
+    
+    .form-row {
+        grid-template-columns: 1fr;
+    }
+}
+
+@media screen and (max-width: 480px) {
+    .official-card {
+        padding: 20px;
+    }
+    
+    .detail-row {
+        flex-direction: column;
+    }
+    
+    .detail-label {
+        width: 100%;
+        margin-bottom: 4px;
+    }
+}
+
+/* Scrollbar Styling */
+::-webkit-scrollbar {
+    width: 8px;
+    height: 8px;
+}
+
+::-webkit-scrollbar-track {
+    background: #EAF3FA;
+}
+
+::-webkit-scrollbar-thumb {
+    background: #B8CAD8;
+    border-radius: 4px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+    background: #9AADBC;
+}
+/* ------------------------------------------------------------------
+   Filter by Term dropdown - built by officials.js from
+   api/officials.php?terms=1 (distinct term_start/term_end pairs).
+   ------------------------------------------------------------------ */
+.term-dropdown, .export-dropdown {
+    display: none;
+    position: absolute;
+    top: calc(100% + 6px);
+    right: 0;
+    min-width: 190px;
+    padding: 6px;
+    background: white;
+    border: 1px solid #D6E2EA;
+    border-radius: 6px;
+    box-shadow: 0 6px 18px rgba(22, 50, 74, 0.12);
+    z-index: 40;
+}
+
+.term-dropdown.open, .export-dropdown.open {
+    display: block;
+}
+
+.term-option, .export-option {
+    display: block;
+    width: 100%;
+    padding: 9px 12px;
+    background: transparent;
+    border: none;
+    border-radius: 4px;
+    text-align: left;
+    font-family: inherit;
+    font-size: 14px;
+    color: #16324A;
+    cursor: pointer;
+}
+
+.term-option:hover, .export-option:hover {
+    background: #F4F8FB;
+}
+
+.term-option.active {
+    background: #E8F1FA;
+    color: #0F6CBD;
+    font-weight: 600;
+}
+
+.term-empty {
+    padding: 9px 12px;
+    font-size: 13px;
+    color: #757575;
+}
+
+/* ------------------------------------------------------------------
+   Official photo - shown on the card avatar and in the form preview
+   once a photo is stored in barangay_officials.profile_image.
+   ------------------------------------------------------------------ */
+.official-avatar img,
+#photoPlaceholder img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    border-radius: 50%;
+}
+/* ============================================================
+   AGE FIELD (read-only, derived from Birthdate)
+   ============================================================ */
+#addOfficialView input[readonly],
+#addOfficialView input:read-only {
+    background: #F4F8FB;
+    color: #5F7385;
+    cursor: not-allowed;
+}
+
+/* ============================================================
+   LIST FILTERS + BATCH ARCHIVE
+   ============================================================ */
+/* The read-only dropdowns that used to sit on the cards are gone; Status and
+   Position/Role are filters in the actions bar, beside "Filter by Term". */
+
+.batch-option {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 6px 10px;
+    font-size: 13px;
+    color: #16324A;
+    cursor: pointer;
+    white-space: nowrap;
+}
+
+.batch-option:hover {
+    background: #F4F8FB;
+}
+
+.batch-option input[type="checkbox"] {
+    accent-color: #0F6CBD;
+    cursor: pointer;
+}
+
+.batch-option span {
+    flex: 1;
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.batch-option em {
+    font-style: normal;
+    font-size: 11px;
+    color: #5F7385;
+}
+
+.batch-option-all {
+    border-bottom: 1px solid #EAF1F7;
+    font-weight: 600;
+}
+
+.batch-apply {
+    display: block;
+    width: calc(100% - 16px);
+    margin: 8px;
+    padding: 8px 10px;
+    border: none;
+    border-radius: 4px;
+    background: #C94A4A;
+    color: #fff;
+    font-size: 13px;
+    font-weight: 600;
+    cursor: pointer;
+}
+
+.batch-apply:hover:not(:disabled) {
+    background: #B23F3F;
+}
+
+.batch-apply:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+}

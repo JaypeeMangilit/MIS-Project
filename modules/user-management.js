@@ -49,6 +49,98 @@
             .replace(/'/g, '&#39;');
     }
 
+    /**
+     * Age in whole years for a "YYYY-MM-DD" birth date, or null when the date is
+     * empty, impossible, or still in the future.
+     *
+     * Completed years only: the year is dropped by one when this year's birthday has
+     * not happened yet. Mirrors residentAgeFromBirthDate() in api/residents.php.
+     */
+    function calculateAgeFromBirthDate(birthDate) {
+        var raw = String(birthDate || '').trim();
+        if (!/^\d{4}-\d{2}-\d{2}$/.test(raw)) return null;
+
+        var parts = raw.split('-').map(Number);
+        var birth = new Date(parts[0], parts[1] - 1, parts[2]);
+        // Reject impossible dates such as 2001-02-30, which Date would roll over.
+        if (birth.getFullYear() !== parts[0] || birth.getMonth() !== parts[1] - 1 || birth.getDate() !== parts[2]) {
+            return null;
+        }
+
+        var today = new Date();
+        if (birth.getTime() > today.getTime()) return null;
+
+        var age = today.getFullYear() - birth.getFullYear();
+        var monthDiff = today.getMonth() - birth.getMonth();
+        if (monthDiff < 0 || (monthDiff === 0 && today.getDate() < birth.getDate())) {
+            age--;
+        }
+        return age;
+    }
+
+    /** Age as a display string: the number, or an em dash when there is no birth date. */
+    function ageText(birthDate) {
+        var age = calculateAgeFromBirthDate(birthDate);
+        return age === null ? '—' : String(age);
+    }
+
+    function toDateInput(value) {
+        if (!value) return '';
+        return String(value).substring(0, 10);
+    }
+
+    function calculateLengthOfResidence(moveInDate) {
+        if (!moveInDate) return '—';
+        var raw = String(moveInDate).trim();
+        if (!/^\d{4}-\d{2}-\d{2}$/.test(raw)) return '—';
+
+        var parts = raw.split('-').map(Number);
+        var start = new Date(parts[0], parts[1] - 1, parts[2]);
+        if (start.getFullYear() !== parts[0] || start.getMonth() !== parts[1] - 1 || start.getDate() !== parts[2]) {
+            return '—';
+        }
+
+        var today = new Date();
+        if (start.getTime() > today.getTime()) return '—';
+
+        var years = today.getFullYear() - start.getFullYear();
+        var months = today.getMonth() - start.getMonth();
+        var days = today.getDate() - start.getDate();
+        if (days < 0) {
+            months--;
+            var prevMonth = new Date(today.getFullYear(), today.getMonth(), 0);
+            days += prevMonth.getDate();
+        }
+        if (months < 0) {
+            years--;
+            months += 12;
+        }
+        if (years < 0) return '—';
+        if (years === 0 && months === 0 && days === 0) return 'Today';
+        var parts = [];
+        if (years > 0) parts.push(years + ' year' + (years !== 1 ? 's' : ''));
+        if (months > 0) parts.push(months + ' month' + (months !== 1 ? 's' : ''));
+        if (days > 0) parts.push(days + ' day' + (days !== 1 ? 's' : ''));
+        return parts.join(' and ') || '—';
+    }
+
+    /** Recompute a read-only Age box from its Birthdate box. */
+    function syncUserAge(birthdateId, ageId) {
+        var ageField = document.getElementById(ageId);
+        if (!ageField) return;
+        var birthField = document.getElementById(birthdateId);
+        var age = birthField ? calculateAgeFromBirthDate(birthField.value) : null;
+        ageField.value = age === null ? '' : String(age);
+    }
+
+    function syncLengthOfResidence(moveInDateId, lengthId) {
+        var lengthField = document.getElementById(lengthId);
+        if (!lengthField) return;
+        var moveInField = document.getElementById(moveInDateId);
+        var value = moveInField ? calculateLengthOfResidence(moveInField.value) : '—';
+        lengthField.value = value;
+    }
+
     function fullName(user) {
         var parts = [
             user.first_name,
@@ -480,7 +572,11 @@
             viewSuffix: user.suffix || '—',
             viewEmail: user.email || '—',
             viewMobile: user.mobile_number || '—',
-            viewAddress: user.address || '—'
+            viewAddress: user.address || '—',
+            viewBirthdate: user.birth_date ? String(user.birth_date).substring(0, 10) : '—',
+            // Derived here, never read from a stored age column.
+            viewAge: ageText(user.birth_date),
+            viewLengthOfResidence: calculateLengthOfResidence(toDateInput(user.move_in_date))
         };
 
         Object.keys(fields).forEach(function (id) {
@@ -540,6 +636,8 @@
             editEmail: user.email || '',
             editPhone: user.mobile_number || '',
             editAddress: user.address || '',
+            editBirthdate: user.birth_date ? String(user.birth_date).substring(0, 10) : '',
+            editMoveInDate: user.move_in_date ? String(user.move_in_date).substring(0, 10) : '',
             editUsername: user.username || ''
         };
 
@@ -549,6 +647,11 @@
                 element.value = values[id];
             }
         });
+
+        // The Birthdate and Move-in Date were set programmatically, so the change
+        // listeners will not have fired - recompute the read-only boxes by hand.
+        syncUserAge('editBirthdate', 'editAge');
+        syncLengthOfResidence('editMoveInDate', 'editLengthOfResidence');
 
         var roleSelect = document.getElementById('editUserRole');
         if (roleSelect) {
@@ -627,6 +730,8 @@
             email: document.getElementById('editEmail').value.trim(),
             mobile_number: document.getElementById('editPhone').value.trim(),
             address: document.getElementById('editAddress').value.trim(),
+            birth_date: document.getElementById('editBirthdate').value || '',
+            move_in_date: document.getElementById('editMoveInDate').value || '',
             username: document.getElementById('editUsername').value.trim(),
             role: document.getElementById('editUserRole').value,
             status: document.getElementById('editAccountStatus').value || 'Active'
@@ -644,6 +749,11 @@
         if (!payload.first_name || !payload.last_name || !payload.username ||
             !payload.email || !payload.role) {
             notify('Please fill in all required fields marked with *');
+            return;
+        }
+
+        if (payload.move_in_date && new Date(payload.move_in_date) > new Date()) {
+            notify('Move-in Date cannot be in the future.');
             return;
         }
 
@@ -669,13 +779,16 @@
 
     function resetAddForm() {
         var ids = ['firstName', 'middleName', 'lastName', 'suffix', 'email', 'phone',
-                   'address', 'username', 'password', 'confirmPassword'];
+                   'address', 'birthdate', 'moveInDate', 'username', 'password', 'confirmPassword'];
         ids.forEach(function (id) {
             var element = document.getElementById(id);
             if (element) {
                 element.value = '';
             }
         });
+
+        var lengthField = document.getElementById('lengthOfResidence');
+        if (lengthField) lengthField.value = '';
 
         var role = document.getElementById('userRole');
         if (role) {
@@ -710,6 +823,8 @@
             email: document.getElementById('email').value.trim(),
             mobile_number: document.getElementById('phone').value.trim(),
             address: document.getElementById('address').value.trim(),
+            birth_date: document.getElementById('birthdate').value || '',
+            move_in_date: document.getElementById('moveInDate').value || '',
             username: document.getElementById('username').value.trim(),
             password: document.getElementById('password').value,
             role: document.getElementById('userRole').value,
@@ -731,6 +846,11 @@
 
         if (payload.password.length < 6) {
             notify('Password must be at least 6 characters long');
+            return;
+        }
+
+        if (payload.move_in_date && new Date(payload.move_in_date) > new Date()) {
+            notify('Move-in Date cannot be in the future.');
             return;
         }
 
@@ -811,6 +931,32 @@
             if (element) {
                 element.addEventListener('click', showListView);
             }
+        });
+
+        // Age follows Birthdate on both the Add and the Edit form.
+        ['birthdate', 'editBirthdate'].forEach(function (birthdateId) {
+            var field = document.getElementById(birthdateId);
+            if (!field) return;
+            var ageId = birthdateId === 'editBirthdate' ? 'editAge' : 'age';
+            field.addEventListener('change', function () {
+                syncUserAge(birthdateId, ageId);
+            });
+            field.addEventListener('input', function () {
+                syncUserAge(birthdateId, ageId);
+            });
+        });
+
+        // Length of Residence follows Move-in Date on both the Add and the Edit form.
+        ['moveInDate', 'editMoveInDate'].forEach(function (moveInDateId) {
+            var field = document.getElementById(moveInDateId);
+            if (!field) return;
+            var lengthId = moveInDateId === 'editMoveInDate' ? 'editLengthOfResidence' : 'lengthOfResidence';
+            var freshField = field.cloneNode(true);
+            field.parentNode.replaceChild(freshField, field);
+            freshField.addEventListener('change', function () {
+                var lengthField = document.getElementById(lengthId);
+                if (lengthField) lengthField.value = calculateLengthOfResidence(this.value);
+            });
         });
 
         var saveBtn = document.getElementById('saveUserBtn');

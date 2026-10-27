@@ -65,15 +65,16 @@ body {
 
 .action-buttons {
     display: flex;
-    gap: 12px;
+    gap: 6px;
     position: relative;
+    justify-content: flex-end !important;
 }
 
 .btn-filter, .btn-primary, .btn-secondary {
     display: flex;
     align-items: center;
     gap: 8px;
-    padding: 0 16px;
+    padding: 0 10px;
     height: 40px;
     border-radius: 6px;
     font-size: 14px;
@@ -1483,4 +1484,80 @@ body {
     height: 100%;
     object-fit: cover;
     border-radius: 50%;
+}
+/* ============================================================
+   AGE FIELD (read-only, derived from Birthdate)
+   ============================================================ */
+#addOfficialView input[readonly],
+#addOfficialView input:read-only {
+    background: #F4F8FB;
+    color: #5F7385;
+    cursor: not-allowed;
+}
+
+/* ============================================================
+   LIST FILTERS + BATCH ARCHIVE
+   ============================================================ */
+/* The read-only dropdowns that used to sit on the cards are gone; Status and
+   Position/Role are filters in the actions bar, beside "Filter by Term". */
+
+.batch-option {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 6px 10px;
+    font-size: 13px;
+    color: #16324A;
+    cursor: pointer;
+    white-space: nowrap;
+}
+
+.batch-option:hover {
+    background: #F4F8FB;
+}
+
+.batch-option input[type="checkbox"] {
+    accent-color: #0F6CBD;
+    cursor: pointer;
+}
+
+.batch-option span {
+    flex: 1;
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.batch-option em {
+    font-style: normal;
+    font-size: 11px;
+    color: #5F7385;
+}
+
+.batch-option-all {
+    border-bottom: 1px solid #EAF1F7;
+    font-weight: 600;
+}
+
+.batch-apply {
+    display: block;
+    width: calc(100% - 16px);
+    margin: 8px;
+    padding: 8px 10px;
+    border: none;
+    border-radius: 4px;
+    background: #C94A4A;
+    color: #fff;
+    font-size: 13px;
+    font-weight: 600;
+    cursor: pointer;
+}
+
+.batch-apply:hover:not(:disabled) {
+    background: #B23F3F;
+}
+
+.batch-apply:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
 }

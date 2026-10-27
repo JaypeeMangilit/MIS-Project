@@ -579,6 +579,24 @@ switch($method) {
             break;
         }
 
+        $moveInDate = isset($data['move_in_date']) && $data['move_in_date'] !== '' ? (string) $data['move_in_date'] : null;
+        if ($moveInDate && DateTime::createFromFormat('Y-m-d', $moveInDate) === false) {
+            echo json_encode([
+                'success' => false,
+                'message' => 'Invalid Move-in Date format.',
+                'data' => null
+            ]);
+            break;
+        }
+        if ($moveInDate && $moveInDate > date('Y-m-d')) {
+            echo json_encode([
+                'success' => false,
+                'message' => 'Move-in Date cannot be in the future.',
+                'data' => null
+            ]);
+            break;
+        }
+
         // The photo is written to disk only after the row exists, so a failed
         // insert can never leave an unreferenced file behind.
         $photoPayload = isset($data['photo_base64']) ? $data['photo_base64'] : '';
@@ -587,8 +605,8 @@ switch($method) {
                     resident_id, first_name, middle_name, last_name, suffix, gender, 
                     birth_date, place_of_birth, civil_status, nationality, occupation, voter_status, 
                     resident_status, purok, street_name, house_no, mobile_number, email, 
-                    emergency_person, emergency_relation, emergency_contact, age
-                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)";
+                    emergency_person, emergency_relation, emergency_contact, age, move_in_date
+                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)";
         
         // Generate the ID and insert, retrying with the next sequence number if a
         // concurrent request has already claimed the candidate ID.
@@ -623,11 +641,12 @@ switch($method) {
                 $emergencyContact,
                 // Age is derived from the birth date on both create and update so
                 // the client cannot store a value that disagrees with it.
-                residentAgeFromBirthDate($data['birth_date'] ?? '')
+                residentAgeFromBirthDate($data['birth_date'] ?? ''),
+                $data['move_in_date'] ?? null
             ];
 
-            // 21 strings, then the integer age.
-            $id = insertRecord($insertSql, $params, 'sssssssssssssssssssssi');
+            // 21 strings, 1 integer age, 1 nullable date.
+            $id = insertRecord($insertSql, $params, 'ssssssssssssssssssssssi');
             if ($id) {
                 break;
             }
@@ -724,6 +743,24 @@ switch($method) {
             break;
         }
 
+        $moveInDate = isset($data['move_in_date']) && $data['move_in_date'] !== '' ? (string) $data['move_in_date'] : null;
+        if ($moveInDate && DateTime::createFromFormat('Y-m-d', $moveInDate) === false) {
+            echo json_encode([
+                'success' => false,
+                'message' => 'Invalid Move-in Date format.',
+                'data' => null
+            ]);
+            break;
+        }
+        if ($moveInDate && $moveInDate > date('Y-m-d')) {
+            echo json_encode([
+                'success' => false,
+                'message' => 'Move-in Date cannot be in the future.',
+                'data' => null
+            ]);
+            break;
+        }
+
         // Age follows the birth date, so it is recomputed here rather than
         // trusted from the client. Mirrors calculateAgeFromBirthDate() in the UI.
         $birthDate = isset($data['birth_date']) ? (string) $data['birth_date'] : '';
@@ -738,7 +775,7 @@ switch($method) {
                     birth_date = ?, place_of_birth = ?, civil_status = ?, nationality = ?, occupation = ?,
                     voter_status = ?, resident_status = ?, purok = ?, street_name = ?,
                     house_no = ?, mobile_number = ?, email = ?, emergency_person = ?,
-                    emergency_relation = ?, emergency_contact = ?, age = ?";
+                    emergency_relation = ?, emergency_contact = ?, age = ?, move_in_date = ?";
 
         $params = [
             $data['first_name'] ?? '',
@@ -761,13 +798,14 @@ switch($method) {
             $data['emergency_person'] ?? '',
             $data['emergency_relation'] ?? '',
             $emergencyContact,
-            $age
+            $age,
+            $data['move_in_date'] ?? null
         ];
 
         $sql .= " WHERE id = ?";
         $params[] = $data['id'];
 
-        $affected = executeStatement($sql, $params, 'sssssssssssssssssssssi');
+        $affected = executeStatement($sql, $params, 'sssssssssssssssssssssssi');
 
         // Persist the newly chosen photo only now that the update succeeded. The
         // guard is `$affected !== false` rather than `> 0`: PDO_ODBC reports 0 rows

@@ -1785,3 +1785,17 @@ body {
         justify-content: center;
     }
 }
+
+/* ============================================================
+   AGE FIELD (read-only, derived from Birthdate)
+   ============================================================ */
+/* Age is never typed by hand - it is computed from the Birthdate, so it is
+   styled as clearly read-only rather than looking like a normal input. */
+#addUserView input[readonly],
+#addUserView input:read-only,
+#editUserView input[readonly],
+#editUserView input:read-only {
+    background: #F4F8FB;
+    color: #5F7385;
+    cursor: not-allowed;
+}

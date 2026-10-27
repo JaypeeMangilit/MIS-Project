@@ -37,6 +37,7 @@ $CERTIFICATE_TYPES = [
     'Barangay Indigency',
     'Barangay Clearance',
     'Barangay Certification',
+    'First-time Job Seeker',
 ];
 
 /** Statuses offered by the Edit form. */
@@ -58,7 +59,7 @@ function certificateSelectSql(): string
                    c.created_at, c.updated_at,
                    r.resident_id AS resident_code, r.first_name, r.middle_name,
                    r.last_name, r.suffix, r.purok, r.street_name, r.house_no,
-                   r.subdivision, r.gender, r.birth_date
+                   r.subdivision, r.gender, r.birth_date, r.move_in_date
             FROM certificate_issuances c
             INNER JOIN residents r ON r.id = c.resident_id";
 }
@@ -128,6 +129,36 @@ function decorateCertificate(array $row): array
     $row['amount_paid'] = number_format((float) ($row['amount_paid'] ?? 0), 2, '.', '');
     $row['or_number'] = ($row['or_number'] === null || $row['or_number'] === '') ? null : (string) $row['or_number'];
 
+    $moveInDate = trim((string) ($row['move_in_date'] ?? ''));
+    if ($moveInDate !== '') {
+        $parts = explode('-', $moveInDate);
+        if (count($parts) === 3 && checkdate((int) $parts[1], (int) $parts[2], (int) $parts[0])) {
+            $start = new DateTime($moveInDate);
+            $today = new DateTime('today');
+            if ($start <= $today) {
+                $interval = $start->diff($today);
+                $years = $interval->y;
+                $months = $interval->m;
+                $days = $interval->d;
+                if ($years === 0 && $months === 0 && $days === 0) {
+                    $row['resident_length_of_residence'] = 'Today';
+                } else {
+                    $parts = [];
+                    if ($years > 0) $parts[] = $years . ' year' . ($years !== 1 ? 's' : '');
+                    if ($months > 0) $parts[] = $months . ' month' . ($months !== 1 ? 's' : '');
+                    if ($days > 0) $parts[] = $days . ' day' . ($days !== 1 ? 's' : '');
+                    $row['resident_length_of_residence'] = implode(' and ', $parts);
+                }
+            } else {
+                $row['resident_length_of_residence'] = null;
+            }
+        } else {
+            $row['resident_length_of_residence'] = null;
+        }
+    } else {
+        $row['resident_length_of_residence'] = null;
+    }
+
     return $row;
 }
 
@@ -153,6 +184,8 @@ function certificateControlNumber(string $type, string $dateIssued, $id): string
         $typeCode = 'CED';
     } elseif (strpos($type, 'Good Moral') !== false) {
         $typeCode = 'GMC';
+    } elseif (strpos($type, 'First-time Job Seeker') !== false) {
+        $typeCode = 'FJS';
     } elseif (strpos($type, 'Barangay Certification') !== false) {
         $typeCode = 'CERT';
     }
@@ -185,8 +218,8 @@ function archivedCertificateSelectSql(): string
     return "SELECT c.id, c.resident_id, c.certificate_type, c.purpose, c.or_number,
                    c.amount_paid, c.date_issued, c.valid_until, c.status, c.issued_by,
                    c.created_at, c.updated_at, c.archived_at, c.archived_by,
-                   r.resident_id AS resident_code, r.first_name, r.middle_name,
-                   r.last_name, r.suffix, r.purok, r.street_name
+                   r.resident_id AS resident_code, r.first_name, r.middle_name, r.last_name, r.suffix,
+                   r.purok, r.street_name, r.move_in_date
             FROM archived_certificate_issuances c
             LEFT JOIN residents r ON r.id = c.resident_id";
 }

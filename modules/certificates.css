@@ -429,6 +429,11 @@ body {
     color: #3730A3;
 }
 
+.cert-badge.first-time-job-seeker {
+    background: #CCFBF1;
+    color: #0F766E;
+}
+
 /* Action Buttons */
 .action-buttons {
     display: flex;
@@ -841,6 +846,11 @@ body {
 .badge.moral {
     background: #E0E7FF;
     color: #3730A3;
+}
+
+.badge.first-time-job-seeker {
+    background: #CCFBF1;
+    color: #0F766E;
 }
 
 /* Divider */

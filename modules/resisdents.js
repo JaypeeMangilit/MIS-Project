@@ -306,6 +306,32 @@ function calculateAge(birthDate) {
     return age;
 }
 
+function calculateLengthOfResidence(moveInDate) {
+    if (!moveInDate) return 'Not provided';
+    const today = new Date();
+    const start = new Date(moveInDate);
+    if (isNaN(start.getTime()) || start > today) return 'Not provided';
+    let years = today.getFullYear() - start.getFullYear();
+    let months = today.getMonth() - start.getMonth();
+    let days = today.getDate() - start.getDate();
+    if (days < 0) {
+        months--;
+        const prevMonth = new Date(today.getFullYear(), today.getMonth(), 0);
+        days += prevMonth.getDate();
+    }
+    if (months < 0) {
+        years--;
+        months += 12;
+    }
+    if (years < 0) return 'Not provided';
+    if (years === 0 && months === 0 && days === 0) return 'Today';
+    const parts = [];
+    if (years > 0) parts.push(years + ' year' + (years !== 1 ? 's' : ''));
+    if (months > 0) parts.push(months + ' month' + (months !== 1 ? 's' : ''));
+    if (days > 0) parts.push(days + ' day' + (days !== 1 ? 's' : ''));
+    return parts.join(' and ');
+}
+
 function showLoading() {
     const tbody = document.getElementById('residentsTableBody');
     if (tbody && (!residentsData || residentsData.length === 0)) {
@@ -445,6 +471,14 @@ async function loadResidentForEdit(id) {
         document.getElementById('editOccupation').value = resident.occupation || '';
         document.getElementById('editVoterStatus').value = resident.voter_status || 'Not Registered';
         document.getElementById('editResidentStatus').value = resident.resident_status || 'Active';
+        
+        if (document.getElementById('editMoveInDate')) {
+            document.getElementById('editMoveInDate').value = resident.move_in_date || '';
+            const lengthText = calculateLengthOfResidence(resident.move_in_date);
+            if (document.getElementById('editLengthOfResidence')) {
+                document.getElementById('editLengthOfResidence').value = lengthText;
+            }
+        }
         
         if (document.getElementById('editPurok')) {
             for (let i = 0; i < document.getElementById('editPurok').options.length; i++) {
@@ -599,6 +633,7 @@ function readResidentPhoto(file) {
 
 async function saveNewResident() {
     const birthDate = document.getElementById('birthDate')?.value || '';
+    const moveInDate = document.getElementById('moveInDate')?.value || '';
     const mobileNumber = sanitizePhoneNumber(document.getElementById('mobile')?.value || '');
     const emergencyContact = sanitizePhoneNumber(document.getElementById('emergencyContact')?.value || '');
 
@@ -624,11 +659,17 @@ async function saveNewResident() {
         emergency_contact: emergencyContact,
         voter_status: document.getElementById('voterStatus')?.value || 'Not Registered',
         resident_status: document.getElementById('residentStatusSelect')?.value || 'Active',
+        move_in_date: moveInDate || null,
         photo_base64: newResidentPhotoBase64 || ''
     };
 
     if (missingResidentRequiredFields(formData).length > 0) {
         showNotification('Please fill in all required fields marked with *', 'error');
+        return;
+    }
+
+    if (moveInDate && new Date(moveInDate) > new Date()) {
+        showNotification('Move-in Date cannot be in the future.', 'error');
         return;
     }
 
@@ -672,6 +713,7 @@ async function saveEditResident() {
     if (!currentEditId) return;
 
     const birthDate = document.getElementById('editBirthDate')?.value || '';
+    const moveInDate = document.getElementById('editMoveInDate')?.value || '';
     const mobileNumber = sanitizePhoneNumber(document.getElementById('editMobile')?.value || '');
     const emergencyContact = sanitizePhoneNumber(document.getElementById('editEmergencyContact')?.value || '');
 
@@ -696,6 +738,7 @@ async function saveEditResident() {
         emergency_relation: document.getElementById('editEmergencyRelation')?.value || '',
         emergency_contact: emergencyContact,
         age: birthDate ? calculateAgeFromBirthDate(birthDate) : null,
+        move_in_date: moveInDate || null,
         photo_base64: editResidentPhotoBase64 || '',
         voter_status: document.getElementById('editVoterStatus')?.value || 'Not Registered',
         resident_status: document.getElementById('editResidentStatus')?.value || 'Active'
@@ -705,6 +748,11 @@ async function saveEditResident() {
     // able to blank a field that registration insists on.
     if (missingResidentRequiredFields(formData).length > 0) {
         showNotification('Please fill in all required fields marked with *', 'error');
+        return;
+    }
+
+    if (moveInDate && new Date(moveInDate) > new Date()) {
+        showNotification('Move-in Date cannot be in the future.', 'error');
         return;
     }
 
@@ -926,6 +974,13 @@ window.viewResident = async function(id) {
     document.getElementById('viewEmergencyPerson').textContent = resident.emergency_person || '—';
     document.getElementById('viewEmergencyRelation').textContent = resident.emergency_relation || '—';
     document.getElementById('viewEmergencyContact').textContent = resident.emergency_contact || '—';
+    
+    if (document.getElementById('viewMoveInDate')) {
+        document.getElementById('viewMoveInDate').textContent = resident.move_in_date ? new Date(resident.move_in_date).toLocaleDateString() : '—';
+    }
+    if (document.getElementById('viewLengthOfResidence')) {
+        document.getElementById('viewLengthOfResidence').textContent = calculateLengthOfResidence(resident.move_in_date);
+    }
 
     renderViewResidentAvatar(resident);
 
@@ -1819,15 +1874,6 @@ function setupFormEventListeners() {
         });
     }
     
-    const printIdBtn = document.getElementById('printIdBtn');
-    if (printIdBtn) {
-        const newPrintBtn = printIdBtn.cloneNode(true);
-        printIdBtn.parentNode.replaceChild(newPrintBtn, printIdBtn);
-        newPrintBtn.addEventListener('click', () => {
-            showNotification('Print ID functionality coming soon', 'info');
-        });
-    }
-    
     const backToListFromEditBtn = document.getElementById('backToListFromEditBtn');
     if (backToListFromEditBtn) {
         const newBackBtn = backToListFromEditBtn.cloneNode(true);
@@ -1879,6 +1925,26 @@ function setupFormEventListeners() {
         });
     }
     
+    const moveInDateInput = document.getElementById('moveInDate');
+    const lengthOfResidenceInput = document.getElementById('lengthOfResidence');
+    if (moveInDateInput && lengthOfResidenceInput) {
+        const newMoveInDate = moveInDateInput.cloneNode(true);
+        moveInDateInput.parentNode.replaceChild(newMoveInDate, moveInDateInput);
+        newMoveInDate.addEventListener('change', function() {
+            lengthOfResidenceInput.value = calculateLengthOfResidence(this.value);
+        });
+    }
+    
+    const editMoveInDate = document.getElementById('editMoveInDate');
+    const editLengthOfResidence = document.getElementById('editLengthOfResidence');
+    if (editMoveInDate && editLengthOfResidence) {
+        const newEditMoveInDate = editMoveInDate.cloneNode(true);
+        editMoveInDate.parentNode.replaceChild(newEditMoveInDate, editMoveInDate);
+        newEditMoveInDate.addEventListener('change', function() {
+            editLengthOfResidence.value = calculateLengthOfResidence(this.value);
+        });
+    }
+
     const chooseFileBtn = document.getElementById('chooseFileBtn');
     const photoUpload = document.getElementById('photoUpload');
     if (chooseFileBtn && photoUpload) {

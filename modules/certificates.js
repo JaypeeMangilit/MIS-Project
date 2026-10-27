@@ -155,7 +155,8 @@
         if (type.indexOf('Business') !== -1) return 'business';
         if (type.indexOf('Cedula') !== -1) return 'cedula';
         if (type.indexOf('Good Moral') !== -1) return 'moral';
-        if (type.indexOf('Barangay Certification') !== -1) return 'certificate';
+        if (type.indexOf('First-time Job Seeker') !== -1) return 'first-time-job-seeker';
+        if (type.indexOf('Certification') !== -1) return 'certificate';
         return 'clearance';
     }
 
@@ -618,6 +619,37 @@
         return String(age);
     }
 
+    /** The resident's length of residence, taken from the move-in date on the record. */
+    function residentLengthOfResidence(certificate) {
+        const raw = String(certificate.resident_length_of_residence || certificate.move_in_date || '').trim();
+        if (!raw) return '';
+        if (certificate.resident_length_of_residence) return certificate.resident_length_of_residence;
+        const parts = raw.split('-').map(Number);
+        const start = new Date(parts[0], parts[1] - 1, parts[2]);
+        if (isNaN(start.getTime())) return '';
+        const now = new Date();
+        if (start.getTime() > now.getTime()) return '';
+        let years = now.getFullYear() - start.getFullYear();
+        let months = now.getMonth() - start.getMonth();
+        let days = now.getDate() - start.getDate();
+        if (days < 0) {
+            months--;
+            const prev = new Date(now.getFullYear(), now.getMonth(), 0);
+            days += prev.getDate();
+        }
+        if (months < 0) {
+            years--;
+            months += 12;
+        }
+        if (years < 0) return '';
+        if (years === 0 && months === 0 && days === 0) return 'Today';
+        const out = [];
+        if (years > 0) out.push(years + ' year' + (years !== 1 ? 's' : ''));
+        if (months > 0) out.push(months + ' month' + (months !== 1 ? 's' : ''));
+        if (days > 0) out.push(days + ' day' + (days !== 1 ? 's' : ''));
+        return out.join(' and ');
+    }
+
     /** Full residential address as it appears on the certificate. */
     function residentFullAddress(certificate) {
         const parts = [
@@ -659,6 +691,7 @@
         const genderBlank = certBlank(gender, 100);
         const addressBlank = certBlank(address, 320);
         const dateBlank = certBlank(issued, 180);
+        const lengthBlank = certBlank(residentLengthOfResidence(certificate), 120);
 
         if (type.indexOf('Indigency') !== -1) {
             return '<p class="cert-paragraph">This is to certify that '
@@ -666,9 +699,8 @@
                 + ', Filipino, whose name and signature appear below is bona fide and a resident of, '
                 + addressBlank + ', San Antonio, Cavite City and a registered/accredited member of this Barangay.</p>'
                 + '<p class="cert-paragraph">That this person is known to me to be a law-abiding citizen, with good moral character and not connected to any subversive organization and has been found to belong to an <strong>INDIGENT FAMILY</strong> after interview and case study has been made.</p>'
-                + '<h4 class="cert-subheading">PURPOSE:</h4>'
-                + '<p class="cert-paragraph">This certification is being issued upon request of the above-named person for the purpose of '
-                + certBlank(purpose, 300) + ' this day of, ' + dateBlank + '.</p>';
+                + '<h4 class="cert-subheading">PURPOSE: ' + certBlank(purpose, 300) + '</h4>'
+                + '<p class="cert-paragraph">This certification is being issued upon request of the above-named person this day of, ' + dateBlank + '.</p>';
         }
 
         if (type.indexOf('Certification') !== -1) {
@@ -689,6 +721,25 @@
                 + ' at Barangay 49A-Akasya San Antonio, Cavite City upon request of the interested party.</p>';
         }
 
+        if (type.indexOf('First-time Job Seeker') !== -1) {
+            return '<p class="cert-paragraph">This is to certify that '
+                + nameBlank + ', a resident of, ' + addressBlank
+                + ', for ' + lengthBlank + ', is a qualified availed of RA 11261 or the First Time Jobseeker Act of 2019.</p>'
+                + '<p class="cert-paragraph">I further certify that the holder/bearer was informed of his/her rights, including the duties and responsibilities accorded by RA 11261 through the Oath of Understanding he/she has signed and executed in the presence of our Barangay Official/s.</p>'
+                + '<p class="cert-paragraph">Signed this ' + dateBlank + ' in the City of Cavite.</p>'
+                + '<p class="cert-paragraph">This certification is valid only (one) 1 year from the date of issuance.</p>'
+                + '<div style="break-before: page;"></div>'
+                + '<h4 class="cert-subheading">OATH OF UNDERTAKING</h4>'
+                + '<p class="cert-paragraph">I, ' + nameBlank + ', __ years of age, resident of Brgy 49A-Akasya, Zone VII, for ' + lengthBlank + ', availing the benefits of Republic Act 11261, otherwise known as the First Time Jobseekers Act of 2019, do hereby declare, agree and undertake to abide and be bound by the following:</p>'
+                + '<p class="cert-paragraph">1. That I will not use the certificate for any unlawful purpose;</p>'
+                + '<p class="cert-paragraph">2. That I will inform and/or report to the Barangay personally, through text or other means, or through my family/relatives once I get employed; and</p>'
+                + '<p class="cert-paragraph">3. That I am not a beneficiary of the JobStart Program under R.A. No. 10869 and other laws that give similar exemptions for the documents or transactions exempted under R.A. No. 11261</p>'
+                + '<p class="cert-paragraph">4. That if issued the requested Certification, I will not use the same in any fraud, neither falsify nor help and/or assist in the fabrication of the said certification.</p>'
+                + '<p class="cert-paragraph">5. That this undertaking is made solely for the purpose of obtaining a Barangay Certification consistent with the objective of R.A. No. 11261 and not for any other purpose.</p>'
+                + '<p class="cert-paragraph">6. That I consent to the use of my personal information pursuant to the Data Privacy Act and other applicable laws, rules, and regulations.</p>'
+                + '<p class="cert-paragraph">Signed this ___ day of ____, 2026, in the City of Cavite.</p>';
+        }
+
         // Any other type still in the records.
         return '<p class="cert-paragraph">This is to certify that '
             + nameBlank + ' ' + ageBlank + ' years old, ' + genderBlank
@@ -701,9 +752,14 @@
         const type = String(certificate.certificate_type || '');
         const title = type.indexOf('Indigency') !== -1
             ? 'BARANGAY INDIGENCY'
-            : (type.indexOf('Certification') !== -1
+            : (type.indexOf('First-time Job Seeker') !== -1
                 ? 'BARANGAY CERTIFICATION'
-                : (type.indexOf('Clearance') !== -1 ? 'BARANGAY CLEARANCE' : 'CERTIFICATION'));
+                : (type.indexOf('Certification') !== -1
+                    ? 'BARANGAY CERTIFICATION'
+                    : (type.indexOf('Clearance') !== -1 ? 'BARANGAY CLEARANCE' : 'CERTIFICATION')));
+        const subtitle = type.indexOf('First-time Job Seeker') !== -1
+            ? '(First Time Job Seeker Assistant Act - RA 1121)'
+            : '';
 
         // The Certification template ends with a signature-over-printed-name block; the
         // other two do not.
@@ -720,7 +776,7 @@
             // a downloaded PDF; without it browsers drop background colours.
             + 'html, body { -webkit-print-color-adjust: exact; print-color-adjust: exact; }'
             + 'body { font-family: "Times New Roman", Times, serif; color: #000; margin: 0; padding: 22px 40px; font-size: 12pt; line-height: 1.6; position: relative; }'
-            + '.cert-background { position: fixed; left: 50%; top: 50%; width: 300px; height: 300px; '
+            + '.cert-background { position: fixed; left: 50%; top: 50%; width: 800px; height: 800px; '
             + 'transform: translate(-50%, -50%); opacity: 0.08; z-index: -1; pointer-events: none; '
             + 'background-image: var(--brgy-logo); background-size: contain; background-repeat: no-repeat; '
             + 'background-position: center; }'
@@ -730,11 +786,12 @@
             + '.cert-header .line { font-size: 10.5pt; margin: 1px 0; }'
             + '.cert-header .office { font-family: Arial, Helvetica, sans-serif; font-weight: bold; font-size: 11.5pt; margin-top: 5px; }'
             + '.cert-title { font-family: Arial, Helvetica, sans-serif; text-align: center; font-size: 19pt; font-weight: bold; '
-            + 'letter-spacing: 0.5px; margin: 18px 0 14px 0; padding: 10px 0; border-top: 1px solid #000; border-bottom: 1px solid #000; }'
+            + 'letter-spacing: 0.5px; margin: 18px 0 14px 0; padding: 8px 0 6px 0; border-top: 1px solid #000; border-bottom: 1px solid #000; }'
             + '.cert-control-wrap { text-align: center; margin-bottom: 18px; }'
-            + '.cert-control { font-weight: bold; font-size: 12pt; background: #d1d1d1; padding: 2px 8px; display: inline-block; }'
+            + '.cert-control { font-weight: bold; font-size: 12pt; background: #14532d; color: #fff; padding: 2px 8px; display: inline-block; }'
             + '.cert-subheading { font-family: Arial, Helvetica, sans-serif; font-size: 12.5pt; margin: 16px 0 6px 0; }'
             + '.cert-control-wrap { text-align: center; margin: 0 0 14px 0; }'
+            + '.cert-subtitle { text-align: center; font-family: Arial, Helvetica, sans-serif; font-size: 12pt; font-weight: normal; margin-top: 4px; }'
             + '.cert-salutation { margin-top: 0; }'
             + '.cert-paragraph { text-align: justify; margin: 0 0 10px 0; }'
             // The data sits on the underline; there is no caption label.
@@ -758,7 +815,10 @@
             + '<div class="line">+63 977-7483-304</div>'
             + '<div class="office">OFFICE OF THE SANGGUNIANG BARANGAY</div>'
             + '</div>'
-            + '<div class="cert-title">' + escapeHtml(title) + '</div>'
+            + '<div class="cert-title">'
+            + escapeHtml(title)
+            + (subtitle ? '<div class="cert-subtitle">' + escapeHtml(subtitle) + '</div>' : '')
+            + '</div>'
             + '<div class="cert-control-wrap"><span class="cert-control">Control No.: ' + escapeHtml(generateControlNumber(certificate)) + '</span></div>'
             + '<h4 class="cert-subheading cert-salutation">TO WHOM IT MAY CONCERN:</h4>'
             + certificateBody(certificate)
@@ -791,6 +851,7 @@
         setVisible($('certificateDetailsView'), true);
 
         if ($('detailsResidentName')) $('detailsResidentName').textContent = certificate.resident_name;
+        if ($('detailsLengthOfResidence')) $('detailsLengthOfResidence').textContent = certificate.resident_length_of_residence || '—';
         if ($('detailsCertificateType')) {
             $('detailsCertificateType').innerHTML = '<span class="badge ' + badgeClass(certificate.certificate_type) + '">'
                 + escapeHtml(certificate.certificate_type) + '</span>';
