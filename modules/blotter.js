@@ -553,6 +553,7 @@ function renderBeautifulCaseDetailsHTML(c) {
                         <div class="detail-row"><label>Name</label><span>${escapeHtml(c.complainant_name || '—')}</span></div>
                         <div class="detail-row"><label>Contact Number</label><span>${escapeHtml(c.complainant_contact || 'Not provided')}</span></div>
                         <div class="detail-row"><label>Address</label><span>${escapeHtml(c.complainant_address || 'Not provided')}</span></div>
+                        <div class="detail-row"><label>Relationship to Incident</label><span>${escapeHtml(c.complainant_relation || 'Not provided')}</span></div>
                     </div>
                 </div>
 
@@ -568,6 +569,7 @@ function renderBeautifulCaseDetailsHTML(c) {
                         <div class="detail-row"><label>Name</label><span>${escapeHtml(c.respondent_name || '—')}</span></div>
                         <div class="detail-row"><label>Contact Number</label><span>${escapeHtml(c.respondent_contact || 'Not provided')}</span></div>
                         <div class="detail-row"><label>Address</label><span>${escapeHtml(c.respondent_address || 'Not provided')}</span></div>
+                        <div class="detail-row"><label>Resident Status</label><span>${escapeHtml(c.respondent_status || 'Not provided')}</span></div>
                     </div>
                 </div>
             </div>
@@ -618,9 +620,11 @@ async function showEditCaseView(caseId) {
         const editComplainantName = document.getElementById('editComplainantName');
         const editComplainantContact = document.getElementById('editComplainantContact');
         const editComplainantAddress = document.getElementById('editComplainantAddress');
+        const editComplainantRelation = document.getElementById('editComplainantRelation');
         const editRespondentName = document.getElementById('editRespondentName');
         const editRespondentContact = document.getElementById('editRespondentContact');
         const editRespondentAddress = document.getElementById('editRespondentAddress');
+        const editRespondentStatus = document.getElementById('editRespondentStatus');
         const editIncidentSummary = document.getElementById('editIncidentSummary');
         
         if (editIncidentDate) editIncidentDate.value = result.incident_date || '';
@@ -632,9 +636,11 @@ async function showEditCaseView(caseId) {
         if (editComplainantName) editComplainantName.value = result.complainant_name || '';
         if (editComplainantContact) editComplainantContact.value = result.complainant_contact || '';
         if (editComplainantAddress) editComplainantAddress.value = result.complainant_address || '';
+        if (editComplainantRelation) editComplainantRelation.value = result.complainant_relation || '';
         if (editRespondentName) editRespondentName.value = result.respondent_name || '';
         if (editRespondentContact) editRespondentContact.value = result.respondent_contact || '';
         if (editRespondentAddress) editRespondentAddress.value = result.respondent_address || '';
+        if (editRespondentStatus) editRespondentStatus.value = result.respondent_status || '';
         if (editIncidentSummary) editIncidentSummary.value = result.incident_summary || '';
     }
 }
@@ -651,9 +657,11 @@ async function saveEditedCase() {
         complainant_name: document.getElementById('editComplainantName')?.value || '',
         complainant_contact: document.getElementById('editComplainantContact')?.value || '',
         complainant_address: document.getElementById('editComplainantAddress')?.value || '',
+        complainant_relation: document.getElementById('editComplainantRelation')?.value || '',
         respondent_name: document.getElementById('editRespondentName')?.value || '',
         respondent_contact: document.getElementById('editRespondentContact')?.value || '',
         respondent_address: document.getElementById('editRespondentAddress')?.value || '',
+        respondent_status: document.getElementById('editRespondentStatus')?.value || '',
         incident_summary: document.getElementById('editIncidentSummary')?.value || '',
         assigned_officer: document.getElementById('editAssignedOfficer')?.value || '',
         status: document.getElementById('editCaseStatus')?.value || 'Ongoing'
@@ -680,7 +688,8 @@ async function saveEditedCase() {
         await updateStats();
         showCaseDetailsView(currentEditingCaseId);
     } else {
-        showNotification('Failed to update case', 'error');
+        showNotification(result.error || result.message || 'Failed to update case', 'error');
+        console.error('Blotter update failed:', result);
     }
     
     if (saveBtn) { saveBtn.innerHTML = originalText; saveBtn.disabled = false; }
@@ -695,9 +704,11 @@ async function saveCase(action) {
         complainant_name: document.getElementById('complainantName')?.value || '',
         complainant_contact: document.getElementById('complainantContact')?.value || '',
         complainant_address: document.getElementById('complainantAddress')?.value || '',
+        complainant_relation: document.getElementById('complainantRelation')?.value || '',
         respondent_name: document.getElementById('respondentName')?.value || '',
         respondent_contact: document.getElementById('respondentContact')?.value || '',
         respondent_address: document.getElementById('respondentAddress')?.value || '',
+        respondent_status: document.getElementById('respondentStatus')?.value || '',
         incident_summary: document.getElementById('incidentSummary')?.value || '',
         assigned_officer: document.getElementById('assignedOfficer')?.value || '',
         status: document.getElementById('caseStatus')?.value || 'Ongoing',
@@ -723,7 +734,11 @@ async function saveCase(action) {
             await loadCasesTable();
             await updateStats();
             showListView();
-        } else { showNotification('Failed to submit case', 'error'); }
+        } else {
+            showNotification(result.error || result.message || 'Failed to submit case', 'error');
+            console.error('Blotter submit failed:', result);
+            if (result.detail) console.error('Database detail:', result.detail);
+        }
         submitBtn.innerHTML = originalText;
         submitBtn.disabled = false;
     }
@@ -819,7 +834,7 @@ function printCaseDetails(caseItem) {
             <div class="header"><h2>Barangay 49 Akasya</h2><h3>Blotter Case Report</h3><p>Case No: ${caseItem.case_number}</p></div>
             <div class="section"><div class="label">Case Type:</div><div class="value">${caseItem.case_type}</div></div>
             <div class="section"><div class="label">Status:</div><div class="value">${caseItem.status}</div></div>
-            <div class="section"><div class="label">Complainant:</div><div class="value">${caseItem.complainant_name}</div></div>
+            <div class="section"><div class="label">Complainant:</div><div class="value">${caseItem.complainant_name}</div><div class="value">Relationship to Incident: ${caseItem.complainant_relation || 'Not provided'}</div></div>
             <div class="section"><div class="label">Respondent:</div><div class="value">${caseItem.respondent_name}</div></div>
             <div class="section"><div class="label">Incident Date:</div><div class="value">${formatDate(caseItem.incident_date)} at ${caseItem.incident_time}</div></div>
             <div class="section"><div class="label">Location:</div><div class="value">${caseItem.location}</div></div>

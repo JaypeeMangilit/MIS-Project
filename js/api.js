@@ -12,19 +12,47 @@ async function apiCall(endpoint, method = 'GET', data = null) {
             'Content-Type': 'application/json',
         }
     };
-    
+
     if (data) {
         options.body = JSON.stringify(data);
     }
-    
+
+    // 1. Transport-level failure: no response at all (offline, DNS, CORS, aborted).
+    let response;
     try {
-        const response = await fetch(url, options);
-        const result = await response.json();
-        return result;
+        response = await fetch(url, options);
     } catch (error) {
-        console.error('API Error:', error);
-        return { success: false, error: error.message };
+        console.error('API network error for ' + url + ':', error);
+        return { success: false, error: 'Network error: ' + error.message, offline: true };
     }
+
+    // 2. Read the body as text first. Parsing blind with response.json() throws on
+    //    any non-JSON body (PHP warning, fatal-error page, HTML redirect) and the
+    //    real cause is lost.
+    const raw = await response.text();
+
+    let result;
+    try {
+        result = raw.length ? JSON.parse(raw) : {};
+    } catch (error) {
+        console.error('API returned non-JSON from ' + url + ' (HTTP ' + response.status + '):\n' + raw);
+        return {
+            success: false,
+            status: response.status,
+            error: 'Server returned invalid JSON (HTTP ' + response.status + '). See the console.',
+            raw: raw.slice(0, 500)
+        };
+    }
+
+    // 3. HTTP status is authoritative for "did this work". Only fall back to it
+    //    when the body carries no verdict of its own, so a body that explicitly
+    //    says success:true is never overridden.
+    if (!response.ok && result.success === undefined) {
+        result.success = false;
+    }
+    result.status = response.status;
+
+    return result;
 }
 
 // Residents API

@@ -1,89 +1,47 @@
-// mapping.js - Fixed for dynamic loading with working compass
+// mapping.js - Zone statistics loaded live from api/mapping.php
 
-// Zone Data
+// Zone metadata only. The numbers on the panel come from api/mapping.php
+// (see fetchZoneStats) - they used to be hard-coded here and were invented:
+// 'Crescini Ext.' claimed 1248 residents while the whole residents table holds
+// only a handful of rows.
 const zonesData = {
     'Crescini Ext.': {
         name: 'Crescini Ext.',
         description: 'Southern edge of Barangay 49 Akasya',
-        badge: 'High Population Area',
-        stats: {
-            purok: 'Crescini Ext.',
-            residents: 1248,
-            households: 296,
-            seniors: 154,
-            minors: 342,
-            voters: 812,
-            blotter: 5
-        }
+        badge: 'High Population Area'
     },
     'M. Gregorio': {
         name: 'M. Gregorio',
         description: 'Northern residential area of Barangay 49 Akasya',
-        badge: 'Medium Population Area',
-        stats: {
-            purok: 'M. Gregorio',
-            residents: 892,
-            households: 218,
-            seniors: 98,
-            minors: 245,
-            voters: 578,
-            blotter: 3
-        }
+        badge: 'Medium Population Area'
     },
     'Mariano': {
         name: 'Mariano',
         description: 'Eastern section with mixed residential and commercial',
-        badge: 'Medium Population Area',
-        stats: {
-            purok: 'Mariano',
-            residents: 756,
-            households: 189,
-            seniors: 87,
-            minors: 198,
-            voters: 489,
-            blotter: 4
-        }
+        badge: 'Medium Population Area'
     },
     'F. Javier': {
         name: 'F. Javier',
         description: 'Western boundary area near the health center',
-        badge: 'Low Population Area',
-        stats: {
-            purok: 'F. Javier',
-            residents: 423,
-            households: 112,
-            seniors: 45,
-            minors: 112,
-            voters: 267,
-            blotter: 2
-        }
+        badge: 'Low Population Area'
     },
     'G. Santos': {
         name: 'G. Santos',
         description: 'Central district with community facilities',
-        badge: 'Medium Population Area',
-        stats: {
-            purok: 'G. Santos',
-            residents: 678,
-            households: 167,
-            seniors: 76,
-            minors: 189,
-            voters: 434,
-            blotter: 3
-        }
+        badge: 'Medium Population Area'
     }
 };
 
 // Main initialization function - called by sidebar.js
 function initMapping() {
     console.log('Initializing Mapping Module...');
-    
-    // Load the map
-    loadMap();
-    
+
+    // Wire up the map (zone labels, street labels, clusters, facilities)
+    setupMapInteractions();
+
     // Setup event listeners
     setupMappingEventListeners();
-    
+
     // Default select Crescini Ext.
     selectZone('Crescini Ext.');
 }
@@ -101,246 +59,194 @@ function setupMappingEventListeners() {
     }
 }
 
-function loadMap() {
-    const mapWrapper = document.getElementById('spotMap');
-    if (!mapWrapper) return;
-    
-    mapWrapper.innerHTML = `
-        <div class="map-svg-container">
-            <div class="map-title">
-                <h4>SPOT MAP OF BARANGAY 49 AKASYA</h4>
-                <p>Cavite City</p>
-            </div>
-            <div style="position: relative; width: 100%; min-height: 500px;">
-                <div class="map-grid" style="width: 100%; height: 330px; position: relative; background: #F5F1E6; border: 3px solid #0F6CBD;">
-                    <!-- Roads -->
-                    <div class="road-vertical" style="position: absolute; width: 14px; height: 305px; left: 101px; top: 86px; transform: rotate(-28deg); background: #37A7EA; border-radius: 10px; border: 2px white solid;"></div>
-                    <div class="road-horizontal" style="position: absolute; width: 323px; height: 15px; left: 231px; top: 352px; transform: rotate(-12deg); background: #37A7EA; border-radius: 10px; border: 2px white solid;"></div>
-                    <div class="road-vertical" style="position: absolute; width: 14px; height: 204px; left: 624px; top: 162px; transform: rotate(28deg); background: #37A7EA; border-radius: 10px; border: 2px white solid;"></div>
-                    <div class="road-vertical" style="position: absolute; width: 14px; height: 213px; left: 350px; top: 129px; background: #37A7EA; border-radius: 10px; border: 2px white solid;"></div>
-                    <div class="road-vertical" style="position: absolute; width: 14px; height: 228px; left: 488px; top: 106px; background: #37A7EA; border-radius: 10px; border: 2px white solid;"></div>
-                    
-                    <!-- Zone A -->
-                    <div class="zone-clickable" data-zone="M. Gregorio" style="position: absolute; width: 36px; height: 32px; left: 221px; top: 135px; cursor: pointer;">
-                        <div style="width: 20px; height: 9px; left: 8px; top: 0px; position: absolute; background: #DF6F55;"></div>
-                        <div style="width: 10px; height: 10px; left: 6px; top: 10px; position: absolute; background: #F0D56B;"></div>
-                        <div style="width: 10px; height: 10px; left: 18px; top: 10px; position: absolute; background: #84B6F4;"></div>
-                        <div style="width: 10px; height: 10px; left: 6px; top: 22px; position: absolute; background: #87C98A;"></div>
-                        <div style="width: 10px; height: 10px; left: 18px; top: 22px; position: absolute; background: #E8A26B;"></div>
-                    </div>
-                    
-                    <!-- Zone B -->
-                    <div class="zone-clickable" data-zone="F. Javier" style="position: absolute; width: 36px; height: 32px; left: 391px; top: 173px; cursor: pointer;">
-                        <div style="width: 20px; height: 9px; left: 8px; top: 0px; position: absolute; background: #DF6F55;"></div>
-                        <div style="width: 10px; height: 10px; left: 6px; top: 10px; position: absolute; background: #F0D56B;"></div>
-                        <div style="width: 10px; height: 10px; left: 18px; top: 10px; position: absolute; background: #84B6F4;"></div>
-                        <div style="width: 10px; height: 10px; left: 6px; top: 22px; position: absolute; background: #87C98A;"></div>
-                        <div style="width: 10px; height: 10px; left: 18px; top: 22px; position: absolute; background: #E8A26B;"></div>
-                    </div>
-                    
-                    <!-- Zone C -->
-                    <div class="zone-clickable" data-zone="G. Santos" style="position: absolute; width: 36px; height: 32px; left: 443px; top: 299px; cursor: pointer;">
-                        <div style="width: 20px; height: 9px; left: 8px; top: 0px; position: absolute; background: #DF6F55;"></div>
-                        <div style="width: 10px; height: 10px; left: 6px; top: 10px; position: absolute; background: #F0D56B;"></div>
-                        <div style="width: 10px; height: 10px; left: 18px; top: 10px; position: absolute; background: #84B6F4;"></div>
-                        <div style="width: 10px; height: 10px; left: 6px; top: 22px; position: absolute; background: #87C98A;"></div>
-                        <div style="width: 10px; height: 10px; left: 18px; top: 22px; position: absolute; background: #E8A26B;"></div>
-                    </div>
-                    
-                    <!-- Zone Crescini -->
-                    <div class="zone-clickable" data-zone="Crescini Ext." style="position: absolute; width: 36px; height: 32px; left: 600px; top: 247px; cursor: pointer;">
-                        <div style="width: 20px; height: 9px; left: 8px; top: 0px; position: absolute; background: #DF6F55;"></div>
-                        <div style="width: 10px; height: 10px; left: 6px; top: 10px; position: absolute; background: #F0D56B;"></div>
-                        <div style="width: 10px; height: 10px; left: 18px; top: 10px; position: absolute; background: #84B6F4;"></div>
-                        <div style="width: 10px; height: 10px; left: 6px; top: 22px; position: absolute; background: #87C98A;"></div>
-                        <div style="width: 10px; height: 10px; left: 18px; top: 22px; position: absolute; background: #E8A26B;"></div>
-                    </div>
-                    
-                    <!-- Street Labels -->
-                    <div class="street-label" style="left: 149px; top: 365px; transform: rotate(64deg);">Crescini</div>
-                    <div class="street-label" style="left: 337px; top: 412px; transform: rotate(-13deg);">M. Gregorio</div>
-                    <div class="street-label" style="left: 627px; top: 199px; transform: rotate(62deg);">Mariano</div>
-                    <div class="street-label" style="left: 383px; top: 208px; transform: rotate(87deg);">F. Javier</div>
-                    <div class="street-label" style="left: 528px; top: 223px; transform: rotate(87deg);">G. Santos</div>
-                    
-                    
-                    <!-- Compass Rose -->
-                    <div class="compass-rose">
-                        <div class="compass-n">N</div>
-                        <div class="compass-e">E</div>
-                        <div class="compass-s">S</div>
-                        <div class="compass-w">W</div>
-                        <div class="compass-circle"></div>
-                        <div class="compass-line-v"></div>
-                        <div class="compass-line-h"></div>
-                    </div>
-                </div>
-                
-                <!-- Legend -->
-                <div class="map-legend">
-                    <div class="legend-title">Legend</div>
-                    <div class="legend-item"><div class="legend-color low"></div><span class="legend-text">Low population</span></div>
-                    <div class="legend-item"><div class="legend-color medium"></div><span class="legend-text">Medium population</span></div>
-                    <div class="legend-item"><div class="legend-color high"></div><span class="legend-text">High population</span></div>
-                    <div class="legend-item"><div class="legend-icon residential"></div><span class="legend-text">Residential clusters</span></div>
-                    <div class="legend-item"><div class="legend-icon facility"></div><span class="legend-text">Key facility</span></div>
-                </div>
-            </div>
-        </div>
-    `;
-    
-    // Add click listeners to zone elements
-    const zoneElements = document.querySelectorAll('.zone-clickable');
-    zoneElements.forEach(el => {
-        const newEl = el.cloneNode(true);
-        el.parentNode.replaceChild(newEl, el);
-        newEl.addEventListener('click', () => {
-            const zoneName = newEl.getAttribute('data-zone');
-            if (zoneName) selectZone(zoneName);
-        });
-    });
-    
-    // Add click listeners to street labels
-    const streetLabels = document.querySelectorAll('.street-label');
-    streetLabels.forEach(label => {
-        const newLabel = label.cloneNode(true);
-        label.parentNode.replaceChild(newLabel, label);
-        newLabel.addEventListener('click', () => {
-            const zoneName = getZoneFromStreet(newLabel.textContent);
-            if (zoneName) selectZone(zoneName);
-        });
-    });
-    
-    // Add click listeners to facility markers
-    const facilities = document.querySelectorAll('.facility-marker');
-    facilities.forEach(facility => {
-        const newFacility = facility.cloneNode(true);
-        facility.parentNode.replaceChild(newFacility, facility);
-        newFacility.addEventListener('click', () => {
-            const zoneName = getZoneFromFacility(newFacility);
-            if (zoneName) selectZone(zoneName);
-        });
+// The map is static markup in modules/mapping.html. Every clickable thing on it -
+// zone labels, street labels, residential clusters and facility markers - already
+// carries a data-zone attribute, so a single delegated listener covers all of
+// them. Delegation also survives the module reload sidebar.js performs on every
+// navigation. The previous loadMap() built its own markup inside an element
+// (#spotMap) that does not exist anywhere in the project, so it always returned
+// early and no click listener was ever attached.
+function setupMapInteractions() {
+    const grid = document.querySelector('.map-grid-container');
+    if (!grid) return;
+
+    grid.addEventListener('click', (event) => {
+        const zoneEl = event.target.closest('[data-zone]');
+        if (!zoneEl) return;
+
+        const zoneName = zoneEl.getAttribute('data-zone');
+        if (zoneName && zonesData[zoneName]) {
+            selectZone(zoneName);
+        }
     });
 }
 
-function getZoneFromStreet(streetName) {
-    const streetMap = {
-        'Crescini': 'Crescini Ext.',
-        'M. Gregorio': 'M. Gregorio',
-        'Mariano': 'Mariano',
-        'F. Javier': 'F. Javier',
-        'G. Santos': 'G. Santos'
-    };
-    return streetMap[streetName] || null;
-}
-
-function getZoneFromFacility(facilityElement) {
-    const facilityLeft = parseInt(facilityElement.style.left);
-    const facilityTop = parseInt(facilityElement.style.top);
-    
-    if (facilityLeft > 500 && facilityTop > 200) return 'Crescini Ext.';
-    if (facilityLeft > 300 && facilityLeft < 400 && facilityTop < 150) return 'F. Javier';
-    if (facilityLeft > 400 && facilityTop > 250) return 'G. Santos';
-    if (facilityLeft > 200 && facilityLeft < 300 && facilityTop < 200) return 'M. Gregorio';
-    if (facilityLeft > 500 && facilityTop < 200) return 'Mariano';
-    
-    return 'Crescini Ext.';
-}
-
-function selectZone(zoneName) {
+async function selectZone(zoneName) {
     const zone = zonesData[zoneName];
     if (!zone) return;
-    
-    // Update zone header
-    const zoneHeader = document.getElementById('zoneHeader');
-    if (zoneHeader) {
-        zoneHeader.innerHTML = `
-            <div class="zone-label">Selected Zone</div>
-            <div class="zone-name">${zone.name}</div>
-            <div class="zone-description">${zone.description}</div>
-            <div class="zone-badge">${zone.badge}</div>
-        `;
-    }
-    
-    // Update zone stats
-    const zoneStats = document.getElementById('zoneStats');
-    if (zoneStats) {
-        zoneStats.innerHTML = `
-            <div class="stat-row">
-                <div class="stat-info">
-                    <div class="stat-icon">
-                        <img src="Images/PurokStreet_Icon.svg" alt="Mapping Icon">
-                    </div>
-                    <span class="stat-label">Purok / Street</span>
-                </div>
-                <span class="stat-value">${zone.stats.purok}</span>
-            </div>
-            <div class="stat-row">
-                <div class="stat-info">
-                    <div class="stat-icon">
-                         <img src="Images/TotalResidentsM_Icon.svg" alt="Mapping Icon">
-                    </div>
-                    <span class="stat-label">Total Residents</span>
-                </div>
-                <span class="stat-value">${zone.stats.residents.toLocaleString()}</span>
-            </div>
-            <div class="stat-row">
-                <div class="stat-info">
-                    <div class="stat-icon">
-                         <img src="Images/TotalHouseholdsM_Icon.svg" alt="Mapping Icon">
-                    </div>     
-                    <span class="stat-label">Total Households</span>
-                </div>
-                <span class="stat-value">${zone.stats.households.toLocaleString()}</span>
-            </div>
-            <div class="stat-row">
-                <div class="stat-info">
-                    <div class="stat-icon">
-                         <img src="Images/SeniorCitizenM_Icon.svg" alt="Mapping Icon">
-                    </div>
-                    <span class="stat-label">Senior Citizens</span>
-                </div>
-                <span class="stat-value">${zone.stats.seniors.toLocaleString()}</span>
-            </div>
-            <div class="stat-row">
-                <div class="stat-info">
-                    <div class="stat-icon">
-                         <img src="Images/MinorM_Icon.svg" alt="Mapping Icon">
-                    </div>
-                    <span class="stat-label">Minors</span>
-                </div>
-                <span class="stat-value">${zone.stats.minors.toLocaleString()}</span>
-            </div>
-            <div class="stat-row">
-                <div class="stat-info">
-                    <div class="stat-icon">
-                         <img src="Images/RegisterVotersM_Icon.svg" alt="Mapping Icon">
-                    </div>
-                    <span class="stat-label">Registered Voters</span>
-                </div>
-                <span class="stat-value">${zone.stats.voters.toLocaleString()}</span>
-            </div>
-            <div class="stat-row">
-                <div class="stat-info">
-                    <div class="stat-icon">
-                         <img src="Images/BlotterCasesM_Icon.svg" alt="Mapping Icon">
-                    </div>
-                    <span class="stat-label">Blotter Cases</span>
-                </div>
-                <span class="stat-value highlight">${zone.stats.blotter} cases</span>
-            </div>
-        `;
-    }
-    
+
+    renderZoneHeader(zone);
+    renderZoneStatsRows(zone);
+
     // Highlight selected zone on map
     highlightMapZone(zoneName);
-    
+
     // Store current selection
     localStorage.setItem('selectedZone', zoneName);
+
+    // The counts are fetched rather than hard-coded; the panel holds placeholders
+    // until they arrive.
+    await fetchZoneStats(zoneName);
+}
+
+function renderZoneHeader(zone) {
+    const zoneHeader = document.getElementById('zoneHeader');
+    if (!zoneHeader) return;
+
+    zoneHeader.innerHTML = `
+        <div class="zone-label">Selected Zone</div>
+        <div class="zone-name">${zone.name}</div>
+        <div class="zone-description">${zone.description}</div>
+        <div class="zone-badge">${zone.badge}</div>
+    `;
+}
+
+function renderZoneStatsRows(zone) {
+    const zoneStats = document.getElementById('zoneStats');
+    if (!zoneStats) return;
+
+    // Each value carries a stable .total-* class so applyZoneStats() can find it.
+    // The Blotter Cases row is deliberately absent: blotter records are owned
+    // entirely by the Blotter Management module.
+    zoneStats.innerHTML = `
+        <div class="stat-row">
+            <div class="stat-info">
+                <div class="stat-icon">
+                    <img src="Images/PurokStreet_Icon.svg" alt="Mapping Icon">
+                </div>
+                <span class="stat-label">Purok / Street</span>
+            </div>
+            <span class="stat-value zone-street">${zone.name}</span>
+        </div>
+        <div class="stat-row">
+            <div class="stat-info">
+                <div class="stat-icon">
+                    <img src="Images/TotalResidentsM_Icon.svg" alt="Mapping Icon">
+                </div>
+                <span class="stat-label">Total Residents</span>
+            </div>
+            <span class="stat-value total-residents">—</span>
+        </div>
+        <div class="stat-row">
+            <div class="stat-info">
+                <div class="stat-icon">
+                    <img src="Images/TotalHouseholdsM_Icon.svg" alt="Mapping Icon">
+                </div>
+                <span class="stat-label">Total Households</span>
+            </div>
+            <span class="stat-value total-households">—</span>
+        </div>
+        <div class="stat-row">
+            <div class="stat-info">
+                <div class="stat-icon">
+                    <img src="Images/SeniorCitizenM_Icon.svg" alt="Mapping Icon">
+                </div>
+                <span class="stat-label">Senior Citizens</span>
+            </div>
+            <span class="stat-value total-seniors">—</span>
+        </div>
+        <div class="stat-row">
+            <div class="stat-info">
+                <div class="stat-icon">
+                    <img src="Images/MinorM_Icon.svg" alt="Mapping Icon">
+                </div>
+                <span class="stat-label">Minors</span>
+            </div>
+            <span class="stat-value total-minors">—</span>
+        </div>
+        <div class="stat-row">
+            <div class="stat-info">
+                <div class="stat-icon">
+                    <img src="Images/RegisterVotersM_Icon.svg" alt="Mapping Icon">
+                </div>
+                <span class="stat-label">Registered Voters</span>
+            </div>
+            <span class="stat-value total-voters">—</span>
+        </div>
+    `;
+}
+
+// Fetch the live counts for a zone.
+//
+// Deliberately NOT called apiCall: js/api.js is only loaded by login.php, and
+// blotter.js / archives.js / residents.js each declare their own global apiCall.
+// Re-declaring it here would silently override whichever one loaded last, so this
+// module carries its own uniquely-named request instead.
+async function fetchZoneStats(zoneName) {
+    const url = 'api/mapping.php?zone=' + encodeURIComponent(zoneName) + '&_=' + Date.now();
+
+    let result = null;
+    try {
+        const response = await fetch(url, {
+            headers: { 'Content-Type': 'application/json' }
+        });
+
+        // Read as text first: a PHP warning or fatal error would make
+        // response.json() throw and the real cause would be lost.
+        const raw = await response.text();
+
+        try {
+            result = raw.length ? JSON.parse(raw) : {};
+        } catch (parseError) {
+            console.error('mapping.php returned non-JSON for "' + zoneName + '":\n' + raw);
+            result = {
+                success: false,
+                error: 'Server returned invalid JSON (HTTP ' + response.status + ').'
+            };
+        }
+
+        // HTTP status is authoritative when the body carries no verdict of its own.
+        if (!response.ok && result.success === undefined) {
+            result.success = false;
+        }
+    } catch (error) {
+        console.error('mapping.php request failed for "' + zoneName + '":', error);
+        result = { success: false, error: 'Network error: ' + error.message };
+    }
+
+    if (!result || result.success !== true || !result.data) {
+        console.error('Zone statistics unavailable for "' + zoneName + '":',
+                      result ? (result.error || result.message) : 'unknown error');
+        applyZoneStats(null, result ? (result.error || result.message) : 'unknown error');
+        return;
+    }
+
+    applyZoneStats(result.data, null);
+}
+
+function applyZoneStats(stats, error) {
+    const values = {
+        'total-residents':  stats ? stats.residents  : 0,
+        'total-households': stats ? stats.households : 0,
+        'total-seniors':    stats ? stats.seniors    : 0,
+        'total-minors':     stats ? stats.minors     : 0,
+        'total-voters':     stats ? stats.voters     : 0
+    };
+
+    Object.keys(values).forEach((cls) => {
+        const el = document.querySelector('.' + cls);
+        if (!el) return;
+
+        el.textContent = values[cls].toLocaleString();
+        el.title = error ? ('Statistics unavailable: ' + error) : '';
+    });
 }
 
 function highlightMapZone(zoneName) {
-    const zoneElements = document.querySelectorAll('.zone-clickable');
+    // The real map is static markup in modules/mapping.html: its clickable
+    // elements carry data-zone but not the .zone-clickable class this used to
+    // query, so nothing was ever highlighted.
+    const zoneElements = document.querySelectorAll('.map-grid-container [data-zone]');
     zoneElements.forEach(el => {
         el.style.opacity = '1';
         el.style.transform = '';

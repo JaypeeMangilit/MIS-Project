@@ -1572,6 +1572,17 @@ body {
     z-index: 1000;
 }
 
+/* The Return Item modal ships as class="modal-overlay hidden", but this file had no
+   .hidden rule, so the class did nothing and the modal (with its dimmed backdrop)
+   was painted on page load. Specificity is what makes this work - two classes beat
+   .modal-overlay's display:flex.
+   Deliberately NOT !important: showReturnModal() opens the modal by assigning an
+   inline style.display = 'flex', and an !important class rule would outrank that
+   inline value and keep the modal permanently shut. */
+.modal-overlay.hidden {
+    display: none;
+}
+
 .modal-container {
     width: 100%;
     max-width: 500px;

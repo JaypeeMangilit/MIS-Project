@@ -13,6 +13,31 @@ define('DB_ODBC_DRIVER', 'ODBC Driver 17 for SQL Server');
 
 $db_connected = false;
 $db_connection = null;
+$last_db_error = '';
+
+/**
+ * The message captured by the most recent failed database operation.
+ *
+ * APIs return JSON; without this the only signal a caller gets from
+ * insertRecord()/executeQuery() is `false`, which is impossible to debug
+ * from the browser. Empty string means nothing has failed yet.
+ *
+ * @return string
+ */
+function lastDbError(): string
+{
+    global $last_db_error;
+
+    return $last_db_error;
+}
+
+function recordDbError(string $message): void
+{
+    global $last_db_error;
+
+    $last_db_error = $message;
+    error_log($message);
+}
 
 function getAvailableDbDriver() {
     if (!class_exists('PDO')) {
@@ -74,6 +99,62 @@ function db_now_sql() {
     }
 
     return 'NOW()';
+}
+
+/**
+ * Normalise a value for a SQL Server `time` column, yielding "H:i:s".
+ *
+ * ODBC Driver 17 refuses to cast "HH:MM" or "" into a `time` column, raising
+ * SQLSTATE[22018] "Invalid character value for cast specification". "HH:MM" is what
+ * a browser <input type="time"> returns for a value the user typed by hand, and ""
+ * is what an untouched optional field sends - both are common, and both abort the
+ * INSERT. Returns null for an empty or unparseable value so a nullable column
+ * stores NULL instead of an empty string.
+ *
+ * @param mixed $value
+ * @return string|null
+ */
+function to_db_time($value): ?string
+{
+    $value = trim((string) $value);
+
+    if ($value === '') {
+        return null;
+    }
+
+    $timestamp = strtotime($value);
+
+    if ($timestamp === false) {
+        return null;
+    }
+
+    return date('H:i:s', $timestamp);
+}
+
+/**
+ * Normalise a value for a SQL Server `date` column, yielding "Y-m-d".
+ *
+ * Same contract as to_db_time(). Accepts ISO ("2026-10-24") and US-style
+ * ("10/24/2026") input; ODBC rejects the latter outright with SQLSTATE[22018].
+ *
+ * @param mixed $value
+ * @return string|null
+ */
+function to_db_date($value): ?string
+{
+    $value = trim((string) $value);
+
+    if ($value === '') {
+        return null;
+    }
+
+    $timestamp = strtotime($value);
+
+    if ($timestamp === false) {
+        return null;
+    }
+
+    return date('Y-m-d', $timestamp);
 }
 
 function ensureSqliteDatabase() {
@@ -351,8 +432,8 @@ function executeQuery(string $sql, array $params = [], string $types = '') {
         $stmt = $conn->prepare($sql);
         $stmt->execute($params);
         return $stmt;
-    } catch (PDOException $e) {
-        error_log('Query error: ' . $e->getMessage());
+    } catch (Throwable $e) {
+        recordDbError('Query error: ' . $e->getMessage());
         return false;
     }
 }
@@ -406,36 +487,36 @@ function getRecords(string $sql, array $params = [], string $types = '') {
 function insertRecord(string $sql, array $params = [], string $types = '') {
     $conn = getConnection();
     if (!$conn) {
+        recordDbError('Insert error: no database connection is available.');
         return false;
     }
 
     try {
         $stmt = $conn->prepare($sql);
         $stmt->execute($params);
+        recordDbError('');
 
         $driver = currentDbDriver();
 
-        // SQLite and MySQL expose the new row id directly.
-        if ($driver === 'sqlite') {
-            return $conn->lastInsertRowId();
-        }
-
-        if ($driver === 'mysql') {
+        // SQLite and MySQL expose the new row id through PDO::lastInsertId().
+        if ($driver === 'sqlite' || $driver === 'mysql') {
             $id = $conn->lastInsertId();
             return ($id === false || $id === '' || $id === '0' || $id === 0) ? false : $id;
         }
 
         // SQL Server (sqlsrv / odbc / dblib / mssql) has no working lastInsertId():
-        // PDO_ODBC throws "driver does not support lastInsertId()". SCOPE_IDENTITY()
-        // is also unusable here because it is scoped to the batch that ran the INSERT,
-        // so a separate statement sees NULL. @@IDENTITY is session-scoped and returns
-        // the id that was just written.
+        // PDO_ODBC throws "driver does not support lastInsertId()". @@IDENTITY is
+        // session-scoped, so it still returns the id written by the INSERT above
+        // even though this is a separate statement.
         $row = $conn->query('SELECT @@IDENTITY AS id')->fetch();
         $id = $row['id'] ?? null;
 
         return ($id === null || $id === false || $id === '' || $id === '0') ? false : $id;
-    } catch (PDOException $e) {
-        error_log('Insert error: ' . $e->getMessage());
+    } catch (Throwable $e) {
+        // Throwable, not PDOException: a PHP Error (e.g. calling a method the
+        // driver does not implement) would otherwise escape this handler, abort
+        // the script mid-response and turn the JSON body into a fatal-error page.
+        recordDbError('Insert error: ' . $e->getMessage());
         return false;
     }
 }
