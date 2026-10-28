@@ -46,14 +46,16 @@ require_once __DIR__ . '/config/app_session.php';
                             <img src="<?php echo auto_version('Images/Password_Icon.svg'); ?>" alt="" class="input-icon">
                             <input type="password" id="password" name="password" class="input-field"
                                    placeholder="Enter your password" autocomplete="current-password" required>
-                            <button type="button" class="toggle-password" id="togglePassword" aria-label="Show password">
-                                <svg class="icon-eye" width="16" height="16" viewBox="0 0 18 18" fill="none" xmlns="http://www.w3.org/2000/svg">
-                                    <path d="M9 4.5C5.25 4.5 2.25 7.5 1.5 9C2.25 10.5 5.25 13.5 9 13.5C12.75 13.5 15.75 10.5 16.5 9C15.75 7.5 12.75 4.5 9 4.5Z" stroke="currentColor" stroke-width="1.5"/>
-                                    <circle cx="9" cy="9" r="2.25" stroke="currentColor" stroke-width="1.5"/>
-                                </svg>
-                                <svg class="icon-eye-off" width="16" height="16" viewBox="0 0 18 18" fill="none" xmlns="http://www.w3.org/2000/svg" hidden>
+                            <button type="button" class="toggle-password" id="togglePassword" aria-label="Hide password">
+                                <!-- Closed eye (default when password is hidden) -->
+                                <svg class="icon-eye-closed" width="16" height="16" viewBox="0 0 18 18" fill="none" xmlns="http://www.w3.org/2000/svg">
                                     <path d="M2.5 9C2.5 9 5 4.5 9 4.5C13 4.5 15.5 9 15.5 9C15.5 9 13 13.5 9 13.5C5 13.5 2.5 9 2.5 9Z" stroke="currentColor" stroke-width="1.5"/>
                                     <path d="M3 15L15 3" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/>
+                                </svg>
+                                <!-- Open eye (shown when password is revealed) -->
+                                <svg class="icon-eye-open" width="16" height="16" viewBox="0 0 18 18" fill="none" xmlns="http://www.w3.org/2000/svg" hidden>
+                                    <path d="M9 4.5C5.25 4.5 2.25 7.5 1.5 9C2.25 10.5 5.25 13.5 9 13.5C12.75 13.5 15.75 10.5 16.5 9C15.75 7.5 12.75 4.5 9 4.5Z" stroke="currentColor" stroke-width="1.5"/>
+                                    <circle cx="9" cy="9" r="2.25" stroke="currentColor" stroke-width="1.5"/>
                                 </svg>
                             </button>
                         </div>

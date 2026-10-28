@@ -18,7 +18,7 @@
     // The roles the form offers. Must stay in step with userManagementRoles()
     // in api/users.php. Admin and Kagawad accounts already exist in the
     // database and stay valid for login; they are simply no longer offered here.
-    var ROLES = ['Secretary', 'Captain', 'Councilor'];
+    var ROLES = ['Secretary', 'Captain', 'Councilor/Kagawad'];
 
     var usersData = [];
     var currentFilters = { search: '', role: '' };
@@ -337,6 +337,10 @@
     }
 
     function showAddUserView() {
+        if (!canEditUser()) {
+            notify('You do not have permission to add users.');
+            return;
+        }
         resetAddForm();
         showView('add');
     }
@@ -379,21 +383,40 @@
      */
     function actionButtons(user) {
         var id = escapeHtml(user.id);
+        var canEdit = window.currentUserCanEdit !== false;
         return '' +
             '<div class="action-buttons">' +
                 '<div class="action-icon" data-action="view" data-id="' + id + '" ' +
                      'title="View" aria-label="View">' +
                     '<img src="Images/View_Icon.svg" alt="View">' +
                 '</div>' +
-                '<div class="action-icon" data-action="edit" data-id="' + id + '" ' +
+                (canEdit ? '<div class="action-icon" data-action="edit" data-id="' + id + '" ' +
                      'title="Edit" aria-label="Edit">' +
                     '<img src="Images/Edit_Icon.svg" alt="Edit">' +
-                '</div>' +
+                '</div>' : '') +
                 '<div class="action-icon delete" data-action="archive" data-id="' + id + '" ' +
                      'title="Archive" aria-label="Archive">' +
                     '<img src="Images/Archives_Icon.svg" alt="Archive">' +
                 '</div>' +
             '</div>';
+    }
+
+    function canEditUser() {
+        return window.currentUserCanEdit !== false;
+    }
+
+    function applyEditRestrictions() {
+        if (canEditUser()) return;
+        var ids = ['addUserBtn', 'saveUserBtn', 'saveEditBtn', 'editFromViewBtn'];
+        ids.forEach(function (id) {
+            var el = document.getElementById(id);
+            if (!el) return;
+            el.disabled = true;
+            el.classList.add('edit-restricted');
+            el.title = 'Read-only access';
+        });
+        var rows = document.querySelectorAll('.users-table-container [data-action="edit"]');
+        rows.forEach(function (btn) { btn.closest('.action-icon')?.remove(); });
     }
 
     function renderUsersTable(users) {
@@ -613,6 +636,10 @@
     // ---------------------------------------------------------------------------
 
     function openEditUser(id) {
+        if (!canEditUser()) {
+            notify('You do not have permission to edit users.');
+            return;
+        }
         return apiRequest('GET', 'id=' + encodeURIComponent(id))
             .then(function (payload) {
                 if (!payload.data) {
@@ -1051,6 +1078,10 @@
                 if (action === 'view') {
                     openViewUser(id);
                 } else if (action === 'edit') {
+                    if (window.currentUserCanEdit === false) {
+                        notify('You do not have permission to edit users.');
+                        return;
+                    }
                     openEditUser(id);
                 } else if (action === 'archive') {
                     archiveUser(id);
@@ -1077,6 +1108,7 @@
 
     window.initUserManagementModule = function () {
         bindEvents();
+        applyEditRestrictions();
         currentFilters = { search: '', role: '' };
         currentPage = 1;
         currentEditId = null;

@@ -95,6 +95,14 @@ async function initInventoryModule() {
     await loadBorrowLogData();
     await loadRecentActivity();
     await updateStats();
+
+    if (window.applyModuleReadOnly) {
+        window.applyModuleReadOnly({
+            addBtnId: 'addItemBtn',
+            saveBtnIds: ['saveItemBtn', 'saveEditItemBtn'],
+            editSelectors: ['button[onclick*="editItem"]', '#editItemFromViewBtn'],
+        });
+    }
 }
 
 document.addEventListener('DOMContentLoaded', function () { initInventoryModule(); });

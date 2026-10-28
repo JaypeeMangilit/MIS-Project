@@ -140,6 +140,14 @@ async function initResidentsModule() {
     setupModalEventListeners();
     await loadPurokOptions();
     setupExportEventListeners();
+
+    if (window.applyModuleReadOnly) {
+        window.applyModuleReadOnly({
+            addBtnId: 'addResidentBtn',
+            saveBtnIds: ['saveResidentBtn', 'saveEditBtn'],
+            editSelectors: ['[data-action="edit"]', '#editFromViewBtn'],
+        });
+    }
 }
 
 // ============================================

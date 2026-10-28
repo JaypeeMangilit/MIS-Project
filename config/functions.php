@@ -133,7 +133,7 @@ function verify_password(string $password, string $stored): bool {
 function role_prefix_to_role(string $prefix): ?string {
     $map = [
         'AD'   => 'Admin',
-        'COU'  => 'Councilor',
+        'COU'  => 'Councilor/Kagawad',
         'CAP'  => 'Captain',
         'KAD'  => 'Kagawad',
     ];
@@ -204,7 +204,7 @@ function valid_role_prefixes(): array {
  * @return string[]
  */
 function valid_roles(): array {
-    return ['Admin', 'Councilor', 'Captain', 'Kagawad', 'Secretary'];
+    return ['Admin', 'Councilor/Kagawad', 'Captain', 'Kagawad', 'Secretary'];
 }
 
 // ============================================

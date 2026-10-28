@@ -36,7 +36,7 @@ requireLogin();
 $OFFICIAL_POSITIONS = [
     'Secretary',
     'Captain',
-    'Councilor',
+    'Councilor/Kagawad',
 ];
 
 /**

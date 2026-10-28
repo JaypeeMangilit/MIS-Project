@@ -115,21 +115,34 @@ document.addEventListener('DOMContentLoaded', function() {
             window.Session.applyToHeader();
             window.Session.bindSignOut();
             filterNavByRole(user.role);
+            window.currentUserRole = user.role;
+            window.currentUserCanEdit = NAV_ACCESS[user.role]?.canEdit ?? true;
+            document.body.dataset.role = user.role;
+            document.body.dataset.canEdit = String(window.currentUserCanEdit);
         });
     }
 
     setupSidebarNavigation();
 
     // Role-based navigation filtering
-    const ADMIN_NAV_MODULES = ['officials', 'reports', 'user-management', 'archives'];
+    const NAV_ACCESS = {
+        'Admin':               { modules: null, canEdit: true },
+        'Secretary':           { modules: null, canEdit: true },
+        'Captain':             { modules: null, canEdit: false },
+        'Councilor/Kagawad':   { modules: ['residents', 'mapping', 'inventory', 'officials'], canEdit: true },
+        'Kagawad':             { modules: ['residents', 'mapping', 'inventory', 'officials'], canEdit: true },
+    };
 
     function filterNavByRole(role) {
-        if (role === 'Admin') return; // Admin sees everything
+        const access = NAV_ACCESS[role];
+        if (!access) return;
+
+        if (access.modules === null) return;
 
         const navItems = document.querySelectorAll('.nav-item');
         navItems.forEach(item => {
             const moduleName = item.getAttribute('data-module');
-            if (ADMIN_NAV_MODULES.includes(moduleName)) {
+            if (!access.modules.includes(moduleName)) {
                 const section = item.closest('.nav-section');
                 if (section && section.querySelectorAll('.nav-item').length <= 1) {
                     section.style.display = 'none';
@@ -138,6 +151,42 @@ document.addEventListener('DOMContentLoaded', function() {
             }
         });
     }
+
+    window.applyModuleReadOnly = function (config) {
+        if (window.currentUserCanEdit !== false) return;
+        if (!config) return;
+
+        if (config.addBtnId) {
+            const btn = document.getElementById(config.addBtnId);
+            if (btn) {
+                btn.disabled = true;
+                btn.classList.add('edit-restricted');
+                btn.title = 'Read-only access';
+            }
+        }
+
+        if (config.saveBtnIds) {
+            config.saveBtnIds.forEach(function (id) {
+                const btn = document.getElementById(id);
+                if (btn) {
+                    btn.disabled = true;
+                    btn.classList.add('edit-restricted');
+                    btn.title = 'Read-only access';
+                }
+            });
+        }
+
+        if (config.editSelectors) {
+            config.editSelectors.forEach(function (selector) {
+                document.querySelectorAll(selector).forEach(function (el) {
+                    const icon = el.closest('.action-icon, .action-btn, [data-action="edit"]');
+                    if (icon) {
+                        icon.style.display = 'none';
+                    }
+                });
+            });
+        }
+    };
     setupHeaderProfileClick();
     loadInitialModule();
 });

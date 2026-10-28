@@ -46,6 +46,7 @@ $allowedTables = [
     'certificates',
     'users',
     'blotter',
+    'inventory',
 ];
 
 $table = isset($_GET['table']) ? strtolower((string) $_GET['table']) : '';
@@ -94,9 +95,17 @@ try {
             break;
 
         case 'blotter':
-            // Hard-delete soft-deleted blotter cases older than 30 days.
+            // Hard-delete archived blotter cases older than 30 days.
             $stmt = $conn->prepare(
-                'DELETE FROM blotter_cases WHERE archived = 1 AND archived_at < DATEADD(day, -30, GETDATE())'
+                'DELETE FROM archived_blotter_cases WHERE archived_at < DATEADD(day, -30, GETDATE())'
+            );
+            $stmt->execute();
+            $deleted = $stmt->rowCount();
+            break;
+
+        case 'inventory':
+            $stmt = $conn->prepare(
+                'DELETE FROM archived_inventory_items WHERE archived_at < DATEADD(day, -30, GETDATE())'
             );
             $stmt->execute();
             $deleted = $stmt->rowCount();

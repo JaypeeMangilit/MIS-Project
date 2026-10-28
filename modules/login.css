@@ -181,6 +181,13 @@ body {
     transition: color 0.2s ease;
 }
 
+.toggle-password svg {
+    position: absolute;
+    left: 50%;
+    top: 50%;
+    transform: translate(-50%, -50%);
+}
+
 .toggle-password:hover {
     color: #193653;
 }

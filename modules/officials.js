@@ -22,6 +22,9 @@
     let newPhotoBase64 = null;       // only set when a new file is chosen
     let searchTimer = null;
     let pendingEditId = null;        // id waiting behind the Confirm Edit dialog
+    function canEditOfficial() {
+        return window.currentUserCanEdit !== false;
+    }
 
     // ------------------------------------------------------------------
     // API
@@ -138,6 +141,10 @@
             const freshAddBtn = addBtn.cloneNode(true);
             addBtn.parentNode.replaceChild(freshAddBtn, addBtn);
             freshAddBtn.addEventListener('click', function () {
+                if (!canEditOfficial()) {
+                    notify('You do not have permission to add officials.');
+                    return;
+                }
                 showOfficialForm(null);
             });
         }
@@ -555,7 +562,7 @@
      * the database, or a legacy record would silently display the wrong option.
      */
     const OFFICIAL_POSITION_OPTIONS = [
-        'Secretary', 'Captain', 'Councilor',
+        'Secretary', 'Captain', 'Councilor/Kagawad',
         'Punong Barangay', 'Barangay Kagawad', 'SK Chairman',
         'Barangay Secretary', 'Barangay Treasurer'
     ];
@@ -830,7 +837,7 @@
                         '</div>' +
                     '</div>' +
                     '<div class="card-actions">' +
-                        '<button class="action-btn edit" onclick="window.editOfficial(' + official.id + ')">Edit</button>' +
+                        (canEditOfficial() ? '<button class="action-btn edit" onclick="window.editOfficial(' + official.id + ')">Edit</button>' : '') +
                         '<button class="action-btn archive" onclick="window.archiveOfficial(' + official.id + ')">Archive</button>' +
                     '</div>' +
                 '</div>';
@@ -967,7 +974,7 @@
     /** Options for the two list filters. */
     const OFFICIAL_STATUS_FILTERS = ['Active', 'Inactive'];
     const OFFICIAL_POSITION_FILTERS = [
-        'Secretary', 'Captain', 'Councilor',
+        'Secretary', 'Captain', 'Councilor/Kagawad',
         'Punong Barangay', 'Barangay Kagawad', 'SK Chairman',
         'Barangay Secretary', 'Barangay Treasurer'
     ];
@@ -1650,6 +1657,10 @@
     // Global handlers used by the generated card markup
     // ------------------------------------------------------------------
     window.editOfficial = function (id) {
+        if (!canEditOfficial()) {
+            notify('You do not have permission to edit officials.');
+            return;
+        }
         const official = officialsCache.filter(function (row) {
             return String(row.id) === String(id);
         })[0];

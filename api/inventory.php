@@ -6,13 +6,16 @@
  * GET  ?action=activity                                recent activity feed
  * GET  ?action=borrowlog&search=&status=&category=&page=&limit=
  * GET  ?id=N                                           one item + its movements + borrows
+ * GET  ?archived=1&search=&page=&limit=                archived item list
  * GET  ?search=&category=&status=&page=&limit=         item list
  * POST (JSON body)                                     create item
  * POST ?action=transaction (JSON body)                 stock IN / OUT
  * POST ?action=borrow     (JSON body)                  borrow (also writes an OUT row)
  * POST ?action=return     (JSON body)                  return (also writes an IN row)
  * PUT  ?id=N (JSON body)                               update editable fields
- * DELETE ?id=N                                         soft archive
+ * POST ?action=restore    (JSON body)                  restore archived item
+ * POST ?action=delete     (JSON body)                  permanently delete archived item
+ * DELETE ?id=N                                         archive item
  *
  * Conventions worth knowing before editing:
  *
@@ -242,8 +245,7 @@ if ($method === 'GET') {
                  ISNULL((SELECT SUM(br.quantity) FROM borrow_records br
                           WHERE br.date_returned IS NULL), 0) AS borrowedItems,
                  ISNULL(SUM(CASE WHEN i.quantity < 10 THEN 1 ELSE 0 END), 0) AS lowStockAlerts
-             FROM inventory_items i
-             WHERE i.archived IS NULL OR i.archived = 0"
+             FROM inventory_items i"
         );
 
         if ($row === null) {
@@ -384,7 +386,7 @@ if ($method === 'GET') {
                        FROM borrow_records br
                       WHERE br.item_id = i.id AND br.date_returned IS NULL) AS open_borrow_quantity
              FROM inventory_items i
-             WHERE i.id = ? AND (i.archived IS NULL OR i.archived = 0)",
+             WHERE i.id = ?",
             [$id],
             'i'
         );
@@ -438,6 +440,47 @@ if ($method === 'GET') {
         exit;
     }
 
+    // --- Archived item list --------------------------------------------------
+    if (isset($_GET['archived'])) {
+        $search = strtolower(trim((string) ($_GET['search'] ?? '')));
+        $page   = max(1, (int) ($_GET['page'] ?? 1));
+        $limit  = max(1, (int) ($_GET['limit'] ?? 50));
+        $offset = ($page - 1) * $limit;
+
+        $where = '';
+        $params = [];
+        $types = '';
+        if ($search !== '') {
+            $where = ' WHERE (item_name LIKE ? OR category LIKE ? OR item_code LIKE ?)';
+            $params = ["%$search%", "%$search%", "%$search%"];
+            $types = 'sss';
+        }
+
+        $total = 0;
+        $countRow = getRecord("SELECT COUNT(*) AS n FROM archived_inventory_items" . $where, $params, $types);
+        if ($countRow) {
+            $total = (int) $countRow['n'];
+        }
+
+        $rows = getRecords(
+            "SELECT * FROM archived_inventory_items" . $where . "
+             ORDER BY archived_at DESC, id DESC
+             OFFSET $offset ROWS FETCH NEXT $limit ROWS ONLY",
+            $params,
+            $types
+        );
+
+        echo json_encode([
+            'success'    => true,
+            'data'       => $rows ?: [],
+            'total'      => $total,
+            'page'       => $page,
+            'limit'      => $limit,
+            'totalPages' => $total > 0 ? (int) ceil($total / $limit) : 1,
+        ]);
+        exit;
+    }
+
     // --- Item list ----------------------------------------------------------
     $search   = strtolower(trim((string) ($_GET['search'] ?? '')));
     $category = (string) ($_GET['category'] ?? '');
@@ -454,7 +497,6 @@ if ($method === 'GET') {
                    FROM borrow_records br
                   WHERE br.item_id = i.id AND br.date_returned IS NULL) AS open_borrow_quantity
          FROM inventory_items i
-         WHERE (i.archived IS NULL OR i.archived = 0)
          ORDER BY i.updated_at DESC, i.id DESC"
     );
 
@@ -608,7 +650,7 @@ if ($method === 'POST') {
         }
 
         $item = getRecord(
-            "SELECT * FROM inventory_items WHERE id = ? AND (archived IS NULL OR archived = 0)",
+            "SELECT * FROM inventory_items WHERE id = ?",
             [$itemId],
             'i'
         );
@@ -688,7 +730,7 @@ if ($method === 'POST') {
         }
 
         $item = getRecord(
-            "SELECT * FROM inventory_items WHERE id = ? AND (archived IS NULL OR archived = 0)",
+            "SELECT * FROM inventory_items WHERE id = ?",
             [$itemId],
             'i'
         );
@@ -908,6 +950,133 @@ if ($method === 'POST') {
         exit;
     }
 
+    // --- Restore archived item -----------------------------------------------
+    if ($action === 'restore') {
+        $id = isset($data['id']) ? (int) $data['id'] : 0;
+
+        if ($id <= 0) {
+            inventoryFail(400, 'An archived item id is required');
+        }
+
+        $archived = getRecord("SELECT * FROM archived_inventory_items WHERE id = ?", [$id], 'i');
+
+        if (!$archived) {
+            inventoryFail(404, 'Archived item not found');
+        }
+
+        $columns = [];
+        $exclude = ['archived_at', 'archived_by'];
+        foreach (getRecords(
+            "SELECT c.name AS col FROM sys.columns c WHERE c.object_id = OBJECT_ID('inventory_items') ORDER BY c.column_id"
+        ) as $column) {
+            $col = $column['col'];
+            if (!in_array($col, $exclude, true)) {
+                $columns[] = $col;
+            }
+        }
+
+        if (!$columns) {
+            inventoryFail(500, 'Unable to read the inventory_items table columns');
+        }
+
+        $columnList = implode(', ', $columns);
+        $setId = implode(', ', array_fill(0, count($columns), '?'));
+        $values = [];
+        foreach ($columns as $col) {
+            $values[] = $archived[$col] ?? null;
+        }
+        $values[] = $id;
+
+        $conn = getConnection();
+        $restored = 0;
+        $error = null;
+
+        try {
+            $conn->beginTransaction();
+
+            $conn->exec("SET IDENTITY_INSERT inventory_items ON");
+            try {
+                $insert = $conn->prepare(
+                    "INSERT INTO inventory_items ($columnList) VALUES ($setId)"
+                );
+                $insert->execute($values);
+
+                $delete = $conn->prepare("DELETE FROM archived_inventory_items WHERE id = ?");
+                $delete->execute([$id]);
+                $restored = $delete->rowCount();
+            } finally {
+                $conn->exec("SET IDENTITY_INSERT inventory_items OFF");
+            }
+
+            $conn->commit();
+        } catch (Throwable $e) {
+            if ($conn->inTransaction()) {
+                $conn->rollBack();
+            }
+            $error = $e->getMessage();
+        }
+
+        if ($error === null && $restored > 0) {
+            logUserActivity('Inventory', 'Restored archived item #' . $id);
+        }
+
+        echo json_encode([
+            'success'  => $error === null && $restored > 0,
+            'affected' => $restored,
+            'message'  => $error !== null
+                ? 'Restore failed: ' . $error
+                : ($restored > 0 ? 'Item restored successfully' : 'Item could not be restored'),
+        ]);
+        exit;
+    }
+
+    // --- Permanently delete archived item ------------------------------------
+    if ($action === 'delete') {
+        $id = isset($data['id']) ? (int) $data['id'] : 0;
+
+        if ($id <= 0) {
+            inventoryFail(400, 'An archived item id is required');
+        }
+
+        $archived = getRecord("SELECT id FROM archived_inventory_items WHERE id = ?", [$id], 'i');
+
+        if (!$archived) {
+            inventoryFail(404, 'Archived item not found');
+        }
+
+        $conn = getConnection();
+        $deleted = 0;
+        $error = null;
+
+        try {
+            $conn->beginTransaction();
+
+            $delete = $conn->prepare("DELETE FROM archived_inventory_items WHERE id = ?");
+            $delete->execute([$id]);
+            $deleted = $delete->rowCount();
+
+            $conn->commit();
+        } catch (Throwable $e) {
+            if ($conn->inTransaction()) {
+                $conn->rollBack();
+            }
+            $error = $e->getMessage();
+        }
+
+        if ($error === null && $deleted > 0) {
+            logUserActivity('Inventory', 'Permanently deleted archived item #' . $id);
+        }
+
+        echo json_encode([
+            'success'  => $error === null && $deleted > 0,
+            'affected' => $deleted,
+            'message'  => $error !== null
+                ? 'Delete failed: ' . $error
+                : ($deleted > 0 ? 'Archived item permanently deleted' : 'Archived item could not be deleted'),
+        ]);
+        exit;
+    }
+
     inventoryFail(400, 'Unknown action');
 }
 
@@ -976,7 +1145,7 @@ if ($method === 'PUT') {
 }
 
 // ---------------------------------------------------------------------------
-// DELETE - soft archive
+// DELETE - archive item
 // ---------------------------------------------------------------------------
 
 if ($method === 'DELETE') {
@@ -992,20 +1161,75 @@ if ($method === 'DELETE') {
         inventoryFail(404, 'Item not found');
     }
 
-    // Soft archive rather than a hard delete: FK_stock_items is ON DELETE CASCADE,
-    // so removing the row would also erase the item's whole stock_transactions
-    // history, and FK_borrow_records_item is NO_ACTION, so an item with borrow
-    // records could not be deleted at all.
-    $archived = executeStatement(
-        "UPDATE inventory_items SET archived = 1, updated_at = ? WHERE id = ?",
-        [date('Y-m-d H:i:s'), $id],
-        'si'
-    );
-
-    if ($archived === false) {
-        inventoryFail(500, 'Failed to archive item', lastDbError());
+    $archivedBy = trim((string) ($_SESSION['name'] ?? ''));
+    if ($archivedBy === '') {
+        $archivedBy = trim((string) ($_SESSION['username'] ?? ''));
     }
 
-    echo json_encode(['success' => true, 'message' => 'Item archived successfully']);
+    $now = date('Y-m-d H:i:s');
+
+    // Build column list from inventory_items, excluding identity column.
+    $columns = [];
+    foreach (getRecords(
+        "SELECT c.name AS col FROM sys.columns c WHERE c.object_id = OBJECT_ID('inventory_items') ORDER BY c.column_id"
+    ) as $column) {
+        $columns[] = $column['col'];
+    }
+
+    if (!$columns) {
+        inventoryFail(500, 'Unable to read the inventory_items table columns');
+    }
+
+    $columnList = implode(', ', $columns);
+    $placeholders = implode(', ', array_fill(0, count($columns), '?'));
+
+    $values = [];
+    foreach ($columns as $col) {
+        $values[] = $item[$col] ?? null;
+    }
+    $values[] = $archivedBy !== '' ? $archivedBy : null;
+    $values[] = $id;
+
+    $conn = getConnection();
+    $archived = 0;
+    $error = null;
+
+    try {
+        $conn->beginTransaction();
+
+        $conn->exec("SET IDENTITY_INSERT archived_inventory_items ON");
+        try {
+            $insert = $conn->prepare(
+                "INSERT INTO archived_inventory_items ($columnList, archived_at, archived_by)
+                 VALUES ($placeholders, GETDATE(), ?)"
+            );
+            $insert->execute($values);
+
+            $delete = $conn->prepare("DELETE FROM inventory_items WHERE id = ?");
+            $delete->execute([$id]);
+            $archived = $delete->rowCount();
+        } finally {
+            $conn->exec("SET IDENTITY_INSERT archived_inventory_items OFF");
+        }
+
+        $conn->commit();
+    } catch (Throwable $e) {
+        if ($conn->inTransaction()) {
+            $conn->rollBack();
+        }
+        $error = $e->getMessage();
+    }
+
+    if ($error === null && $archived > 0) {
+        logUserActivity('Inventory', 'Archived item #' . $id);
+    }
+
+    echo json_encode([
+        'success'  => $error === null && $archived > 0,
+        'affected' => $archived,
+        'message'  => $error !== null
+            ? 'Archive failed: ' . $error
+            : ($archived > 0 ? 'Item archived successfully' : 'Item could not be archived'),
+    ]);
     exit;
 }

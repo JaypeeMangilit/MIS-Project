@@ -38,7 +38,7 @@ async function apiCall(endpoint, method, data) {
 
 /** Permanently delete archived records older than 30 days. Runs silently on load. */
 async function runArchiveCleanup() {
-    const tables = ['residents', 'officials', 'certificates', 'users', 'blotter'];
+    const tables = ['residents', 'officials', 'certificates', 'users', 'blotter', 'inventory'];
     const results = await Promise.allSettled(
         tables.map(table => apiCall('cleanup_archives.php?table=' + table, 'POST'))
     );
@@ -133,6 +133,15 @@ const columnConfig = {
         { key: "name", label: "Name", type: "user" },
         { key: "username", label: "Username", type: "text" },
         { key: "role", label: "Role", type: "text" },
+        { key: "archivedDate", label: "Archived Date", type: "date" },
+        { key: "archivedBy", label: "Archived By", type: "text" },
+        { key: "actions", label: "Actions", type: "actions" }
+    ],
+    blotter: [
+        { key: "caseNo", label: "Case No.", type: "text" },
+        { key: "complainant", label: "Complainant", type: "text" },
+        { key: "respondent", label: "Respondent", type: "text" },
+        { key: "status", label: "Status", type: "text" },
         { key: "archivedDate", label: "Archived Date", type: "date" },
         { key: "archivedBy", label: "Archived By", type: "text" },
         { key: "actions", label: "Actions", type: "actions" }
@@ -369,6 +378,43 @@ const dbArchiveConfig = {
         ],
         name: (item) => archiveUserName(item),
         emptyText: 'No archived users found',
+    },
+    blotter: {
+        label: 'blotter',
+        endpoint: 'blotter.php?archived=1',
+        restoreFile: 'blotter.php',
+        deleteFile: 'blotter.php',
+        restoreTitle: 'Restore this blotter case back to the Blotter module?',
+        columns: ['Case No.', 'Complainant', 'Respondent', 'Status', 'Incident Date', 'Archived Date', 'Archived By', 'Actions'],
+        cells: (item) => [
+            item.case_number,
+            item.complainant_name,
+            item.respondent_name,
+            item.status,
+            formatArchiveDate(item.incident_date),
+            formatArchiveDate(item.archived_at),
+            item.archived_by,
+        ],
+        name: (item) => item.case_number,
+        emptyText: 'No archived blotter cases found',
+    },
+    inventory: {
+        label: 'inventory',
+        endpoint: 'inventory.php?archived=1',
+        restoreFile: 'inventory.php',
+        deleteFile: 'inventory.php',
+        restoreTitle: 'Restore this item back to the Inventory module?',
+        columns: ['Item Name', 'Category', 'Quantity', 'Location', 'Archived Date', 'Archived By', 'Actions'],
+        cells: (item) => [
+            item.item_name || '—',
+            item.category || '—',
+            item.quantity ?? '—',
+            item.location || '—',
+            formatArchiveDate(item.archived_at),
+            item.archived_by || '—',
+        ],
+        name: (item) => item.item_name,
+        emptyText: 'No archived inventory items found',
     },
 };
 

@@ -47,7 +47,7 @@ function userManagementRoles(): array
     // The roles the User Management form offers. Admin and Kagawad accounts already
     // exist in the database and stay valid for login; they are simply no longer
     // offered for new accounts.
-    return ['Secretary', 'Captain', 'Councilor'];
+    return ['Secretary', 'Captain', 'Councilor/Kagawad'];
 }
 
 /**
@@ -71,11 +71,11 @@ function userManagementValidRoles(): array
 function userRolePrefix(string $role): ?string
 {
     $map = [
-        'Admin'     => 'AD',
-        'Councilor' => 'COU',
-        'Captain'   => 'CAP',
-        'Kagawad'   => 'KAD',
-        'Secretary' => 'USR',
+        'Admin'       => 'AD',
+        'Councilor/Kagawad' => 'COU',
+        'Captain'     => 'CAP',
+        'Kagawad'     => 'KAD',
+        'Secretary'   => 'USR',
     ];
     return $map[$role] ?? null;
 }
@@ -139,7 +139,7 @@ function userIdIsTaken(string $userId, $excludeId = null): bool
 }
 
 /**
- * Build a user_id for a role, e.g. 'Councilor' -> 'COU002'.
+ * Build a user_id for a role, e.g. 'Councilor/Kagawad' -> 'COU002'.
  *
  * The number is the highest one already used for that prefix (in either table)
  * plus one, and is bumped further while the result is still taken - so a role
@@ -465,25 +465,9 @@ function restoreUser($id)
  */
 function permanentlyDeleteUser($id)
 {
-    // Deleting a row from system_users would break the user_activity_log foreign key,
-    // and that trail is an audit record. Refuse while history is attached.
-    $activityRows = getRecord(
-        "SELECT COUNT(*) AS n FROM user_activity_log WHERE user_id = ?",
-        [$id],
-        'i'
-    );
-    $activityCount = $activityRows ? (int) $activityRows['n'] : 0;
-
-    if ($activityCount > 0) {
-        return [
-            'success'  => false,
-            'affected' => 0,
-            'message'  => 'This account has ' . $activityCount .
-                ' activity record' . ($activityCount === 1 ? '' : 's') .
-                ' attached to it, so it cannot be permanently deleted while they remain. ' .
-                'Archive it instead - that keeps the history intact.',
-        ];
-    }
+    // Allow hard deletion by detaching the activity trail first.
+    $conn = getConnection();
+    $conn->prepare("UPDATE user_activity_log SET user_id = NULL WHERE user_id = ?")->execute([$id]);
 
     $target = getRecord("SELECT id FROM system_users WHERE id = ?", [$id], 'i');
     $table  = 'system_users';
@@ -497,7 +481,6 @@ function permanentlyDeleteUser($id)
         return ['success' => false, 'affected' => 0, 'message' => 'Archived user not found'];
     }
 
-    $conn = getConnection();
     $deleted = 0;
     $error = null;
 

@@ -3,8 +3,8 @@
 // Falls back to SQLite automatically if SQL Server/MySQL drivers are unavailable.
 define('DB_HOST', 'localhost\\SQLEXPRESS'); // Update to 'localhost\SQLEXPRESS' if using SQL Server Express
 define('DB_NAME', 'brgy49_db');
-define('DB_USER', '');
-define('DB_PASS', '');
+define('DB_USER', 'mis_user');
+define('DB_PASS', 'YourMISPassword');
 define('APP_ROOT', dirname(__DIR__));
 define('DB_SQLITE_PATH', APP_ROOT . DIRECTORY_SEPARATOR . 'data' . DIRECTORY_SEPARATOR . 'brgy49.sqlite');
 

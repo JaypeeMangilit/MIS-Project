@@ -60,6 +60,14 @@ async function initBlotterModule() {
     // Setup event listeners
     setupEventListeners();
     setupExportViewListeners();
+
+    if (window.applyModuleReadOnly) {
+        window.applyModuleReadOnly({
+            addBtnId: 'addCaseBtn',
+            saveBtnIds: ['saveEditBtn'],
+            editSelectors: ['.action-icon[onclick*="editCase"]', '#editCaseBtn'],
+        });
+    }
 }
 
 async function loadCasesTable() {

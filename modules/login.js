@@ -37,13 +37,14 @@
     // Show / hide password.
     if (togglePassword) {
         togglePassword.addEventListener('click', function () {
-            const show = passwordInput.type === 'password';
-            passwordInput.type = show ? 'text' : 'password';
-            togglePassword.setAttribute('aria-label', show ? 'Hide password' : 'Show password');
-            const eye = togglePassword.querySelector('.icon-eye');
-            const eyeOff = togglePassword.querySelector('.icon-eye-off');
-            if (eye) eye.hidden = show;
-            if (eyeOff) eyeOff.hidden = !show;
+            const wasHidden = passwordInput.type === 'password';
+            passwordInput.type = wasHidden ? 'text' : 'password';
+            const isRevealed = passwordInput.type === 'text';
+            togglePassword.setAttribute('aria-label', isRevealed ? 'Hide password' : 'Show password');
+            const closedEye = togglePassword.querySelector('.icon-eye-closed');
+            const openEye = togglePassword.querySelector('.icon-eye-open');
+            if (closedEye) closedEye.hidden = isRevealed;
+            if (openEye) openEye.hidden = !isRevealed;
         });
     }
 

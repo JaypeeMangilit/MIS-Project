@@ -47,8 +47,149 @@ function blotterShortLabel($case)
     return $complainant !== '' ? 'case against ' . $complainant : 'case';
 }
 
+/** Move an archived blotter case back into blotter_cases. */
+function blotterRestore(int $id): void
+{
+    $archived = getRecord("SELECT * FROM archived_blotter_cases WHERE id = ?", [$id], 'i');
+    if (!$archived) {
+        echo json_encode(['success' => false, 'message' => 'Archived case not found']);
+        return;
+    }
+
+    $columns = [];
+    foreach (getRecords(
+        "SELECT c.name AS col FROM sys.columns c WHERE c.object_id = OBJECT_ID('blotter_cases') ORDER BY c.column_id"
+    ) as $column) {
+        $columns[] = $column['col'];
+    }
+
+    if (!$columns) {
+        echo json_encode(['success' => false, 'message' => 'Unable to read the blotter_cases table columns']);
+        return;
+    }
+
+    $columnList = implode(', ', $columns);
+    $conn = getConnection();
+    $restored = 0;
+    $error = null;
+
+    try {
+        $conn->beginTransaction();
+
+        $conn->exec("SET IDENTITY_INSERT blotter_cases ON");
+        try {
+            $insert = $conn->prepare(
+                "INSERT INTO blotter_cases ($columnList) SELECT $columnList FROM archived_blotter_cases WHERE id = ?"
+            );
+            $insert->execute([$id]);
+
+            $delete = $conn->prepare("DELETE FROM archived_blotter_cases WHERE id = ?");
+            $delete->execute([$id]);
+            $restored = $delete->rowCount();
+        } finally {
+            $conn->exec("SET IDENTITY_INSERT blotter_cases OFF");
+        }
+
+        $conn->commit();
+    } catch (Throwable $e) {
+        if ($conn->inTransaction()) {
+            $conn->rollBack();
+        }
+        $error = $e->getMessage();
+    }
+
+    if ($error === null && $restored > 0) {
+        logUserActivity('Blotter', 'Restored archived blotter case #' . $id);
+    }
+
+    echo json_encode([
+        'success'  => $error === null && $restored > 0,
+        'affected' => $restored,
+        'message'  => $error !== null
+            ? 'Restore failed: ' . $error
+            : ($restored > 0 ? 'Case restored successfully' : 'Case could not be restored'),
+    ]);
+}
+
+/** Permanently remove an archived blotter case. */
+function blotterPermanentDelete(int $id): void
+{
+    $target = getRecord("SELECT id FROM archived_blotter_cases WHERE id = ?", [$id], 'i');
+    if (!$target) {
+        echo json_encode(['success' => false, 'message' => 'Archived case not found']);
+        return;
+    }
+
+    $conn = getConnection();
+    $deleted = 0;
+    $error = null;
+
+    try {
+        $conn->beginTransaction();
+        $delete = $conn->prepare("DELETE FROM archived_blotter_cases WHERE id = ?");
+        $delete->execute([$id]);
+        $deleted = $delete->rowCount();
+        $conn->commit();
+    } catch (Throwable $e) {
+        if ($conn->inTransaction()) {
+            $conn->rollBack();
+        }
+        $error = $e->getMessage();
+    }
+
+    echo json_encode([
+        'success'  => $error === null && $deleted > 0,
+        'affected' => $deleted,
+        'message'  => $error !== null
+            ? 'Delete failed: ' . $error
+            : ($deleted > 0 ? 'Case permanently deleted' : 'Case could not be deleted'),
+    ]);
+}
+
 switch($method) {
     case 'GET':
+        if (isset($_GET['archived'])) {
+            $search = isset($_GET['search']) ? (string) $_GET['search'] : '';
+            $page = isset($_GET['page']) ? max(1, (int) $_GET['page']) : 1;
+            $limit = isset($_GET['limit']) ? max(1, (int) $_GET['limit']) : 10;
+            $offset = ($page - 1) * $limit;
+
+            $sql = "SELECT * FROM archived_blotter_cases WHERE 1=1";
+            $countSql = "SELECT COUNT(*) as total FROM archived_blotter_cases WHERE 1=1";
+            $params = [];
+            $types = '';
+
+            if ($search !== '') {
+                $sql .= " AND (case_number LIKE ? OR complainant_name LIKE ? OR respondent_name LIKE ?)";
+                $countSql .= " AND (case_number LIKE ? OR complainant_name LIKE ? OR respondent_name LIKE ?)";
+                $searchParam = "%$search%";
+                $params = [$searchParam, $searchParam, $searchParam];
+                $types = 'sss';
+            }
+
+            $totalResult = executeQuery($countSql, $params, $types);
+            $totalRow = $totalResult !== false ? $totalResult->fetch() : null;
+            $total = (int) ($totalRow['total'] ?? 0);
+
+            $sql .= " ORDER BY archived_at DESC, id DESC"
+                  . " OFFSET " . $offset . " ROWS FETCH NEXT " . $limit . " ROWS ONLY";
+
+            $cases = getRecords($sql, $params, $types);
+            if (!$cases) {
+                $cases = [];
+            }
+
+            echo json_encode([
+                'success' => true,
+                'data' => $cases,
+                'total' => $total,
+                'page' => $page,
+                'limit' => $limit,
+                'totalPages' => $total > 0 ? ceil($total / $limit) : 1,
+            ]);
+            break;
+        }
+
         if(isset($_GET['id'])) {
             // Get single case
             $sql = "SELECT * FROM blotter_cases WHERE id = ?";
@@ -137,6 +278,20 @@ switch($method) {
         break;
         
     case 'POST':
+        // Create new case, or restore/delete archived blotter cases.
+        $data = json_decode(file_get_contents('php://input'), true);
+        $action = strtolower((string) ($data['action'] ?? ''));
+
+        if ($action === 'restore') {
+            blotterRestore((int) ($data['id'] ?? 0));
+            break;
+        }
+
+        if ($action === 'delete') {
+            blotterPermanentDelete((int) ($data['id'] ?? 0));
+            break;
+        }
+
         // Create new case
         $data = json_decode(file_get_contents('php://input'), true);
         

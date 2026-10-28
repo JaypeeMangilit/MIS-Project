@@ -217,6 +217,13 @@
         setupEventListeners();
         setDefaultDate();
         loadCertificatesTable();
+
+        if (window.applyModuleReadOnly) {
+            window.applyModuleReadOnly({
+                saveBtnIds: ['saveCertificateBtn'],
+                editSelectors: ['.action-btn[onclick*="showEditConfirmModal"]'],
+            });
+        }
     }
 
     function setDefaultDate() {
@@ -776,7 +783,7 @@
             // a downloaded PDF; without it browsers drop background colours.
             + 'html, body { -webkit-print-color-adjust: exact; print-color-adjust: exact; }'
             + 'body { font-family: "Times New Roman", Times, serif; color: #000; margin: 0; padding: 22px 40px; font-size: 12pt; line-height: 1.6; position: relative; }'
-            + '.cert-background { position: fixed; left: 50%; top: 50%; width: 800px; height: 800px; '
+            + '.cert-background { position: fixed; left: 50%; top: 50%; width: 650px; height: 650px; '
             + 'transform: translate(-50%, -50%); opacity: 0.08; z-index: -1; pointer-events: none; '
             + 'background-image: var(--brgy-logo); background-size: contain; background-repeat: no-repeat; '
             + 'background-position: center; }'
