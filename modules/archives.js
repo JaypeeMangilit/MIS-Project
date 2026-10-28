@@ -36,6 +36,21 @@ async function apiCall(endpoint, method, data) {
     }
 }
 
+/** Permanently delete archived records older than 30 days. Runs silently on load. */
+async function runArchiveCleanup() {
+    const tables = ['residents', 'officials', 'certificates', 'users', 'blotter'];
+    const results = await Promise.allSettled(
+        tables.map(table => apiCall('cleanup_archives.php?table=' + table, 'POST'))
+    );
+    const cleaned = results
+        .filter(r => r.status === 'fulfilled' && r.value && r.value.success)
+        .map(r => r.value)
+        .filter(r => r.deleted > 0);
+    if (cleaned.length) {
+        console.log('Archive cleanup removed ' + cleaned.map(r => r.deleted).reduce((a, b) => a + b, 0) + ' old records.');
+    }
+}
+
 // Mock Archives Data
 const archivesData = {
     residents: [
@@ -168,6 +183,7 @@ function formatArchiveDate(value) {
 window.initArchives = function() {
     console.log("Initializing Archives Module");
     setupEventListeners();
+    runArchiveCleanup();
     loadArchivesTable();
 };
 

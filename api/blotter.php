@@ -252,7 +252,7 @@ switch($method) {
             break;
         }
         
-        $sql = "UPDATE blotter_cases SET archived = 1 WHERE id = ?";
+        $sql = "UPDATE blotter_cases SET archived = 1, archived_at = GETDATE() WHERE id = ?";
         executeStatement($sql, [$id], 'i');
 
         logUserActivity('Blotter', 'Archived blotter case #' . $id);
