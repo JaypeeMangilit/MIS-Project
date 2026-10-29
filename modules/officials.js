@@ -70,6 +70,14 @@
         setupModalClose();
         updateFilterButtonLabel();
         loadTermOptions();
+
+        if (window.applyModuleReadOnly) {
+            window.applyModuleReadOnly({
+                addBtnId: 'addOfficialBtn',
+                saveBtnIds: ['saveOfficialBtn'],
+                editSelectors: ['.action-btn[onclick*="editOfficial"]'],
+            });
+        }
     }
 
     function setupEventListeners() {

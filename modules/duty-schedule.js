@@ -1,3 +1,12 @@
+// Wrapped in an IIFE on purpose: sidebar.js removes and re-adds this script on
+// every visit, and a second top-level const/let would throw
+// "Identifier has already been declared", leaving the PREVIOUS load's state
+// serving a freshly injected DOM. Nothing outside this file references its
+// internals - the entry point is assigned to window below.
+
+(function () {
+    'use strict';
+
 // ---------- MOCK DATA ----------
 const mockSchedules = [
     { id: 1, date: "Oct 18, 2023", day: "Wednesday (Today)", shiftStart: "08:00 AM", shiftEnd: "04:00 PM", officialName: "Hon. Maria Santos", role: "Barangay Kagawad / Desk Officer", location: "Barangay Hall Desk", status: "Upcoming", assignment: "Barangay Hall Desk", avatarInitials: "MS" },
@@ -440,6 +449,21 @@ function init() {
     setupFilters();
     setupTabs();
     initModal();
+
+    if (window.applyModuleReadOnly) {
+        window.applyModuleReadOnly({
+            addBtnId: 'addScheduleBtn',
+            saveBtnIds: ['saveScheduleBtn'],
+        });
+    }
 }
 
-init();
+window.initDutySchedule = init;
+
+if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', init);
+} else {
+    init();
+}
+
+})();

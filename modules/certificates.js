@@ -221,7 +221,7 @@
         if (window.applyModuleReadOnly) {
             window.applyModuleReadOnly({
                 saveBtnIds: ['saveCertificateBtn'],
-                editSelectors: ['.action-btn[onclick*="showEditConfirmModal"]'],
+                editSelectors: ['.action-btn[onclick*="showEditConfirmModal"]', '#editFromDetailsBtn'],
             });
         }
     }
@@ -1080,6 +1080,7 @@
 
     // Global exports used by the module markup.
     window.initCertificates = initCertificates;
+window.showListView = showListView;
     window.loadCertificatesTable = loadCertificatesTable;
 
     if (document.readyState === 'loading') {

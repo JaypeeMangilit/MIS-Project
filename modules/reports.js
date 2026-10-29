@@ -1,3 +1,12 @@
+// Wrapped in an IIFE on purpose: sidebar.js removes and re-adds this script on
+// every visit, and a second top-level const/let would throw
+// "Identifier has already been declared", leaving the PREVIOUS load's state
+// serving a freshly injected DOM. Nothing outside this file references its
+// internals - the entry point is assigned to window below.
+
+(function () {
+    'use strict';
+
 // Chart Data
 const demographicsData = [
     { label: "0-14", value: 850, color: "#0F6CBD" },
@@ -42,14 +51,24 @@ const reportsHistory = [
 let currentSearch = '';
 
 // Initialize the page
-document.addEventListener('DOMContentLoaded', function() {
-    loadDemographicsChart();
-    loadCertificateChart();
-    loadBlotterProgress();
-    loadInventoryProgress();
-    loadReportsHistory();
+async function initReports() {
+    await loadDemographicsChart();
+    await loadCertificateChart();
+    await loadBlotterProgress();
+    await loadInventoryProgress();
+    await loadReportsHistory();
     setupEventListeners();
-});
+}
+
+window.initReports = initReports;
+
+if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', function() {
+        setTimeout(initReports, 100);
+    });
+} else {
+    setTimeout(initReports, 100);
+}
 
 function setupEventListeners() {
     // Export button
@@ -190,3 +209,5 @@ function downloadReport(reportName) {
 function showNotification(message, type) {
     alert(message);
 }
+
+})();

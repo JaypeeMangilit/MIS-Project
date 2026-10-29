@@ -1,3 +1,12 @@
+// Wrapped in an IIFE on purpose: sidebar.js removes and re-adds this script on
+// every visit, and a second top-level const/let would throw
+// "Identifier has already been declared", leaving the PREVIOUS load's state
+// serving a freshly injected DOM. Nothing outside this file references its
+// internals - the entry point is assigned to window below.
+
+(function () {
+    'use strict';
+
 // inventory.js - live data from api/inventory.php (brgy49_db)
 //
 // Every number on this page now comes from the database; the arrays that used to
@@ -105,7 +114,16 @@ async function initInventoryModule() {
     }
 }
 
-document.addEventListener('DOMContentLoaded', function () { initInventoryModule(); });
+// Expose init for sidebar router; also call it immediately when this script is
+// loaded dynamically after the initial DOMContentLoaded has already fired.
+window.initInventoryModule = initInventoryModule;
+window.showBorrowLogView = showBorrowLogView;
+
+if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', function () { initInventoryModule(); });
+} else {
+    initInventoryModule();
+}
 
 // ---------------------------------------------------------------------------
 // Data loading
@@ -1038,3 +1056,6 @@ function escapeHtml(str) {
         return m;
     });
 }
+
+
+})();

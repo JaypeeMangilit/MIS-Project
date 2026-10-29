@@ -1,4 +1,11 @@
 /* User Profile Module Styles */
+body {
+    font-family: 'Inter', sans-serif;
+    background: #F5F9FC;
+    overflow-x: hidden;
+    -webkit-font-smoothing: antialiased;
+}
+
 .user-profile-wrapper {
     width: 100%;
     padding: 28px;

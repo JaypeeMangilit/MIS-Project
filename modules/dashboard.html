@@ -26,9 +26,9 @@
                                <image src="Images/TotalResidents_Icon.svg" alt="Total Residents Icon"></image>
                             </div>
                         </div>
-                        <div class="stat-value" id="totalResidents">14,205</div>
+                        <div class="stat-value" id="totalResidents">0</div>
                         <div class="stat-trend positive">
-                            <span>+124 from last month</span>
+                            <span id="residentsTrend">Loading...</span>
                         </div>
                     </div>
 
@@ -39,9 +39,9 @@
                                 <image src="Images/TotalHouseholds_Icon.svg" alt="Total Households Icon"></image>
                             </div>
                         </div>
-                        <div class="stat-value">3,150</div>
+                        <div class="stat-value" id="totalHouseholds">0</div>
                         <div class="stat-trend neutral">
-                            <span>No change</span>
+                            <span id="householdsTrend">Loading...</span>
                         </div>
                     </div>
 
@@ -52,8 +52,8 @@
                                 <image src="Images/ActiveBlotterCases_Icon.svg" alt="Active Blotter Icon"></image>
                             </div>
                         </div>
-                        <div class="stat-value">12</div>
-                        <div class="stat-subtext">5 pending resolution</div>
+                        <div class="stat-value" id="activeBlotterCases">0</div>
+                        <div class="stat-subtext" id="blotterSubtext">Loading...</div>
                     </div>
 
                     <div class="stat-card">
@@ -63,9 +63,9 @@
                                 <image src="Images/CertificateIssues_Icon.svg" alt="Certificate Issues Icon"></image>
                             </div>
                         </div>
-                        <div class="stat-value">428</div>
+                        <div class="stat-value" id="certificatesIssued">0</div>
                         <div class="stat-trend positive">
-                            <span>+15% from last month</span>
+                            <span id="certificatesTrend">Loading...</span>
                         </div>
                     </div>
                 </div>
@@ -89,19 +89,19 @@
                             <h3 class="section-header-title">Quick Actions</h3>
                         </div>
                         <div class="actions-list">
-                            <button class="action-btn" data-action="certificate">
+                            <button type="button" class="action-btn" data-action="certificate">
                                 <image src="Images/IssueCetificate_Icon.svg" alt="Issue Certificate Icon"></image>
                                 <span>Issue Certificate</span>
                             </button>
-                            <button class="action-btn" data-action="resident">
+                            <button type="button" class="action-btn" data-action="resident">
                                 <image src="Images/RegisterResident_Icon.svg" alt="Register Resident Icon"></image>
                                 <span>Register Resident</span>
                             </button>
-                            <button class="action-btn" data-action="blotter">
+                            <button type="button" class="action-btn" data-action="blotter">
                                 <image src="Images/RecordBlotter_Icon.svg" alt="Record Blotter Icon"></image>
                                 <span>Record Blotter</span>
                             </button>
-                            <button class="action-btn" data-action="inventory">
+                            <button type="button" class="action-btn" data-action="inventory">
                                 <image src="Images/UpdateInventory_Icon.svg" alt="Update Inventory Icon"></image>
                                 <span>Borrow Log</span>
                             </button>

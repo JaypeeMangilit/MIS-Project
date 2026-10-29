@@ -6,9 +6,10 @@
 }
 
 body {
-    font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', sans-serif;
+    font-family: 'Inter', sans-serif;
     background: #F4F8FB;
     overflow-x: hidden;
+    -webkit-font-smoothing: antialiased;
 }
 
 /* Profile Container */

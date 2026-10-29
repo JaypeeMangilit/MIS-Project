@@ -1,3 +1,23 @@
+// Wrapped in an IIFE on purpose: sidebar.js removes and re-adds this script on
+// every visit, and a second top-level const/let would throw
+// "Identifier has already been declared", leaving the PREVIOUS load's state
+// serving a freshly injected DOM. Nothing outside this file references its
+// internals - the entry point is assigned to window below.
+
+(function () {
+    'use strict';
+
+// blotter.js - Complete with Database Integration, Beautiful Case Details, and Export Page View
+//
+// Wrapped in an IIFE on purpose: sidebar.js removes and re-adds this script on
+// every visit, and a second top-level const/let would throw
+// "Identifier has already been declared", leaving the PREVIOUS load's state
+// serving a freshly injected DOM. Nothing outside this file references its
+// internals - the entry point is assigned to window below.
+
+(function () {
+    'use strict';
+
 // blotter.js - Complete with Database Integration, Beautiful Case Details, and Export Page View
 
 const API_BASE_URL = 'api/';
@@ -1069,6 +1089,7 @@ window.changePage = function(page) {
 // MODULE INITIALIZATION (Called by router.js)
 // ============================================
 window.initBlotterModule = initBlotterModule;
+window.showAddCaseView = showAddCaseView;
 
 // Optional: Listen for module loaded event (for debugging only)
 document.addEventListener('moduleLoaded', function(e) {
@@ -1078,3 +1099,8 @@ document.addEventListener('moduleLoaded', function(e) {
 });
 
 console.log('Blotter.js loaded, waiting for router.js to call initBlotterModule()');
+
+})();
+
+
+})();

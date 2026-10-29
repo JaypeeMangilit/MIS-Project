@@ -1,3 +1,12 @@
+// Wrapped in an IIFE on purpose: sidebar.js removes and re-adds this script on
+// every visit, and a second top-level const/let would throw
+// "Identifier has already been declared", leaving the PREVIOUS load's state
+// serving a freshly injected DOM. Nothing outside this file references its
+// internals - the entry point is assigned to window below.
+
+(function () {
+    'use strict';
+
 // mapping.js - Zone statistics loaded live from api/mapping.php
 
 // Zone metadata only. The numbers on the panel come from api/mapping.php
@@ -44,6 +53,14 @@ function initMapping() {
 
     // Default select Crescini Ext.
     selectZone('Crescini Ext.');
+}
+
+window.initMapping = initMapping;
+
+if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', initMapping);
+} else {
+    initMapping();
 }
 
 function setupMappingEventListeners() {
@@ -282,3 +299,5 @@ function highlightSearchResult(searchTerm) {
 function showNotification(message, type) {
     alert(message);
 }
+
+})();

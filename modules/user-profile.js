@@ -1,3 +1,12 @@
+// Wrapped in an IIFE on purpose: sidebar.js removes and re-adds this script on
+// every visit, and a second top-level const/let would throw
+// "Identifier has already been declared", leaving the PREVIOUS load's state
+// serving a freshly injected DOM. Nothing outside this file references its
+// internals - the entry point is assigned to window below.
+
+(function () {
+    'use strict';
+
 // User Profile Module
 let userProfile = {
     firstName: "Maria",
@@ -18,6 +27,13 @@ window.initUserProfile = function() {
     console.log("Initializing User Profile Module");
     loadProfileData();
     setupEventListeners();
+
+    if (window.applyModuleReadOnly) {
+        window.applyModuleReadOnly({
+            addBtnId: 'editProfileBtn',
+            saveBtnIds: ['saveProfileBtn'],
+        });
+    }
 };
 
 function loadProfileData() {
@@ -152,3 +168,5 @@ function showNotification(message, type) {
 }
 
 console.log('User Profile Module loaded');
+
+})();

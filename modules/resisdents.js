@@ -1,3 +1,12 @@
+// Wrapped in an IIFE on purpose: sidebar.js removes and re-adds this script on
+// every visit, and a second top-level const/let would throw
+// "Identifier has already been declared", leaving the PREVIOUS load's state
+// serving a freshly injected DOM. Nothing outside this file references its
+// internals - the entry point is assigned to window below.
+
+(function () {
+    'use strict';
+
 // residents.js - Complete with Database Integration via PHP API
 
 // API Configuration
@@ -130,6 +139,14 @@ async function initResidentsModule() {
     setupModalEventListeners();
     await loadPurokOptions();
     setupExportEventListeners();
+
+    if (window.applyModuleReadOnly) {
+        window.applyModuleReadOnly({
+            addBtnId: 'addResidentBtn',
+            saveBtnIds: ['saveResidentBtn', 'saveEditBtn'],
+            editSelectors: ['.action-icon[onclick*="editResident"]', '#editFromViewBtn'],
+        });
+    }
 }
 
 // ============================================
@@ -2146,6 +2163,7 @@ function setupModalEventListeners() {
 
 // Make init function globally available
 window.initResidentsModule = initResidentsModule;
+window.showAddResidentView = showAddResidentView;
 
 // Listen for module loaded event (optional - for debugging)
 document.addEventListener('moduleLoaded', function(e) {
@@ -2155,3 +2173,5 @@ document.addEventListener('moduleLoaded', function(e) {
 });
 
 console.log('Residents.js loaded, waiting for router.js to call initResidentsModule()');
+
+})();

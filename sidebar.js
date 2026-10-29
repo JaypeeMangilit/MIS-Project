@@ -119,7 +119,11 @@ document.addEventListener('DOMContentLoaded', function() {
             window.currentUserCanEdit = NAV_ACCESS[user.role]?.canEdit ?? true;
             document.body.dataset.role = user.role;
             document.body.dataset.canEdit = String(window.currentUserCanEdit);
+
+            loadInitialModule();
         });
+    } else {
+        loadInitialModule();
     }
 
     setupSidebarNavigation();
@@ -182,6 +186,8 @@ document.addEventListener('DOMContentLoaded', function() {
                     const icon = el.closest('.action-icon, .action-btn, [data-action="edit"]');
                     if (icon) {
                         icon.style.display = 'none';
+                    } else if (el) {
+                        el.style.display = 'none';
                     }
                 });
             });
@@ -298,6 +304,9 @@ async function loadModule(moduleName) {
         isLoadingModule = false;
     }
 }
+
+// Expose for quick actions / external callers
+window.loadModule = loadModule;
 
 // Load module-specific JavaScript file
 async function loadModuleScript(moduleName) {
