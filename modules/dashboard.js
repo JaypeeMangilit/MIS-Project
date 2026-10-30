@@ -189,9 +189,9 @@ async function loadDashboardStats() {
         }
         
         // Fetch active blotter cases
-        const blotterResult = await apiCall('blotter.php?limit=10000');
+        const blotterResult = await apiCall('blotter.php?status=Ongoing&limit=1');
         if (blotterResult.success !== false && blotterResult.data) {
-            const activeCases = blotterResult.data.filter(c => c.status === 'Ongoing').length;
+            const activeCases = blotterResult.total || 0;
             const activeBlotterEl = document.getElementById('activeBlotterCases');
             if (activeBlotterEl) activeBlotterEl.textContent = activeCases;
             const blotterSubtext = document.getElementById('blotterSubtext');
@@ -212,54 +212,369 @@ async function loadDashboardStats() {
 }
 
 function setupQuickActions() {
-    // Issue Certificate -> navigate to certificates module (issue form is the default view)
-    const quickActionCertificate = document.querySelector('[data-action="certificate"]');
-    if (quickActionCertificate) {
-        quickActionCertificate.addEventListener('click', async () => {
-            if (typeof window.loadModule === 'function') {
-                await window.loadModule('certificates');
-            }
+    const modal = document.getElementById('quickActionsModal');
+    const modalTitle = document.getElementById('modalTitle');
+    const modalCloseBtn = document.getElementById('modalCloseBtn');
+    const modalCancelBtn = document.getElementById('modalCancelBtn');
+    const modalSubmitBtn = document.getElementById('modalSubmitBtn');
+    const forms = {
+        certificate: document.getElementById('certificateForm'),
+        resident: document.getElementById('residentForm'),
+        blotter: document.getElementById('blotterForm'),
+        inventory: document.getElementById('inventoryForm'),
+    };
+
+    if (!modal) return;
+
+    function showModal(type) {
+        Object.keys(forms).forEach(function (key) {
+            if (forms[key]) forms[key].style.display = 'none';
         });
+        if (forms[type]) {
+            forms[type].style.display = 'block';
+        }
+        if (type === 'certificate') {
+            modalTitle.textContent = 'Issue Certificate';
+            modalSubmitBtn.textContent = 'Issue Certificate';
+        } else if (type === 'resident') {
+            modalTitle.textContent = 'Register Resident';
+            modalSubmitBtn.textContent = 'Register Resident';
+        } else if (type === 'blotter') {
+            modalTitle.textContent = 'Record Blotter';
+            modalSubmitBtn.textContent = 'Save Blotter';
+        } else if (type === 'inventory') {
+            modalTitle.textContent = 'Borrow Log';
+            modalSubmitBtn.textContent = 'Save Borrow';
+            loadInventoryOptions();
+        }
+        modal.classList.add('active');
+        modalSubmitBtn.dataset.action = type;
     }
-    
-    // Register Resident -> navigate to residents module and open Add Resident form
-    const quickActionResident = document.querySelector('[data-action="resident"]');
-    if (quickActionResident) {
-        quickActionResident.addEventListener('click', async () => {
-            if (typeof window.loadModule === 'function') {
-                await window.loadModule('residents');
-                if (typeof window.showAddResidentView === 'function') {
-                    window.showAddResidentView();
-                }
-            }
+
+    function hideModal() {
+        modal.classList.remove('active');
+        Object.keys(forms).forEach(function (key) {
+            if (forms[key]) forms[key].reset();
         });
+        var autocomplete = document.getElementById('residentAutocomplete');
+        if (autocomplete) autocomplete.innerHTML = '';
+        var residentId = document.getElementById('qaResidentId');
+        if (residentId) residentId.value = '';
+        modalSubmitBtn.disabled = false;
     }
-    
-    // Record Blotter -> navigate to blotter module and open Add Case form
-    const quickActionBlotter = document.querySelector('[data-action="blotter"]');
-    if (quickActionBlotter) {
-        quickActionBlotter.addEventListener('click', async () => {
-            if (typeof window.loadModule === 'function') {
-                await window.loadModule('blotter');
-                if (typeof window.showAddCaseView === 'function') {
-                    window.showAddCaseView();
-                }
+
+    document.querySelector('[data-action="certificate"]')?.addEventListener('click', function () {
+        showModal('certificate');
+    });
+    document.querySelector('[data-action="resident"]')?.addEventListener('click', function () {
+        showModal('resident');
+    });
+    document.querySelector('[data-action="blotter"]')?.addEventListener('click', function () {
+        showModal('blotter');
+    });
+    document.querySelector('[data-action="inventory"]')?.addEventListener('click', function () {
+        showModal('inventory');
+    });
+
+    modalCloseBtn?.addEventListener('click', hideModal);
+    modalCancelBtn?.addEventListener('click', hideModal);
+    modal.addEventListener('click', function (event) {
+        if (event.target === modal) hideModal();
+    });
+
+    document.addEventListener('keydown', function (event) {
+        if (event.key === 'Escape' && modal.classList.contains('active')) {
+            hideModal();
+        }
+    });
+
+    modalSubmitBtn?.addEventListener('click', async function () {
+        const action = modalSubmitBtn.dataset.action;
+        if (!action) return;
+
+        try {
+            if (action === 'certificate') {
+                await submitCertificate();
+            } else if (action === 'resident') {
+                await submitResident();
+            } else if (action === 'blotter') {
+                await submitBlotter();
+            } else if (action === 'inventory') {
+                await submitInventory();
             }
-        });
-    }
-    
-    // Borrow Log -> navigate to inventory module and open Borrow Log view
-    const quickActionInventory = document.querySelector('[data-action="inventory"]');
-    if (quickActionInventory) {
-        quickActionInventory.addEventListener('click', async () => {
-            if (typeof window.loadModule === 'function') {
-                await window.loadModule('inventory');
-                if (typeof window.showBorrowLogView === 'function') {
-                    window.showBorrowLogView();
-                }
+        } catch (error) {
+            console.error('Quick action submit error:', error);
+            alert('Something went wrong. Please try again.');
+        } finally {
+            modalSubmitBtn.disabled = false;
+        }
+    });
+
+    setupResidentSearch();
+}
+
+function setupResidentSearch() {
+    const input = document.getElementById('qaResidentSearch');
+    const dropdown = document.getElementById('residentAutocomplete');
+    if (!input || !dropdown) return;
+
+    let timer = null;
+    input.addEventListener('input', function () {
+        clearTimeout(timer);
+        const term = input.value.trim();
+        if (term.length < 2) {
+            dropdown.classList.remove('visible');
+            dropdown.innerHTML = '';
+            return;
+        }
+        timer = setTimeout(async function () {
+            const result = await apiCall('residents.php?search=' + encodeURIComponent(term) + '&limit=8');
+            if (!result || result.success === false || !result.data || !result.data.length) {
+                dropdown.innerHTML = '<div class="autocomplete-item">No results</div>';
+                dropdown.classList.add('visible');
+                return;
             }
-        });
+            dropdown.innerHTML = result.data.map(function (r) {
+                const name = escapeHtml([r.first_name, r.middle_name, r.last_name].filter(Boolean).join(' '));
+                return '<div class="autocomplete-item" data-id="' + r.id + '">' + name + '</div>';
+            }).join('');
+            dropdown.classList.add('visible');
+            dropdown.querySelectorAll('.autocomplete-item').forEach(function (item) {
+                item.addEventListener('click', function () {
+                    const id = item.getAttribute('data-id');
+                    const text = item.textContent;
+                    input.value = text;
+                    const hidden = document.getElementById('qaResidentId');
+                    if (hidden) hidden.value = id;
+                    dropdown.classList.remove('visible');
+                });
+            });
+        }, 250);
+    });
+
+    document.addEventListener('click', function (event) {
+        if (!input.contains(event.target) && !dropdown.contains(event.target)) {
+            dropdown.classList.remove('visible');
+        }
+    });
+}
+
+async function loadInventoryOptions() {
+    const select = document.getElementById('qaItemSelect');
+    if (!select || select.options.length > 1) return;
+
+    try {
+        const result = await apiCall('inventory.php?limit=1000');
+        if (result && result.success && result.data && result.data.length) {
+            select.innerHTML = '<option value="">Select item</option>' +
+                result.data.map(function (item) {
+                    return '<option value="' + item.id + '">' + escapeHtml(item.item_name || 'Item #' + item.id) + '</option>';
+                }).join('');
+        }
+    } catch (error) {
+        console.error('Failed to load inventory options:', error);
     }
+}
+
+async function submitCertificate() {
+    const residentId = document.getElementById('qaResidentId')?.value || '';
+    const certType = document.getElementById('qaCertType')?.value || '';
+    const purpose = document.getElementById('qaPurpose')?.value.trim() || '';
+    const dateIssued = document.getElementById('qaDateIssued')?.value || '';
+    const orNumber = document.getElementById('qaOrNumber')?.value.trim() || '';
+
+    if (!residentId) { alert('Please search and select a resident.'); return; }
+    if (!certType) { alert('Please select a certificate type.'); return; }
+    if (!purpose) { alert('Please enter the purpose.'); return; }
+    if (!dateIssued) { alert('Please choose the date issued.'); return; }
+
+    const btn = document.getElementById('modalSubmitBtn');
+    btn.disabled = true;
+    btn.textContent = 'Issuing...';
+
+    const result = await apiCall('certificates.php', 'POST', {
+        resident_id: Number(residentId),
+        certificate_type: certType,
+        purpose: purpose,
+        or_number: orNumber,
+        amount_paid: '',
+        date_issued: dateIssued,
+    });
+
+    btn.disabled = false;
+    btn.textContent = 'Issue Certificate';
+
+    if (result && result.success) {
+        document.getElementById('quickActionsModal')?.classList.remove('active');
+        await Promise.all([loadDashboardStats(), loadRecentActivity()]);
+        alert('Certificate issued successfully!');
+    } else {
+        alert((result && result.message) || 'Failed to issue certificate. Please try again.');
+    }
+}
+
+async function submitResident() {
+    const firstName = document.getElementById('qaFirstName')?.value.trim() || '';
+    const lastName = document.getElementById('qaLastName')?.value.trim() || '';
+    const birthDate = document.getElementById('qaBirthDate')?.value || '';
+    const gender = document.getElementById('qaGender')?.value || '';
+    const purok = document.getElementById('qaPurok')?.value.trim() || '';
+    const street = document.getElementById('qaStreet')?.value.trim() || '';
+    const houseNo = document.getElementById('qaHouseNo')?.value.trim() || '';
+    const mobile = document.getElementById('qaMobile')?.value.trim() || '';
+
+    if (!firstName || !lastName || !birthDate || !gender || !purok || !street || !houseNo) {
+        alert('Please fill in all required fields.');
+        return;
+    }
+
+    const btn = document.getElementById('modalSubmitBtn');
+    btn.disabled = true;
+    btn.textContent = 'Saving...';
+
+    const formData = {
+        first_name: firstName,
+        middle_name: '',
+        last_name: lastName,
+        suffix: '',
+        birth_date: birthDate,
+        age: calculateAgeFromBirthDate ? calculateAgeFromBirthDate(birthDate) : '',
+        place_of_birth: '',
+        gender: gender,
+        civil_status: '',
+        nationality: 'Filipino',
+        occupation: '',
+        purok: purok,
+        street_name: street,
+        house_no: houseNo,
+        mobile_number: mobile,
+        email: '',
+        emergency_person: '',
+        emergency_relation: '',
+        emergency_contact: '',
+        voter_status: 'Not Registered',
+        resident_status: 'Active',
+        move_in_date: birthDate || null,
+        photo_base64: '',
+    };
+
+    const result = await apiCall('residents.php', 'POST', formData);
+    btn.disabled = false;
+    btn.textContent = 'Register Resident';
+
+    if (result && result.success) {
+        document.getElementById('quickActionsModal')?.classList.remove('active');
+        await Promise.all([loadDashboardStats(), loadRecentActivity()]);
+        alert('Resident registered successfully!');
+    } else {
+        alert((result && result.message) || 'Failed to register resident. Please try again.');
+    }
+}
+
+async function submitBlotter() {
+    const caseType = document.getElementById('qaCaseType')?.value || '';
+    const complainant = document.getElementById('qaComplainant')?.value.trim() || '';
+    const respondent = document.getElementById('qaRespondent')?.value.trim() || '';
+    const location = document.getElementById('qaLocation')?.value.trim() || '';
+    const summary = document.getElementById('qaIncidentSummary')?.value.trim() || '';
+
+    if (!caseType || !complainant || !respondent || !location || !summary) {
+        alert('Please fill in all required fields.');
+        return;
+    }
+
+    const btn = document.getElementById('modalSubmitBtn');
+    btn.disabled = true;
+    btn.textContent = 'Saving...';
+
+    const formData = {
+        case_type: caseType,
+        location: location,
+        incident_date: new Date().toISOString().slice(0, 10),
+        incident_time: new Date().toTimeString().slice(0, 5),
+        complainant_name: complainant,
+        complainant_contact: '',
+        complainant_address: '',
+        complainant_relation: '',
+        respondent_name: respondent,
+        respondent_contact: '',
+        respondent_address: '',
+        respondent_status: '',
+        incident_summary: summary,
+        assigned_officer: '',
+        status: 'Ongoing',
+        schedule_date: null,
+        schedule_time: null,
+    };
+
+    const result = await apiCall('blotter.php', 'POST', formData);
+    btn.disabled = false;
+    btn.textContent = 'Save Blotter';
+
+    if (result && result.success) {
+        document.getElementById('quickActionsModal')?.classList.remove('active');
+        await Promise.all([loadDashboardStats(), loadRecentActivity()]);
+        alert('Blotter case recorded successfully!');
+    } else {
+        alert((result && result.message) || 'Failed to record blotter case. Please try again.');
+    }
+}
+
+async function submitInventory() {
+    const itemId = document.getElementById('qaItemSelect')?.value || '';
+    const qty = parseInt(document.getElementById('qaQty')?.value || '0', 10);
+    const borrowDate = document.getElementById('qaBorrowDate')?.value || '';
+    const expectedReturn = document.getElementById('qaExpectedReturn')?.value || '';
+    const borrower = document.getElementById('qaBorrower')?.value.trim() || '';
+    const purpose = document.getElementById('qaBorrowPurpose')?.value.trim() || '';
+
+    if (!itemId || !qty || qty <= 0 || !borrowDate || !expectedReturn || !borrower || !purpose) {
+        alert('Please fill in all required fields.');
+        return;
+    }
+
+    const btn = document.getElementById('modalSubmitBtn');
+    btn.disabled = true;
+    btn.textContent = 'Saving...';
+
+    const payload = {
+        itemId: Number(itemId),
+        quantity: qty,
+        borrower: borrower,
+        borrowerType: 'Resident',
+        borrowerContact: '',
+        dateBorrowed: borrowDate,
+        expectedReturn: expectedReturn,
+        purpose: purpose,
+        releasedBy: '',
+        remarks: '',
+    };
+
+    const result = await apiCall('inventory.php?action=borrow', 'POST', payload);
+    btn.disabled = false;
+    btn.textContent = 'Save Borrow';
+
+    if (result && result.success) {
+        document.getElementById('quickActionsModal')?.classList.remove('active');
+        await Promise.all([loadDashboardStats(), loadRecentActivity()]);
+        alert('Borrow log recorded successfully!');
+    } else {
+        alert((result && result.message) || 'Failed to record borrow log. Please try again.');
+    }
+}
+
+function calculateAgeFromBirthDate(birthDate) {
+    var raw = String(birthDate || '').trim();
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(raw)) return '';
+    var parts = raw.split('-').map(Number);
+    var birth = new Date(parts[0], parts[1] - 1, parts[2]);
+    var today = new Date();
+    var age = today.getFullYear() - birth.getFullYear();
+    var m = today.getMonth() - birth.getMonth();
+    if (m < 0 || (m === 0 && today.getDate() < birth.getDate())) {
+        age--;
+    }
+    return age < 0 ? '' : age;
 }
 
 window.initDashboard = initDashboard;

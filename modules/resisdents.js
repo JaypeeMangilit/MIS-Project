@@ -1698,7 +1698,7 @@ function exportToPDF(residents, fileName, filterText) {
         return doc.readyState === 'complete'
             && !!table
             && table.tBodies[0].rows.length === rows.length;
-    }, 4000).then((measured) => {
+    }, 2000).then((measured) => {
         if (!measured) {
             console.error('Masterlist print: the measuring pass did not complete, printing a single page.');
         }

@@ -247,3 +247,23 @@
         display: none;
     }
 }
+/* ===== Captain / read-only enforcement ===== */
+body[data-canEdit="false"] [id*="addBtn"] {
+    display: none !important;
+}
+
+body[data-canEdit="false"] .action-icon[onclick*="edit"] {
+    display: none !important;
+}
+
+body[data-canEdit="false"] .action-btn[onclick*="edit"] {
+    display: none !important;
+}
+
+body[data-canEdit="false"] .action-btn-small[onclick*="edit"] {
+    display: none !important;
+}
+
+body[data-canEdit="false"] .icon-btn.edit-schedule {
+    display: none !important;
+}

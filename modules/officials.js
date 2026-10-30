@@ -982,9 +982,7 @@
     /** Options for the two list filters. */
     const OFFICIAL_STATUS_FILTERS = ['Active', 'Inactive'];
     const OFFICIAL_POSITION_FILTERS = [
-        'Secretary', 'Captain', 'Councilor/Kagawad',
-        'Punong Barangay', 'Barangay Kagawad', 'SK Chairman',
-        'Barangay Secretary', 'Barangay Treasurer'
+        'Secretary', 'Captain', 'Councilor/Kagawad'
     ];
 
     /**
@@ -1652,7 +1650,7 @@
                 && !!table
                 && !!table.tBodies[0]
                 && table.tBodies[0].rows.length === rows.length;
-        }, 4000);
+        }, 2000);
 
         if (!measured) {
             console.error('Directory print: the measuring pass did not complete, printing a single page.');
