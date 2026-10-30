@@ -414,6 +414,30 @@ switch($method) {
             ]);
             break;
         }
+
+        if(isset($_GET['action']) && $_GET['action'] === 'demographics') {
+            $rows = getRecords("SELECT birth_date FROM residents WHERE birth_date IS NOT NULL AND birth_date != ''");
+            $buckets = ['0-14' => 0, '15-24' => 0, '25-54' => 0, '55-64' => 0, '65+' => 0];
+            if ($rows !== false) {
+                foreach ($rows as $r) {
+                    $age = residentAgeFromBirthDate($r['birth_date']);
+                    if ($age === null) continue;
+                    if ($age <= 14) $buckets['0-14']++;
+                    elseif ($age <= 24) $buckets['15-24']++;
+                    elseif ($age <= 54) $buckets['25-54']++;
+                    elseif ($age <= 64) $buckets['55-64']++;
+                    else $buckets['65+']++;
+                }
+            }
+            echo json_encode([
+                'success' => true,
+                'data' => array_map(function($label, $count) {
+                    return ['label' => $label, 'value' => $count];
+                }, array_keys($buckets), $buckets)
+            ]);
+            break;
+        }
+
         if(isset($_GET['id'])) {
             // Get single resident
             $sql = "SELECT * FROM residents WHERE id = ?";

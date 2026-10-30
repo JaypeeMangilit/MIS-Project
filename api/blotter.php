@@ -190,6 +190,28 @@ switch($method) {
             break;
         }
 
+        if (isset($_GET['action']) && $_GET['action'] === 'stats') {
+            $statusCounts = getRecords("SELECT status, COUNT(*) as count FROM blotter_cases GROUP BY status");
+            $labels = ['Settled' => 0, 'Ongoing' => 0, 'Referred to PNP' => 0, 'Dismissed' => 0];
+            if ($statusCounts !== false) {
+                foreach ($statusCounts as $row) {
+                    $status = trim((string)($row['status'] ?? ''));
+                    if (array_key_exists($status, $labels)) {
+                        $labels[$status] = (int)$row['count'];
+                    }
+                }
+            }
+            $total = array_sum($labels);
+            echo json_encode([
+                'success' => true,
+                'data' => array_map(function($label, $count) use ($total) {
+                    $percent = $total > 0 ? round(($count / $total) * 100) : 0;
+                    return ['label' => $label, 'value' => $count, 'total' => $total, 'percent' => $percent];
+                }, array_keys($labels), $labels)
+            ]);
+            break;
+        }
+
         if(isset($_GET['id'])) {
             // Get single case
             $sql = "SELECT * FROM blotter_cases WHERE id = ?";
@@ -200,6 +222,7 @@ switch($method) {
             } else {
                 echo json_encode(['success' => false, 'error' => 'Case not found']);
             }
+            break;
         } else {
             // Get all cases with filters
             $search = isset($_GET['search']) ? $_GET['search'] : '';

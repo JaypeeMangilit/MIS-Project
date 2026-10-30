@@ -32,24 +32,30 @@ body {
     margin-bottom: 20px;
 }
 
-.btn-export {
+/* Use shared secondary button style from residents module */
+.btn-secondary {
     display: flex;
     align-items: center;
-    gap: 10px;
-    padding: 9px 14px;
-    background: #0F6CBD;
-    border: none;
+    gap: 8px;
+    padding: 10px 16px;
     border-radius: 6px;
-    color: white;
     font-size: 14px;
     font-weight: 600;
     cursor: pointer;
     transition: all 0.2s ease;
+    border: 1px solid #D6E2EA;
+    background: white;
+    color: #16324A;
+    font-family: 'Inter', sans-serif;
 }
 
-.btn-export:hover {
-    background: #0c5d9e;
-    transform: translateY(-1px);
+.btn-secondary:hover {
+    background: #F4F8FB;
+}
+
+.btn-secondary img {
+    width: 16px;
+    height: 16px;
 }
 
 /* Report Cards */
@@ -411,4 +417,548 @@ body {
 
 ::-webkit-scrollbar-thumb:hover {
     background: #9AADBC;
+}
+.export-residents-container {
+    max-width: 1200px;
+    margin: 0 auto;
+    padding: 20px;
+}
+
+.export-back-wrapper {
+    margin-bottom: 24px;
+}
+
+.back-link {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    padding: 0;
+    background: transparent;
+    border: none;
+    color: #0F6CBD;
+    font-size: 14px;
+    font-weight: 500;
+    cursor: pointer;
+    transition: color 0.2s ease;
+    font-family: 'Inter', sans-serif;
+    text-decoration: none;
+}
+
+.back-link:hover {
+    color: #0c5d9e;
+    text-decoration: underline;
+}
+
+.export-header-section {
+    margin-bottom: 24px;
+}
+
+.export-title-section h1 {
+    font-size: 24px;
+    font-weight: 700;
+    color: #16324A;
+    margin: 0 0 6px;
+}
+
+.export-title-section p {
+    font-size: 14px;
+    color: #5F7385;
+    margin: 0;
+}
+
+.export-config-card {
+    background: white;
+    border: 1px solid #D6E2EA;
+    border-radius: 8px;
+    padding: 24px;
+    margin-bottom: 24px;
+}
+
+.config-header {
+    margin-bottom: 20px;
+}
+
+.config-header h3 {
+    font-size: 16px;
+    font-weight: 600;
+    color: #16324A;
+    margin: 0;
+}
+
+.config-body {
+    display: flex;
+    flex-direction: column;
+    gap: 20px;
+}
+
+.filter-section {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+}
+
+.filter-label {
+    font-size: 13px;
+    font-weight: 600;
+    color: #16324A;
+}
+
+.filter-row {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+    gap: 16px;
+}
+
+.filter-group {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+}
+
+.filter-group label {
+    font-size: 12px;
+    font-weight: 500;
+    color: #5F7385;
+}
+
+.filter-select-wrapper {
+    position: relative;
+}
+
+.export-filter-select {
+    width: 100%;
+    padding: 8px 32px 8px 10px;
+    border: 1px solid #D6E2EA;
+    border-radius: 6px;
+    font-size: 13px;
+    color: #16324A;
+    background: white;
+    appearance: none;
+    cursor: pointer;
+    font-family: 'Inter', sans-serif;
+}
+
+.select-arrow {
+    position: absolute;
+    right: 10px;
+    top: 50%;
+    transform: translateY(-50%);
+    font-size: 10px;
+    color: #5F7385;
+    pointer-events: none;
+}
+
+.export-format-section {
+    display: flex;
+    align-items: flex-end;
+    justify-content: space-between;
+    gap: 16px;
+    padding-top: 16px;
+    border-top: 1px solid #E8EDF2;
+}
+
+.format-group {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+
+.format-group label {
+    font-size: 13px;
+    font-weight: 600;
+    color: #16324A;
+}
+
+.format-options {
+    display: flex;
+    gap: 10px;
+}
+
+.format-option {
+    cursor: pointer;
+}
+
+.format-option input[type="radio"] {
+    margin-right: 6px;
+}
+
+.format-badge {
+    display: inline-block;
+    padding: 4px 10px;
+    border-radius: 4px;
+    font-size: 12px;
+    font-weight: 600;
+}
+
+.format-badge.pdf {
+    background: #D32F2F;
+    color: white;
+}
+
+.format-badge.excel {
+    background: #1F8F5F;
+    color: white;
+}
+
+.format-badge.csv {
+    background: #0F6CBD;
+    color: white;
+}
+
+.btn-generate-export {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    padding: 10px 18px;
+    background: #0F6CBD;
+    color: white;
+    border: none;
+    border-radius: 6px;
+    font-size: 14px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    font-family: 'Inter', sans-serif;
+}
+
+.btn-generate-export:hover {
+    background: #0c5d9e;
+}
+
+.recent-exports-card {
+    background: white;
+    border: 1px solid #D6E2EA;
+    border-radius: 8px;
+    padding: 20px;
+}
+
+.recent-header {
+    margin-bottom: 16px;
+}
+
+.recent-header h3 {
+    font-size: 16px;
+    font-weight: 600;
+    color: #16324A;
+    margin: 0;
+}
+
+.recent-table-wrapper {
+    overflow-x: auto;
+}
+
+.recent-exports-table {
+    width: 100%;
+    border-collapse: collapse;
+}
+
+.recent-exports-table th,
+.recent-exports-table td {
+    padding: 10px 12px;
+    text-align: left;
+    font-size: 13px;
+    border-bottom: 1px solid #E8EDF2;
+}
+
+.recent-exports-table th {
+    font-weight: 600;
+    color: #5F7385;
+    background: #F4F8FB;
+}
+
+.recent-exports-table tbody tr:hover {
+    background: #fafbfc;
+}
+
+.recent-exports-table td[colspan] {
+    text-align: center;
+    padding: 40px;
+    color: #888;
+}
+
+.download-again-btn {
+    padding: 6px 12px;
+    background: white;
+    border: 1px solid #D6E2EA;
+    border-radius: 4px;
+    font-size: 12px;
+    color: #16324A;
+    cursor: pointer;
+    transition: all 0.2s ease;
+}
+
+.download-again-btn:hover {
+    background: #F4F8FB;
+}
+
+/* ===== REPORTS EXPORT VIEW ===== */
+.export-reports-wrapper {
+    max-width: 900px;
+    margin: 0 auto;
+    padding: 0 0 40px;
+}
+
+.export-header {
+    margin-bottom: 24px;
+}
+
+.export-breadcrumb {
+    font-size: 13px;
+    color: #5F7385;
+    margin-bottom: 6px;
+}
+
+.export-title {
+    font-size: 28px;
+    font-weight: 700;
+    color: #16324A;
+    margin: 0;
+}
+
+.export-intro-card {
+    background: white;
+    border: 1px solid #D6E2EA;
+    border-radius: 8px;
+    padding: 20px 24px;
+    margin-bottom: 20px;
+}
+
+.export-intro-card h2 {
+    font-size: 18px;
+    font-weight: 600;
+    color: #16324A;
+    margin: 0 0 6px;
+}
+
+.export-intro-card p {
+    font-size: 14px;
+    color: #5F7385;
+    margin: 0;
+    line-height: 1.5;
+}
+
+.export-form-card {
+    background: white;
+    border: 1px solid #D6E2EA;
+    border-radius: 8px;
+    padding: 24px;
+}
+
+.form-section {
+    margin-bottom: 24px;
+}
+
+.form-section:last-of-type {
+    margin-bottom: 0;
+}
+
+.form-section-title {
+    font-size: 16px;
+    font-weight: 600;
+    color: #16324A;
+    margin: 0 0 4px;
+}
+
+.form-section-desc {
+    font-size: 13px;
+    color: #5F7385;
+    margin: 0 0 12px;
+}
+
+.module-chips {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 10px;
+}
+
+.module-chip {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    padding: 8px 14px;
+    border: 1px solid #D6E2EA;
+    border-radius: 6px;
+    background: white;
+    color: #16324A;
+    font-size: 13px;
+    font-weight: 500;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    font-family: 'Inter', sans-serif;
+}
+
+.module-chip:hover {
+    border-color: #0F6CBD;
+    color: #0F6CBD;
+}
+
+.module-chip.active {
+    background: #0F6CBD;
+    border-color: #0F6CBD;
+    color: white;
+}
+
+.module-chip svg {
+    flex-shrink: 0;
+}
+
+.date-range-row {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 16px;
+}
+
+.date-field {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+}
+
+.date-label {
+    font-size: 12px;
+    font-weight: 600;
+    color: #5F7385;
+    text-transform: uppercase;
+    letter-spacing: 0.02em;
+}
+
+.select-wrapper {
+    position: relative;
+}
+
+.date-select {
+    width: 100%;
+    padding: 8px 32px 8px 10px;
+    border: 1px solid #D6E2EA;
+    border-radius: 6px;
+    font-size: 13px;
+    color: #16324A;
+    background: white;
+    appearance: none;
+    cursor: pointer;
+    font-family: 'Inter', sans-serif;
+}
+
+.select-chevron {
+    position: absolute;
+    right: 10px;
+    top: 50%;
+    transform: translateY(-50%);
+    pointer-events: none;
+}
+
+.date-input {
+    width: 100%;
+    padding: 8px 10px;
+    border: 1px solid #D6E2EA;
+    border-radius: 6px;
+    font-size: 13px;
+    color: #16324A;
+    background: white;
+    font-family: 'Inter', sans-serif;
+}
+
+.format-chips {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 10px;
+}
+
+.format-chip {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    padding: 8px 14px;
+    border: 1px solid #D6E2EA;
+    border-radius: 6px;
+    background: white;
+    color: #16324A;
+    font-size: 13px;
+    font-weight: 500;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    font-family: 'Inter', sans-serif;
+}
+
+.format-chip:hover {
+    border-color: #0F6CBD;
+    color: #0F6CBD;
+}
+
+.format-chip.active {
+    background: #0F6CBD;
+    border-color: #0F6CBD;
+    color: white;
+}
+
+.privacy-banner {
+    display: flex;
+    gap: 12px;
+    align-items: flex-start;
+    background: #FFF7ED;
+    border: 1px solid #FED7AA;
+    border-radius: 8px;
+    padding: 16px;
+    margin: 24px 0;
+}
+
+.privacy-icon {
+    color: #C2410C;
+    flex-shrink: 0;
+    margin-top: 1px;
+}
+
+.privacy-text {
+    font-size: 13px;
+    color: #7C2D12;
+    line-height: 1.5;
+}
+
+.privacy-text strong {
+    font-weight: 600;
+}
+
+.form-actions {
+    display: flex;
+    justify-content: flex-end;
+    gap: 12px;
+    padding-top: 20px;
+    margin-top: 24px;
+}
+
+.btn-cancel {
+    padding: 10px 18px;
+    border: 1px solid #D6E2EA;
+    border-radius: 6px;
+    background: white;
+    color: #16324A;
+    font-size: 14px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    font-family: 'Inter', sans-serif;
+}
+
+.btn-cancel:hover {
+    background: #F4F8FB;
+}
+
+.btn-generate {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    padding: 10px 18px;
+    background: #0F6CBD;
+    color: white;
+    border: none;
+    border-radius: 6px;
+    font-size: 14px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    font-family: 'Inter', sans-serif;
+}
+
+.btn-generate:hover {
+    background: #0c5d9e;
 }

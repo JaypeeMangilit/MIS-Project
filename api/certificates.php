@@ -460,6 +460,31 @@ switch ($method) {
         $limit = max(1, min(100, $limit));
         $offset = ($page - 1) * $limit;
 
+        if (isset($_GET['action']) && $_GET['action'] === 'stats') {
+            $year = date('Y');
+            $rows = getRecords("
+                SELECT MONTH(date_issued) as month, COUNT(*) as count
+                FROM certificate_issuances
+                WHERE YEAR(date_issued) = ?
+                GROUP BY MONTH(date_issued)
+                ORDER BY MONTH(date_issued) ASC
+            ", [$year]);
+            $monthly = array_fill(1, 12, 0);
+            $monthNames = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+            if ($rows !== false) {
+                foreach ($rows as $row) {
+                    $monthly[(int)$row['month']] = (int)$row['count'];
+                }
+            }
+            echo json_encode([
+                'success' => true,
+                'data' => array_map(function($month, $count) use ($monthNames) {
+                    return ['label' => $monthNames[$month - 1], 'value' => $count];
+                }, range(1, 12), array_values($monthly))
+            ]);
+            break;
+        }
+
         $where = " WHERE 1=1";
         $params = [];
         $types = '';
