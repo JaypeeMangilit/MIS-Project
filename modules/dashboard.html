@@ -23,7 +23,7 @@
                         <div class="stat-header">
                             <span class="stat-label">Total Residents</span>
                             <div class="stat-icon residents-icon">
-                               <image src="Images/TotalResidents_Icon.svg" alt="Total Residents Icon"></image>
+                               <img src="Images/TotalResidents_Icon.svg" alt="Total Residents Icon">
                             </div>
                         </div>
                         <div class="stat-value" id="totalResidents">0</div>
@@ -36,7 +36,7 @@
                         <div class="stat-header">
                             <span class="stat-label">Households</span>
                             <div class="stat-icon households-icon">
-                                <image src="Images/TotalHouseholds_Icon.svg" alt="Total Households Icon"></image>
+                                <img src="Images/TotalHouseholds_Icon.svg" alt="Total Households Icon">
                             </div>
                         </div>
                         <div class="stat-value" id="totalHouseholds">0</div>
@@ -49,7 +49,7 @@
                         <div class="stat-header">
                             <span class="stat-label">Active Blotter Cases</span>
                             <div class="stat-icon blotter-icon">
-                                <image src="Images/ActiveBlotterCases_Icon.svg" alt="Active Blotter Icon"></image>
+                                <img src="Images/ActiveBlotterCases_Icon.svg" alt="Active Blotter Icon">
                             </div>
                         </div>
                         <div class="stat-value" id="activeBlotterCases">0</div>
@@ -60,7 +60,7 @@
                         <div class="stat-header">
                             <span class="stat-label">Certificates Issued</span>
                             <div class="stat-icon certificates-icon">
-                                <image src="Images/CertificateIssues_Icon.svg" alt="Certificate Issues Icon"></image>
+                                <img src="Images/CertificateIssues_Icon.svg" alt="Certificate Issues Icon">
                             </div>
                         </div>
                         <div class="stat-value" id="certificatesIssued">0</div>
@@ -90,28 +90,184 @@
                         </div>
                         <div class="actions-list">
                             <button type="button" class="action-btn" data-action="certificate">
-                                <image src="Images/IssueCetificate_Icon.svg" alt="Issue Certificate Icon"></image>
+                                <img src="Images/IssueCetificate_Icon.svg" alt="Issue Certificate Icon">
                                 <span>Issue Certificate</span>
                             </button>
                             <button type="button" class="action-btn" data-action="resident">
-                                <image src="Images/RegisterResident_Icon.svg" alt="Register Resident Icon"></image>
+                                <img src="Images/RegisterResident_Icon.svg" alt="Register Resident Icon">
                                 <span>Register Resident</span>
                             </button>
                             <button type="button" class="action-btn" data-action="blotter">
-                                <image src="Images/RecordBlotter_Icon.svg" alt="Record Blotter Icon"></image>
+                                <img src="Images/RecordBlotter_Icon.svg" alt="Record Blotter Icon">
                                 <span>Record Blotter</span>
                             </button>
                             <button type="button" class="action-btn" data-action="inventory">
-                                <image src="Images/UpdateInventory_Icon.svg" alt="Update Inventory Icon"></image>
+                                <img src="Images/UpdateInventory_Icon.svg" alt="Update Inventory Icon">
                                 <span>Borrow Log</span>
                             </button>
                         </div>
                     </div>
                 </div>
             </div>
-        </main>
-    </div>
+            </div>
 
+
+    <!-- Quick Actions Modal -->
+    <div id="quickActionsModal" class="modal-overlay">
+        <div class="modal-container">
+            <div class="modal-header">
+                <h3 class="modal-title" id="modalTitle">Quick Action</h3>
+                <button class="modal-close" id="modalCloseBtn">&times;</button>
+            </div>
+            <div class="modal-body" id="modalBody">
+                <!-- Certificate Form -->
+                <form id="certificateForm" class="quick-form" style="display: none;">
+                    <div class="form-group">
+                        <label>Resident</label>
+                        <input type="text" id="qaResidentSearch" placeholder="Search resident..." autocomplete="off">
+                        <input type="hidden" id="qaResidentId">
+                        <div id="residentAutocomplete" class="autocomplete-dropdown"></div>
+                    </div>
+                    <div class="form-group">
+                        <label>Certificate Type</label>
+                        <select id="qaCertType">
+                            <option value="">Select type</option>
+                            <option value="Barangay Clearance">Barangay Clearance</option>
+                            <option value="Barangay Indigency">Barangay Indigency</option>
+                            <option value="Barangay Certification">Barangay Certification</option>
+                            <option value="First-time Job Seeker">First-time Job Seeker</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label>Purpose</label>
+                        <input type="text" id="qaPurpose" placeholder="Enter purpose">
+                    </div>
+                    <div class="form-group">
+                        <label>Date Issued</label>
+                        <input type="date" id="qaDateIssued">
+                    </div>
+                    <div class="form-group">
+                        <label>OR Number (optional)</label>
+                        <input type="text" id="qaOrNumber" placeholder="Enter OR number">
+                    </div>
+                </form>
+
+                <!-- Resident Form -->
+                <form id="residentForm" class="quick-form" style="display: none;">
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label>First Name</label>
+                            <input type="text" id="qaFirstName" placeholder="Enter first name">
+                        </div>
+                        <div class="form-group">
+                            <label>Last Name</label>
+                            <input type="text" id="qaLastName" placeholder="Enter last name">
+                        </div>
+                    </div>
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label>Birth Date</label>
+                            <input type="date" id="qaBirthDate">
+                        </div>
+                        <div class="form-group">
+                            <label>Gender</label>
+                            <select id="qaGender">
+                                <option value="">Select</option>
+                                <option value="Male">Male</option>
+                                <option value="Female">Female</option>
+                            </select>
+                        </div>
+                    </div>
+                    <div class="form-group">
+                        <label>Purok</label>
+                        <input type="text" id="qaPurok" placeholder="Enter purok">
+                    </div>
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label>Street</label>
+                            <input type="text" id="qaStreet" placeholder="Enter street">
+                        </div>
+                        <div class="form-group">
+                            <label>House No.</label>
+                            <input type="text" id="qaHouseNo" placeholder="Enter house number">
+                        </div>
+                    </div>
+                    <div class="form-group">
+                        <label>Mobile Number</label>
+                        <input type="text" id="qaMobile" placeholder="Enter mobile number">
+                    </div>
+                </form>
+
+                <!-- Blotter Form -->
+                <form id="blotterForm" class="quick-form" style="display: none;">
+                    <div class="form-group">
+                        <label>Case Type</label>
+                        <select id="qaCaseType">
+                            <option value="">Select type</option>
+                            <option value="Physical Injury">Physical Injury</option>
+                            <option value="Theft">Theft</option>
+                            <option value="Vandalism">Vandalism</option>
+                            <option value="Noise Complaint">Noise Complaint</option>
+                            <option value="Boundary Dispute">Boundary Dispute</option>
+                            <option value="Other">Other</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label>Complainant</label>
+                        <input type="text" id="qaComplainant" placeholder="Enter complainant name">
+                    </div>
+                    <div class="form-group">
+                        <label>Respondent</label>
+                        <input type="text" id="qaRespondent" placeholder="Enter respondent name">
+                    </div>
+                    <div class="form-group">
+                        <label>Location</label>
+                        <input type="text" id="qaLocation" placeholder="Enter incident location">
+                    </div>
+                    <div class="form-group">
+                        <label>Incident Summary</label>
+                        <textarea id="qaIncidentSummary" rows="3" placeholder="Describe the incident..."></textarea>
+                    </div>
+                </form>
+
+                <!-- Inventory Form -->
+                <form id="inventoryForm" class="quick-form" style="display: none;">
+                    <div class="form-group">
+                        <label>Item</label>
+                        <select id="qaItemSelect">
+                            <option value="">Select item</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label>Quantity</label>
+                        <input type="number" id="qaQty" min="1" value="1" placeholder="Enter quantity">
+                    </div>
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label>Borrow Date</label>
+                            <input type="date" id="qaBorrowDate">
+                        </div>
+                        <div class="form-group">
+                            <label>Expected Return</label>
+                            <input type="date" id="qaExpectedReturn">
+                        </div>
+                    </div>
+                    <div class="form-group">
+                        <label>Borrower</label>
+                        <input type="text" id="qaBorrower" placeholder="Enter borrower name">
+                    </div>
+                    <div class="form-group">
+                        <label>Purpose</label>
+                        <input type="text" id="qaBorrowPurpose" placeholder="Enter purpose">
+                    </div>
+                </form>
+            </div>
+            <div class="modal-footer">
+                <button class="btn-cancel" id="modalCancelBtn">Cancel</button>
+                <button class="btn-primary" id="modalSubmitBtn">Submit</button>
+            </div>
+        </div>
+    </div>
     <script src="dashboard.js"></script>
 </body>
 </html>
